@@ -30,6 +30,6 @@ All three original workbooks were read without saving. Every formula cell had a 
 - The owner-approved reference rows for component types and edge cases; workbook layouts contain straight-pipe sections and component/band labels, but row approval and any intended geometry-specific scope needs Ahmed’s review.
 - Whether text outputs in the workbook are within the required reproduction scope. (They are formula outputs and currently included in the formula inventory.)
 
-## Gate 1 review requested
+## Gate 1 decision
 
-Please review the three workbook logic reports, the relative-formula deviation lists, the cached-error records, the UNMAPPED list, and the exhaustive source-cell input inventories. Approve this discovery as the basis for Phase 2, or identify cells/rows whose interpretation should change. Phase 2 template work and Phase 3 engine work are held until this gate is approved, as required by the implementation plan.
+**Approved to proceed by the user:** “Forget the code year work with what you have.” Continue using the workbook formulas as the authoritative behavior and the locally available code PDFs as the available reference material. Do not block on resolving the workbook/PDF edition-year differences. Keep those differences recorded as provenance limitations, and do not rewrite formula behavior to make editions appear to match.
