@@ -23,4 +23,4 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-evaluator = ["data/*.json", "static/*.html", "static/*.css", "static/*.js"]
+evaluator = ["data/*.json", "data/templates/*.json", "static/*.html", "static/*.css", "static/*.js"]
