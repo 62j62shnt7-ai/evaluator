@@ -1,0 +1,84 @@
+{
+  "workbook": "sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx",
+  "roots": [
+    "J8"
+  ],
+  "nodes": [
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "J8",
+      "kind": "FORMULA",
+      "formula": "=MAX(I8,H8)",
+      "value": 7.458779182879377,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Eval 8-2023 - ASME B31.3",
+          "cell": "I8"
+        },
+        {
+          "sheet": "Eval 8-2023 - ASME B31.3",
+          "cell": "H8"
+        }
+      ]
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "I8",
+      "kind": "FORMULA",
+      "formula": "=((D8*E8)/((2*F8)+(0.8*D8)))*25.4",
+      "value": 7.458779182879377,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Eval 8-2023 - ASME B31.3",
+          "cell": "D8"
+        },
+        {
+          "sheet": "Eval 8-2023 - ASME B31.3",
+          "cell": "E8"
+        },
+        {
+          "sheet": "Eval 8-2023 - ASME B31.3",
+          "cell": "F8"
+        }
+      ]
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "D8",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 1400,
+      "literal": 1400,
+      "dependencies": []
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "E8",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 8.625,
+      "literal": 8.625,
+      "dependencies": []
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "F8",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 20000,
+      "literal": 20000,
+      "dependencies": []
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.3",
+      "cell": "H8",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 2.8,
+      "literal": 2.8,
+      "dependencies": []
+    }
+  ]
+}

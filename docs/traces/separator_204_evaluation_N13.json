@@ -1,0 +1,45 @@
+{
+  "workbook": "sources/workbooks/Separator-204 Inspection Report.xlsx",
+  "roots": [
+    "N13"
+  ],
+  "nodes": [
+    {
+      "sheet": "Evaluation",
+      "cell": "N13",
+      "kind": "FORMULA",
+      "formula": "=(2*15700*0.85*(M13/25.4))/((78)+(0.2*(M13/25.4)))",
+      "value": 476.53523110194647,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation",
+          "cell": "M13"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation",
+      "cell": "M13",
+      "kind": "FORMULA",
+      "formula": "=(G13)-(4*0.125)",
+      "value": 35.5,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation",
+          "cell": "G13"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation",
+      "cell": "G13",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 36,
+      "literal": 36,
+      "dependencies": []
+    }
+  ]
+}

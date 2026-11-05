@@ -1,0 +1,173 @@
+{
+  "workbook": "sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx",
+  "roots": [
+    "X7"
+  ],
+  "nodes": [
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "X7",
+      "kind": "FORMULA",
+      "formula": "=IF(W7>D7,\"Safe\",\"Reduce Interval, Otherwise Derate. Repair if Derate is NA\")",
+      "value": "Safe",
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "W7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "D7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "W7",
+      "kind": "FORMULA",
+      "formula": "=(2*0.8*F7*V7)/(E7*25.4)",
+      "value": 3531.941116056146,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "F7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "V7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "E7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "F7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 52000,
+      "literal": 52000,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "V7",
+      "kind": "FORMULA",
+      "formula": "=(N7)-(2*S7*U7)",
+      "value": 9.3,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "N7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "S7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "U7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "N7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 11.9,
+      "literal": 11.9,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "S7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 0.13,
+      "literal": 0.13,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "U7",
+      "kind": "FORMULA",
+      "formula": "=MIN(T7/2,10)",
+      "value": 10,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "T7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "T7",
+      "kind": "FORMULA",
+      "formula": "=(N7-I7)/(S7)",
+      "value": 61.156388683431956,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "N7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "I7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "S7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "I7",
+      "kind": "FORMULA",
+      "formula": "=(D7*E7)/(2*F7*0.8)*25.4",
+      "value": 3.949669471153846,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "D7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "E7"
+        },
+        {
+          "sheet": "Evaluation 6-2025",
+          "cell": "F7"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "D7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 1500,
+      "literal": 1500,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 6-2025",
+      "cell": "E7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 8.625,
+      "literal": 8.625,
+      "dependencies": []
+    }
+  ]
+}

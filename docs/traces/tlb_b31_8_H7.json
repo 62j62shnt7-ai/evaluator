@@ -1,0 +1,57 @@
+{
+  "workbook": "sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx",
+  "roots": [
+    "H7"
+  ],
+  "nodes": [
+    {
+      "sheet": "Eval 8-2023 - ASME B31.8",
+      "cell": "H7",
+      "kind": "FORMULA",
+      "formula": "=(D7*E7)/(2*F7*0.8)*25.4",
+      "value": 3.6722341954022983,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Eval 8-2023 - ASME B31.8",
+          "cell": "D7"
+        },
+        {
+          "sheet": "Eval 8-2023 - ASME B31.8",
+          "cell": "E7"
+        },
+        {
+          "sheet": "Eval 8-2023 - ASME B31.8",
+          "cell": "F7"
+        }
+      ]
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.8",
+      "cell": "D7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 1400,
+      "literal": 1400,
+      "dependencies": []
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.8",
+      "cell": "E7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 8.625,
+      "literal": 8.625,
+      "dependencies": []
+    },
+    {
+      "sheet": "Eval 8-2023 - ASME B31.8",
+      "cell": "F7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 52200,
+      "literal": 52200,
+      "dependencies": []
+    }
+  ]
+}

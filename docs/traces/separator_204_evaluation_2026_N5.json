@@ -1,0 +1,97 @@
+{
+  "workbook": "sources/workbooks/Separator-204 Inspection Report.xlsx",
+  "roots": [
+    "N5"
+  ],
+  "nodes": [
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "N5",
+      "kind": "FORMULA",
+      "formula": "=((D5*I5)/((2*F5*G5)-(0.2*D5)))*25.4",
+      "value": 14.725038402457756,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "D5"
+        },
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "I5"
+        },
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "F5"
+        },
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "G5"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "D5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 175,
+      "literal": 175,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "I5",
+      "kind": "FORMULA",
+      "formula": "=H5-((2*M5)/25.4)",
+      "value": 75.48031496062993,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "H5"
+        },
+        {
+          "sheet": "Evaluation 2026",
+          "cell": "M5"
+        }
+      ]
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "H5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 78,
+      "literal": 78,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "M5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 32,
+      "literal": 32,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "F5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 16300,
+      "literal": 16300,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evaluation 2026",
+      "cell": "G5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 0.7,
+      "literal": 0.7,
+      "dependencies": []
+    }
+  ]
+}

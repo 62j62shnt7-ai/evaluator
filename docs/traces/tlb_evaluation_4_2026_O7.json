@@ -1,0 +1,84 @@
+{
+  "workbook": "sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx",
+  "roots": [
+    "O7"
+  ],
+  "nodes": [
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "O7",
+      "kind": "FORMULA",
+      "formula": "=N7-(T7*$S$4)",
+      "value": 11.775479452054794,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evalation 4-2026",
+          "cell": "N7"
+        },
+        {
+          "sheet": "Evalation 4-2026",
+          "cell": "T7"
+        },
+        {
+          "sheet": "Evalation 4-2026",
+          "cell": "S4"
+        }
+      ]
+    },
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "N7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 11.9,
+      "literal": 11.9,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "T7",
+      "kind": "INPUT",
+      "formula": null,
+      "value": 0.15,
+      "literal": 0.15,
+      "dependencies": []
+    },
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "S4",
+      "kind": "FORMULA",
+      "formula": "=(O5-N5)/365",
+      "value": 0.8301369863013699,
+      "literal": null,
+      "dependencies": [
+        {
+          "sheet": "Evalation 4-2026",
+          "cell": "O5"
+        },
+        {
+          "sheet": "Evalation 4-2026",
+          "cell": "N5"
+        }
+      ]
+    },
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "O5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": "2026-04-07 00:00:00",
+      "literal": "2026-04-07 00:00:00",
+      "dependencies": []
+    },
+    {
+      "sheet": "Evalation 4-2026",
+      "cell": "N5",
+      "kind": "INPUT",
+      "formula": null,
+      "value": "2025-06-08 00:00:00",
+      "literal": "2025-06-08 00:00:00",
+      "dependencies": []
+    }
+  ]
+}
