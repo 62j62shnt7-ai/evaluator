@@ -9,6 +9,7 @@ from tests.integration import test_workflow as fixtures
 from evaluator.app_services import ProjectService
 from evaluator.storage.database import connection
 from evaluator.batch_ui import batch_page
+from tests.source_config import SOURCE_ROOT
 
 
 def field(value,cell='A1',unit='mm',kind='literal'):
@@ -36,7 +37,7 @@ class BatchTests(unittest.TestCase):
 
     def test_same_sheet_minimum_reading_history_drives_batch_corrosion_rate(self):
         with TemporaryDirectory() as td:
-            path=Path(__file__).resolve().parents[2]/'sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx'
+            path=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
             service=ProjectService(Path(td)/'project')
             source=service.add_source(path,path.name);service.inspect(source.sha256)
             service.extract(source.sha256,'Evalation 4-2026')

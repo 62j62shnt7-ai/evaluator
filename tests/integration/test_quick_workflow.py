@@ -2,6 +2,7 @@ import json
 import unittest
 from tests.integration import test_workflow as fixtures
 from evaluator.storage.database import connection
+from tests.source_config import SOURCE_ROOT
 
 class QuickWorkflowTests(unittest.TestCase):
     setUp=fixtures.WorkflowTests.setUp
@@ -18,7 +19,7 @@ class QuickWorkflowTests(unittest.TestCase):
         from evaluator.webapp import make_handler
         with tempfile.TemporaryDirectory() as td:
             service=ProjectService(Path(td)/'project')
-            path=Path(__file__).resolve().parents[2]/'sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx'
+            path=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
             source=service.add_source(path,path.name);service.inspect(source.sha256)
             server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(service))
             thread=Thread(target=server.serve_forever,daemon=True);thread.start()

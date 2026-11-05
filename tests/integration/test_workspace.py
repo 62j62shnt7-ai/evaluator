@@ -13,13 +13,14 @@ from evaluator.app_services import ProjectService
 from evaluator.engineering.references import dimension, dimensions
 from evaluator.form_export import export_form
 from evaluator.workspace import Workspace
+from tests.source_config import SOURCE_ROOT
 
 ROOT=Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def project(tmp_path):
     service=ProjectService(tmp_path)
-    source=service.add_source(ROOT/'sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx')
+    source=service.add_source(SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx')
     service.inspect(source.sha256)
     workspace=Workspace(service)
     opened=workspace.open_sheet(source.sha256,'UT 5-2025',service.workflow.revision(), '01-2021','05-2025')
@@ -39,7 +40,7 @@ def test_reference_dimensions_and_source_discrepancies():
     assert len([d for d in data if d['issues']])==2
     with pytest.raises(ValueError,match='source discrepancy'):dimension('stainless','1/8','80S')
     with pytest.raises(ValueError):dimension('ferritic','40','80')
-    digest=sha256((ROOT/'sources/codes/RP_574_E5_EN_wA1.pdf').read_bytes()).hexdigest()
+    digest=sha256((SOURCE_ROOT/'codes/RP_574_E5_EN_wA1.pdf').read_bytes()).hexdigest()
     assert all(d['source_sha256']==digest for d in data)
 
 
@@ -227,7 +228,7 @@ def test_campaign_date_correction_and_increasing_rate_override_are_explicit(proj
 
 @pytest.mark.parametrize('filename',['Separator-204 Inspection Report.xlsx','Separator-204 Inspection Report.xlsm'])
 def test_separator_auto_import_and_preserved_form(tmp_path,filename):
-    s=ProjectService(tmp_path);source=s.add_source(ROOT/'sources/workbooks'/filename);s.inspect(source.sha256);w=Workspace(s)
+    s=ProjectService(tmp_path);source=s.add_source(SOURCE_ROOT/'workbooks'/filename);s.inspect(source.sha256);w=Workspace(s)
     opened=w.auto_open(source.sha256,s.workflow.revision());cid=opened['comparison_id']
     state=w.state(cid)['workspace']
     assert state['comparison']['current_selection'][1]=='UT Jan 2026'
@@ -270,7 +271,7 @@ def test_automatic_history_uses_latest_available_prior_measurement_per_location(
 def test_uploaded_workbook_family_is_detected_from_structure_not_staging_name(tmp_path):
     import shutil
     incoming=tmp_path/'upload-random.xlsx'
-    shutil.copyfile(ROOT/'sources/workbooks/Separator-204 Inspection Report.xlsx',incoming)
+    shutil.copyfile(SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx',incoming)
     s=ProjectService(tmp_path/'project');source=s.add_source(incoming,'inspection.xlsx');s.inspect(source.sha256)
     opened=Workspace(s).auto_open(source.sha256,s.workflow.revision())
     assert opened['comparison_id']

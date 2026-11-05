@@ -3,8 +3,9 @@ from pathlib import Path
 from decimal import Decimal
 from evaluator.engineering.records import import_records, identity
 from evaluator.engineering.batch_rules import convert, outputs
+from tests.source_config import SOURCE_ROOT
 
-SOURCES = Path(__file__).resolve().parents[2] / 'sources/workbooks'
+SOURCES = SOURCE_ROOT / 'workbooks'
 
 def test_separator_records_preserve_provenance():
     path = SOURCES / 'Separator-204 Inspection Report.xlsx'

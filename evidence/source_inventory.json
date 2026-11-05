@@ -1,0 +1,72 @@
+[
+  {
+    "file": "Separator-204 Inspection Report.xlsm",
+    "original": "/Users/don/Downloads/Separator-204 Inspection Report.xlsm",
+    "copy": "sources/workbooks/Separator-204 Inspection Report.xlsm",
+    "bytes": 5026091,
+    "sha256": "a43e87ec6620266d9f0cfa9f6c0d8ea238133cb22d34636bbf84cdc9e71ba53c"
+  },
+  {
+    "file": "Separator-204 Inspection Report.xlsx",
+    "original": "/Users/don/Downloads/Separator-204 Inspection Report.xlsx",
+    "copy": "sources/workbooks/Separator-204 Inspection Report.xlsx",
+    "bytes": 4931529,
+    "sha256": "bfc2b6ebc9dace891935d1549cfe31c963ed69ba3fcb752ba89c9084f8387a17"
+  },
+  {
+    "file": "API_510_E11_EN_wE1E2.pdf",
+    "original": "/Users/don/Downloads/API_510_E11_EN_wE1E2.pdf",
+    "copy": "sources/codes/API_510_E11_EN_wE1E2.pdf",
+    "bytes": 1653938,
+    "sha256": "6a92466f79f3156c716b4189e751dac519a11a3865912e764062fde74d335255"
+  },
+  {
+    "file": "B31-4_2025.pdf",
+    "original": "/Users/don/Downloads/B31-4_2025.pdf",
+    "copy": "sources/codes/B31-4_2025.pdf",
+    "bytes": 5302394,
+    "sha256": "198eeef109b7d2c39e74a9285ddd72cadbf086ba9e49fe93f85f2f9ae4c280f2"
+  },
+  {
+    "file": "B31_8_2025.pdf",
+    "original": "/Users/don/Downloads/B31_8_2025.pdf",
+    "copy": "sources/codes/B31_8_2025.pdf",
+    "bytes": 12255234,
+    "sha256": "9d2323f391cfe83b77e154e5d41f043f40587eac2b086cdc4e7a7fa98c7ff2cd"
+  },
+  {
+    "file": "ASME_BPVC_VIII_1-2025.pdf",
+    "original": "/Users/don/Downloads/ASME_BPVC_VIII_1-2025.pdf",
+    "copy": "sources/codes/ASME_BPVC_VIII_1-2025.pdf",
+    "bytes": 25950336,
+    "sha256": "c3eaed953c3bf5f3876de3afb0eb96f079360eca7d48c1a957b4d4c27a38a64e"
+  },
+  {
+    "file": "ASME_BPVC_II_D_M-2025.pdf",
+    "original": "/Users/don/Downloads/ASME_BPVC_II_D_M-2025.pdf",
+    "copy": "sources/codes/ASME_BPVC_II_D_M-2025.pdf",
+    "bytes": 15971397,
+    "sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06"
+  },
+  {
+    "file": "TL-B from SAG Gas MFD to GP.xlsx",
+    "copy": "sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx",
+    "bytes": 6554596,
+    "sha256": "dab6b013a0fab6e6fba03ed0cd486ef594ab9e642b84e92e395afc9f142ffa75",
+    "original": "User-provided path in chat, 4 November 2026"
+  },
+  {
+    "file": "API_570_E5_EN_wA1.pdf",
+    "copy": "sources/codes/API_570_E5_EN_wA1.pdf",
+    "bytes": 1642027,
+    "sha256": "e20adae94f40728a456bb554afc5ff47783af6e0a15f30e014dc1de985766ee1",
+    "original": "User-provided path in chat, 4 November 2026"
+  },
+  {
+    "file": "B31_3_2024.pdf",
+    "copy": "sources/codes/B31_3_2024.pdf",
+    "bytes": 16840713,
+    "sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "original": "User-provided path in chat, 4 November 2026"
+  }
+]

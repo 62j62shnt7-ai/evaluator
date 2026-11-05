@@ -6,6 +6,7 @@ from openpyxl import Workbook
 from pathlib import Path
 from http.client import HTTPConnection
 from threading import Thread
+from tests.source_config import SOURCE_ROOT
 ROOT=Path(__file__).resolve().parents[2]; sys.path.insert(0,str(ROOT/'src'))
 from evaluator.app_services import ProjectService, csv_safe
 from evaluator.storage.database import connection
@@ -15,7 +16,7 @@ from http.server import ThreadingHTTPServer
 class AppServiceTests(unittest.TestCase):
     def test_one_evaluation_sheet_supplies_both_dates_for_corrosion_rate(self):
         with tempfile.TemporaryDirectory() as td:
-            src=ROOT/'sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx'
+            src=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
             service=ProjectService(Path(td)/'project')
             source=service.add_source(src,src.name)
             service.inspect(source.sha256)
@@ -44,7 +45,7 @@ class AppServiceTests(unittest.TestCase):
 
     def test_upload_inventory_extract_and_csv_export(self):
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td); src=ROOT/'sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx'
+            root=Path(td); src=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
             service=ProjectService(root/'project')
             record=service.add_source(src,src.name)
             result=service.inspect(record.sha256)

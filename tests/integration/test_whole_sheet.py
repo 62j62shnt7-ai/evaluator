@@ -2,6 +2,7 @@ import hashlib
 from openpyxl import Workbook
 from openpyxl.comments import Comment
 from evaluator.app_services import ProjectService
+from tests.source_config import SOURCE_ROOT
 
 
 def test_unknown_whole_sheet_preserves_cells_formulas_and_comments(tmp_path):
@@ -34,7 +35,7 @@ def test_real_separator_full_evidence_and_reimport(tmp_path):
     from pathlib import Path
     from zipfile import ZipFile
     import xml.etree.ElementTree as ET
-    path=Path('sources/workbooks/Separator-204 Inspection Report.xlsx')
+    path=SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx'
     service=ProjectService(tmp_path/'project'); source=service.add_source(path)
     service.extract(source.sha256,'UT Jan 2026')
     sheet=service.imported_sheet(source.sha256,'UT Jan 2026')
@@ -56,7 +57,7 @@ def test_real_separator_full_evidence_and_reimport(tmp_path):
 
 def test_real_tlb_imports_every_section_and_package_dependency(tmp_path):
     from pathlib import Path
-    path=Path('sources/workbooks/TL-B from SAG Gas MFD to GP.xlsx')
+    path=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
     service=ProjectService(tmp_path/'project'); source=service.add_source(path)
     service.extract(source.sha256,'UT-FEB 2025 Sec-1&2')
     sheet=service.imported_sheet(source.sha256,'UT-FEB 2025 Sec-1&2')
@@ -90,7 +91,7 @@ def test_simple_match_upgrades_legacy_partial_imports_automatically(tmp_path):
     from pathlib import Path
     from evaluator.quick_workflow import match
     from evaluator.storage.database import connection
-    path=Path('sources/workbooks/Separator-204 Inspection Report.xlsx')
+    path=SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx'
     service=ProjectService(tmp_path/'project');source=service.add_source(path)
     service.extract(source.sha256,'UT Jan 2026')
     with connection(service.repository.path) as db:db.execute('DELETE FROM imported_sheets')
@@ -103,7 +104,7 @@ def test_import_two_actual_sheets_and_match_in_one_action(tmp_path):
     from pathlib import Path
     from evaluator.quick_workflow import import_inspections
     service=ProjectService(tmp_path/'project')
-    source=service.add_source(Path('sources/workbooks/Separator-204 Inspection Report.xlsx'))
+    source=service.add_source(SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx')
     service.inspect(source.sha256)
     result=import_inspections(service,source.sha256,'UT Aug-2024','UT Jan 2026',service.workflow.revision())
     assert len(service.imported_sheets())==2
@@ -123,7 +124,7 @@ def test_whole_evidence_survives_when_a_sheet_has_no_supported_readings(tmp_path
 
 def test_older_separator_cml_header_is_listed_as_a_complete_section(tmp_path):
     from pathlib import Path
-    service=ProjectService(tmp_path/'project');source=service.add_source(Path('sources/workbooks/Separator-204 Inspection Report.xlsx'))
+    service=ProjectService(tmp_path/'project');source=service.add_source(SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx')
     service.extract(source.sha256,'UT Aug-2024')
     sheet=service.imported_sheet(source.sha256,'UT Aug-2024')
     assert [s['name'] for s in sheet['sections']]==['CMLS','NOZZLES']
