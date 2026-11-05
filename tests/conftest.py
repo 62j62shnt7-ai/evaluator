@@ -12,6 +12,7 @@ SOURCE_MODULES = {
     "tests/integration/test_quick_workflow.py",
     "tests/integration/test_whole_sheet.py",
     "tests/integration/test_workspace.py",
+    "tests/integration/test_template_reproduction.py",
 }
 
 
