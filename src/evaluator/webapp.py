@@ -77,6 +77,14 @@ def make_handler(service):
                 try:self._reply(json.dumps(Workspace(service).state(q.get('comparison',[None])[0],q.get('scenario',[None])[0])),200,'application/json')
                 except (ValueError,KeyError) as exc:self._reply(json.dumps({'error':str(exc)}),400,'application/json')
                 return
+            if path=='/readings-only':
+                self._reply((Path(__file__).parent/'static'/'readings_only.html').read_text());return
+            if path=='/readings-download':
+                name=parse_qs(urlsplit(self.path).query).get('name',[''])[0]
+                if not name or Path(name).name!=name or name in {'.','..'} or '\\' in name or Path(name).suffix.lower() not in {'.xlsx','.xlsm'}:self._reply('Invalid export name',400,'text/plain');return
+                target=service.project_dir/'exports'/name
+                if not target.is_file() or not target.resolve().is_relative_to((service.project_dir/'exports').resolve()):self._reply('Export not found',404,'text/plain');return
+                self._reply(target.read_bytes(),200,'application/octet-stream',(('Content-Disposition',f'attachment; filename="{name}"'),));return
             if path=='/workspace/form':
                 from evaluator.form_export import export_form
                 q=parse_qs(urlsplit(self.path).query)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import heapq
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -182,6 +183,23 @@ def evaluate_template(
     """Validate provenance, evaluate in dependency order, and return a cell trace."""
     data = validate_template(template).data if isinstance(template, dict) else template.data
     by_id, location_to_id, ast_by_id, dependencies = _dependencies(data)
+    missing: list[str] = []
+    for node in data["nodes"]:
+        if node["kind"] != "input":
+            continue
+        datum = inputs.get(node["id"])
+        context = _code_context(node)
+        if datum is None:
+            missing.append(f"{node['label']} ({node['id']}); code/table: {context}")
+        elif datum.provenance is None:
+            missing.append(f"{node['label']} ({node['id']}) has no provenance; code/table: {context}")
+        elif datum.provenance.get("source_type") not in node["provenance_required"]:
+            missing.append(
+                f"{node['label']} ({node['id']}) requires one of {node['provenance_required']}, "
+                f"received {datum.provenance.get('source_type')!r}; code/table: {context}"
+            )
+    if missing:
+        raise MissingInputError("Missing required input or provenance: " + "; ".join(missing))
     order = _topological_order(by_id, dependencies)
     values: dict[str, Any] = {}
     provenance: dict[str, Mapping[str, Any] | None] = {}
@@ -198,17 +216,7 @@ def evaluate_template(
                 raise MissingInputError(
                     f"Missing required input {node['label']} ({node_id}); code/table: {code_context}"
                 )
-            if datum.provenance is None:
-                raise MissingInputError(
-                    f"Input {node['label']} ({node_id}) has no provenance; code/table: {code_context}"
-                )
-            source_type = datum.provenance.get("source_type")
-            for required_type in node["provenance_required"]:
-                if source_type != required_type:
-                    raise MissingInputError(
-                        f"Input {node['label']} ({node_id}) requires {required_type} provenance, "
-                        f"received {source_type!r}; code/table: {code_context}"
-                    )
+            source_type = datum.provenance.get("source_type") if datum.provenance else None
             values[node_id] = _date_to_excel(datum.value)
             provenance[node_id] = datum.provenance
             continue
@@ -245,3 +253,36 @@ def evaluate_template(
         outputs=output_values,
         trace=tuple(trace),
     )
+
+
+def select_subtemplate(
+    template: Template | dict[str, Any],
+    output_ids: list[str],
+    *,
+    template_id: str | None = None,
+    provenance_requirements: Mapping[str, list[str]] | None = None,
+) -> Template:
+    """Select an output dependency closure from a workbook template."""
+    data = validate_template(template).data if isinstance(template, dict) else template.data
+    by_id, _, _, dependencies = _dependencies(data)
+    unknown = set(output_ids) - set(by_id)
+    if unknown:
+        raise DependencyError(f"Unknown requested output nodes: {sorted(unknown)}")
+    closure: set[str] = set()
+    pending = list(output_ids)
+    while pending:
+        node_id = pending.pop()
+        if node_id in closure:
+            continue
+        closure.add(node_id)
+        pending.extend(dependencies[node_id] - closure)
+    selected = deepcopy(data)
+    selected["template_id"] = template_id or f"{data['template_id']}_selected"
+    selected["description"] = f"Selected output dependency closure from {data['template_id']}."
+    selected["outputs"] = list(output_ids)
+    selected["nodes"] = [node for node in data["nodes"] if node["id"] in closure]
+    requirements = provenance_requirements or {}
+    for node in selected["nodes"]:
+        if node["kind"] == "input" and node["id"] in requirements:
+            node["provenance_required"] = list(requirements[node["id"]])
+    return validate_template(selected)

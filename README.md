@@ -51,3 +51,18 @@ PYTHONPATH=src .venv/bin/python tools/validate_revamped_workspace.py /path/to/fr
 The new acceptance path exercises all three supplied workbooks, checks independent rate/life arithmetic, increasing-reading withholding, geometry distinctions, completed-form loading, media/style/VBA preservation, evidence ZIP hashes and unchanged originals. Tests also cover row-scoped confirmations, batch edits, exact lookup scope, scenario isolation, stale revisions, undo, inline correction and local HTTP origin checks.
 
 See `planning/16_Revamp_Audit_and_Delivery.md` for the audit and remaining engineering gaps, and `evidence/revamped_workspace_acceptance_verified/verification.json` for the refreshed actual-workbook evidence.
+# Readings-only evaluation workflow
+
+The local app exposes **Readings-only evaluation** at `/readings-only`. Import a source workbook from the main intake page first, then:
+
+1. Select a workbook, sheet, layout profile, and an asset record. The built-in `separator_min_v1` and `tlb_dated_v1` profiles use the existing structure-aware adapters and preserve each thickness cell and campaign header cell as source provenance.
+2. For an unrecognized workbook, preview the sheet to see its dimensions and non-empty cell addresses. Enter and confirm the location columns, previous/current thickness columns, date cells, row numbers, unit (`mm` for the current source templates), and confirmer. Confirmed custom layouts are versioned in the project’s `layout_profiles.json`; they can be revised by saving a new profile ID.
+3. Create or select an asset and add its required one-time inputs. Each input change requires an author and reason and is versioned in SQLite. Manual, sheet, and verified code-table provenance are retained. The calculation profile and missing-input result name the inputs still needed before a row can evaluate.
+4. Select the source-row calculation profile that matches the asset/component and run the evaluation. Values and traces are kept with the imported pair; results remain labelled `DRAFT / NOT VALIDATED` and do not issue PASS/FAIL verdicts.
+5. Export a copy of the imported workbook. The copy contains `Results` and `Calculation Ledger` sheets with evaluated values, expressions, and input provenance. The exporter adds these sheets to the OOXML package and leaves the original workbook bytes unchanged.
+
+## Extending the evaluator
+
+- **Calculation template:** add a schema-valid JSON template under `src/evaluator/data/templates/`, regenerate extracted templates with `tools/build_workbook_templates.py`, then add an explicit source-row mapping in `row_calculation_profiles.json`. Unsupported Excel functions intentionally fail template construction.
+- **Code table:** add candidate records to the relevant JSON data file with code, edition, table, page, PDF hash, and verification metadata. Verify rows against the source page before marking them verified. `VerifiedTables` uses exact keys only and raises on absent or withheld rows; it never interpolates.
+- **Layout:** use the readings-only preview to confirm exact columns/cells. Save the user-confirmed mapping as a custom profile; thickness values must be in mm for the current calculation bindings. Unknown or conflicting dates stay unresolved instead of being inferred.

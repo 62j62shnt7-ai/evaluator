@@ -23,5 +23,37 @@ def action(service, name, payload):
     elif name=='correct':result={'comparison_id':workspace.correct(cid,rev,payload['id'],payload['value'])}
     elif name=='dates':result={'comparison_id':workspace.dates(cid,rev,payload.get('previous_date',''),payload.get('current_date',''))}
     elif name=='undo':service.workflow.undo(rev,'Local workspace user','Undo most recent saved action')
+    elif name=='asset_list':result={'assets':service.assets.assets()}
+    elif name=='asset_create':service.assets.create_asset(payload['asset_id'],payload['label'],who=payload['who']);result={'assets':service.assets.assets()}
+    elif name=='asset_input':
+        version=service.assets.set_input(payload['asset_id'],payload['key'],payload['value'],payload['unit'],who=payload['who'],why=payload['why'],source_type=payload.get('source_type','manual'),source_detail=payload.get('source_detail'))
+        result={'asset_id':payload['asset_id'],'key':payload['key'],'version':version}
+    elif name=='asset_history':result={'history':service.assets.history(payload['asset_id'],payload.get('key'))}
+    elif name=='readings_profiles':
+        from evaluator.readings_only import ReadingsOnlyService
+        sources=[]
+        for source in service.sources():
+            inventory=service.inventory_for(source['source_id']) or {}
+            sources.append(dict(source,sheets=[row['name'] for row in inventory.get('sheets',[])]))
+        result={'layouts':list(ReadingsOnlyService(service).profiles().values()),'calculation_profiles':list(__import__('evaluator.template_engine.row_calculations',fromlist=['load_calculation_profiles']).load_calculation_profiles().values()),'assets':service.assets.assets(),'sources':sources}
+    elif name=='readings_preview':
+        from evaluator.readings_only import ReadingsOnlyService
+        result=ReadingsOnlyService(service).preview(payload['source_id'],payload['sheet'])
+    elif name=='readings_save_layout':
+        from evaluator.readings_only import ReadingsOnlyService
+        result=ReadingsOnlyService(service).save_custom_profile(payload['profile'],who=payload['who'],confirmed=bool(payload.get('confirmed')))
+    elif name=='readings_import':
+        from evaluator.readings_only import ReadingsOnlyService
+        result=ReadingsOnlyService(service).import_sheet(payload['source_id'],payload['sheet'],payload['layout_profile_id'],payload['asset_id'])
+    elif name=='readings_pairs':
+        from evaluator.readings_only import ReadingsOnlyService
+        result={'pairs':ReadingsOnlyService(service).pairs(payload.get('source_id')),'results':ReadingsOnlyService(service).results()}
+    elif name=='readings_evaluate':
+        from evaluator.readings_only import ReadingsOnlyService
+        result=ReadingsOnlyService(service).evaluate(payload['pair_id'],payload['calculation_profile_id'])
+    elif name=='readings_export':
+        from evaluator.readings_only import ReadingsOnlyService
+        target=ReadingsOnlyService(service).export_copy(payload['source_id'],result_ids=payload.get('result_ids'))
+        result={'path':str(target),'name':target.name}
     else:raise ValueError('Unknown workspace action')
     return result

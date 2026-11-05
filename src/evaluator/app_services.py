@@ -17,6 +17,7 @@ from evaluator.importing.regions import ExtractionResult
 from evaluator.importing.separator import extract as extract_separator
 from evaluator.importing.tlb import extract as extract_tlb
 from evaluator.storage.repository import Repository
+from evaluator.storage.assets import AssetStore
 from evaluator.importing.normalize import observation_id
 from evaluator.storage.database import connection
 from evaluator.workflow import Workflow, tracked
@@ -31,6 +32,7 @@ class ProjectService:
     def __init__(self, project_dir: Path):
         self.project_dir=Path(project_dir).resolve(); self.project_dir.mkdir(parents=True,exist_ok=True)
         self.repository=Repository(self.project_dir/'project.sqlite')
+        self.assets=AssetStore(self.repository.path)
         with connection(self.repository.path) as db:
             db.executescript("""
               CREATE TABLE IF NOT EXISTS workbooks (source_id TEXT PRIMARY KEY, file_name TEXT NOT NULL, inventory_json TEXT, warning TEXT NOT NULL DEFAULT '');

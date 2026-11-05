@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "id": "separator_2026_shell",
+      "label": "Separator shell (API 510 / ASME VIII-1 source row)",
+      "template_file": "separator_204_xlsx_v1.json",
+      "source_sheet": "Evaluation 2026",
+      "source_row": 5,
+      "outputs": ["I5", "N5", "S5", "T5", "U5", "W5", "X5"],
+      "bindings": {
+        "D5": {"source": "asset", "key": "design_pressure_psi", "unit": "psi"},
+        "F5": {"source": "asset", "key": "allowable_stress_psi", "unit": "psi"},
+        "G5": {"source": "asset", "key": "joint_efficiency", "unit": "dimensionless"},
+        "H5": {"source": "asset", "key": "outside_diameter_in", "unit": "in"},
+        "M4": {"source": "campaign", "key": "current_date", "unit": "date"},
+        "M5": {"source": "reading", "key": "current_thickness_mm", "unit": "mm"},
+        "R5": {"source": "asset", "key": "selected_corrosion_rate_mm_y", "unit": "mm/year"}
+      }
+    },
+    {
+      "id": "separator_2026_plate",
+      "label": "Separator plate (API 510 / ASME VIII-1 source row)",
+      "template_file": "separator_204_xlsx_v1.json",
+      "source_sheet": "Evaluation 2026",
+      "source_row": 6,
+      "outputs": ["I6", "N6", "S6", "T6", "U6", "W6", "X6"],
+      "bindings": {
+        "D6": {"source": "asset", "key": "design_pressure_psi", "unit": "psi"},
+        "F6": {"source": "asset", "key": "allowable_stress_psi", "unit": "psi"},
+        "G6": {"source": "asset", "key": "joint_efficiency", "unit": "dimensionless"},
+        "H6": {"source": "asset", "key": "outside_diameter_in", "unit": "in"},
+        "M4": {"source": "campaign", "key": "current_date", "unit": "date"},
+        "M6": {"source": "reading", "key": "current_thickness_mm", "unit": "mm"},
+        "R6": {"source": "asset", "key": "selected_corrosion_rate_mm_y", "unit": "mm/year"}
+      }
+    },
+    {
+      "id": "tlb_b31_3_process_piping",
+      "label": "TL-B process piping (API 570 / ASME B31.3 source row)",
+      "template_file": "tlb_v1.json",
+      "source_sheet": "Eval 8-2023 - ASME B31.3",
+      "source_row": 8,
+      "outputs": ["I8", "J8", "P8", "T8", "U8", "V8", "W8", "X8", "Y8"],
+      "bindings": {
+        "D8": {"source": "asset", "key": "design_pressure_psi", "unit": "psi"},
+        "E8": {"source": "asset", "key": "outside_diameter_in", "unit": "in"},
+        "F8": {"source": "asset", "key": "allowable_stress_psi", "unit": "psi"},
+        "H8": {"source": "asset", "key": "structural_minimum_mm", "unit": "mm"},
+        "L7": {"source": "campaign", "key": "previous_date", "unit": "date"},
+        "M7": {"source": "campaign", "key": "current_date", "unit": "date"},
+        "L8": {"source": "reading", "key": "previous_thickness_mm", "unit": "mm"},
+        "M8": {"source": "reading", "key": "current_thickness_mm", "unit": "mm"},
+        "S8": {"source": "asset", "key": "selected_corrosion_rate_mm_y", "unit": "mm/year"}
+      }
+    },
+    {
+      "id": "tlb_b31_8_pressure_thickness",
+      "label": "TL-B gas pipeline pressure thickness (ASME B31.8 source row)",
+      "template_file": "tlb_v1.json",
+      "source_sheet": "Eval 8-2023 - ASME B31.8",
+      "source_row": 7,
+      "outputs": ["H7"],
+      "bindings": {
+        "D7": {"source": "asset", "key": "design_pressure_psi", "unit": "psi"},
+        "E7": {"source": "asset", "key": "outside_diameter_in", "unit": "in"},
+        "F7": {"source": "asset", "key": "smys_psi", "unit": "psi"}
+      }
+    }
+  ]
+}
