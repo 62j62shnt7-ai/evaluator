@@ -1,0 +1,11 @@
+{
+  "source_file": "API_510_E11_EN_wE1E2.pdf",
+  "source_hash": "6a92466f79f3156c716b4189e751dac519a11a3865912e764062fde74d335255",
+  "sheet_ids": [],
+  "region_ids": [],
+  "expected_observations": null,
+  "unresolved_regions": [
+    "Pending independent visual and reading-count review"
+  ],
+  "reviewer_status": "pending"
+}

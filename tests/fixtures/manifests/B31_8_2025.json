@@ -1,0 +1,11 @@
+{
+  "source_file": "B31_8_2025.pdf",
+  "source_hash": "9d2323f391cfe83b77e154e5d41f043f40587eac2b086cdc4e7a7fa98c7ff2cd",
+  "sheet_ids": [],
+  "region_ids": [],
+  "expected_observations": null,
+  "unresolved_regions": [
+    "Pending independent visual and reading-count review"
+  ],
+  "reviewer_status": "pending"
+}

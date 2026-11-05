@@ -1,0 +1,11 @@
+{
+  "source_file": "API_570_E5_EN_wA1.pdf",
+  "source_hash": "e20adae94f40728a456bb554afc5ff47783af6e0a15f30e014dc1de985766ee1",
+  "sheet_ids": [],
+  "region_ids": [],
+  "expected_observations": null,
+  "unresolved_regions": [
+    "Pending independent visual and reading-count review"
+  ],
+  "reviewer_status": "pending"
+}

@@ -1,0 +1,194 @@
+[
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A106 Grade B",
+    "material_token": "A106B",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A234 WPB",
+    "material_token": "A234WPB",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "source_file": "ASME_BPVC_II_D_M-2025.pdf",
+  "source_hash": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+  "sheet_ids": [],
+  "region_ids": [],
+  "expected_observations": null,
+  "unresolved_regions": [
+    "Pending independent visual and reading-count review"
+  ],
+  "reviewer_status": "pending"
+}

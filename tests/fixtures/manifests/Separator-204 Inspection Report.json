@@ -1,0 +1,72 @@
+{
+  "source_file": "Separator-204 Inspection Report.xlsx",
+  "source_hash": "bfc2b6ebc9dace891935d1549cfe31c963ed69ba3fcb752ba89c9084f8387a17",
+  "sheet_ids": [
+    {
+      "name": "HISTORY REPORTS",
+      "state": "visible"
+    },
+    {
+      "name": "2010 UT REPORT",
+      "state": "visible"
+    },
+    {
+      "name": "UT REPORT 2019",
+      "state": "visible"
+    },
+    {
+      "name": "UT REP.JUNE 2019-CML ",
+      "state": "visible"
+    },
+    {
+      "name": "UT-JUL 2021",
+      "state": "visible"
+    },
+    {
+      "name": "Evaluation",
+      "state": "visible"
+    },
+    {
+      "name": "Conclusion",
+      "state": "visible"
+    },
+    {
+      "name": "UT Jul-2023",
+      "state": "visible"
+    },
+    {
+      "name": "UT Aug-2024",
+      "state": "visible"
+    },
+    {
+      "name": "UT Jan 2026",
+      "state": "visible"
+    },
+    {
+      "name": "Asset Transfer",
+      "state": "visible"
+    },
+    {
+      "name": "Actions Taken",
+      "state": "visible"
+    },
+    {
+      "name": "UT 10-2026",
+      "state": "visible"
+    },
+    {
+      "name": "Visual Inspection 2026",
+      "state": "visible"
+    },
+    {
+      "name": "Evaluation 2026",
+      "state": "visible"
+    }
+  ],
+  "region_ids": [],
+  "expected_observations": null,
+  "unresolved_regions": [
+    "Pending independent visual and reading-count review"
+  ],
+  "reviewer_status": "pending"
+}

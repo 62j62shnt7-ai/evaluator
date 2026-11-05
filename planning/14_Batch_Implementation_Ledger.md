@@ -1,0 +1,15 @@
+# Batch implementation ledger
+
+Plan/spec: planning/13_Batch_Evaluation_Gap_Assessment.md. User said Proceed.
+
+- Existing workspace has no Git metadata. Continue in the authorized checkout; no commits/worktree or Git history claims.
+- Tasks: (1) read-only engineering-record adapters, (2) independent draft output rules, (3) versioned batch settings/assignments/readiness/runner, (4) simple grouped UI and exports/undo/invalidation, (5) actual-source acceptance, browser verification and independent final review.
+- Interface: record adapter returns source-native fields with raw/formula/cache provenance; batch layer performs typed conversion and resolves scope. Rule library consumes explicit governing minimum, selected rate, geometry/factors and policy values. No provided tPd is promoted to governing minimum without structural/governing-basis input.
+- Decision: provided-record mode and recalculated-draft mode remain distinct. Source geometry/edition/factor proposals require scope confirmation; invalid/unsupported outputs remain null without aborting ready rows.
+- Decision: preserve source values, separate current measured UT from evaluation-sheet copied/projected values, and leave conflicting/unmapped components visible.
+- Task 1: adapter implemented by isolated agent; real-record tests GREEN (38 Separator,80 current TL-B records, formula/cache provenance).
+- Task 2: independent arithmetic implemented by isolated agent; 16 focused tests GREEN; all seven inverse pressure candidates tested, explicit interval/forecast policy and no fitness declarations.
+- Task 3: batch settings, source assignments, per-output readiness, row runner, revision checks and stale-result invalidation are implemented in `src/evaluator/batch.py`. Focused integration tests cover distinct component profiles, pressure-candidate vs governing-minimum separation, invalid/missing rows, copied-current conflicts, stale results and undo.
+- Task 4 (partial): local batch review UI now previews component assignments and readiness, permits compatible group overrides and confirmed per-row source-record reassignment, requires explicit record/history/rule/conflict confirmations, and saves whole-inspection results. Revision export now includes `batch_evaluations.csv`, full JSON snapshots, and a printable HTML batch table. The app flow remains draft-only.
+- Verification 4 November 2026: full suite **60 passed**; Python compileall and launcher shell syntax passed. The isolated actual-source acceptance script passed for Separator (37 current rows, 29 historical-rate candidates) and TL-B (81 rows, 80 source records; date and structural-minimum gaps withhold outputs). Export manifest hashes and original workbook hashes matched. Evidence and a runnable project are in `outputs/batch-evaluation-acceptance-final/`. A read-only browser smoke check rendered the actual Separator batch page and its conflicts/unresolved-row assignment controls.
+- Remaining: strengthen profile/policy and per-output readiness review; independent final review. Windows acceptance remains deferred by the user's existing decision.
