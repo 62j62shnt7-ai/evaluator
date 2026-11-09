@@ -47,7 +47,7 @@ def _dated_columns(ws, digest, sheet_name):
     section = ''
     for r in range(1, ws.max_row + 1):
         label = ws.cell(r, 1).value
-        section_match = re.match(r'\s*SECTION\s+\d+', str(label or ''), re.I)
+        section_match = re.match(r'\s*SECTION\s*#?\s*\d+', str(label or ''), re.I)
         if section_match:
             section = str(label).strip()
         if r <= max(header_row, date_row):
@@ -86,12 +86,12 @@ def extract(path: Path, sheet_name: str, *, workbook=None, source_hash=None) -> 
         section=''; header=None; output=[]; notes=[]; campaign_columns={}
         for r in range(1,ws.max_row+1):
             a=ws.cell(r,1).value
-            if isinstance(a,str) and re.match(r'\s*SECTION\s+\d+',a,re.I): section=a.strip()
+            if isinstance(a,str) and re.match(r'\s*SECTION\s*#?\s*\d+',a,re.I): section=a.strip()
             values=[ws.cell(r,c).value for c in range(1,min(ws.max_column,19)+1)]
-            normalized=[str(v).strip().lower() if v is not None else '' for v in values]
-            if 'joint' in normalized and 'band' in normalized and ('nom d' in normalized or 'nominal thickness' in normalized):
+            normalized=[str(v).strip().lower().rstrip('#.').strip() if v is not None else '' for v in values]
+            if 'joint' in normalized and 'band' in normalized and any(v in normalized for v in ('nom d','nominal thickness','diam')):
                 header=r
-                for column in range(5,min(ws.max_column,19)+1):
+                for column in range(4,min(ws.max_column,19)+1):
                     raw_header=str(ws.cell(r,column).value or '').strip()
                     if not raw_header.lower().startswith('min'): continue
                     text=raw_header
@@ -104,7 +104,7 @@ def extract(path: Path, sheet_name: str, *, workbook=None, source_hash=None) -> 
             if joint is None and band is None: continue
             if isinstance(joint,str): joint=joint.strip()
             # The adjacent header row can place the date beneath a merged "min" heading.
-            for c in range(5,min(ws.max_column,19)+1):
+            for c in range(4,min(ws.max_column,19)+1):
                 raw=ws.cell(r,c).value
                 if not is_measurement(ws.cell(r,c)): continue
                 label=ws.cell(header,c).value
@@ -122,7 +122,7 @@ def extract(path: Path, sheet_name: str, *, workbook=None, source_hash=None) -> 
                 output.append(ObservationDraft(str(raw), 'mm', SourceLocator(digest,sheet_name,ws.cell(r,c).coordinate), campaign,
                     selected, dates, (section,str(joint if joint is not None else '').strip(),str(band if band is not None else '').strip())))
             # A subsequent section header resets the table; repeated tables can be found later.
-            if isinstance(a,str) and re.match(r'\s*SECTION\s+\d+',a,re.I): header=None
+            if isinstance(a,str) and re.match(r'\s*SECTION\s*#?\s*\d+',a,re.I): header=None
         if not output: notes.append('No recognized joint/band/minimum table found; sheet remains unresolved.')
         if len(report_dates)>1: notes.append('Conflicting report date candidates require review.')
         if title_conflict: notes.append(f"Sheet campaign hint {title_month} conflicts with explicit report date {report_dates[0]}; affected current readings need date resolution.")

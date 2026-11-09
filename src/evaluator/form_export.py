@@ -92,6 +92,8 @@ def export_form(service, result):
             if isinstance(col,str):values[f'{col}{n}']=None
         mapping.append(dict(profile_id=pid,template_row=n,current_ids=[r['current_id'] for r in items],state='mapped' if row else 'ambiguous' if items else 'unmatched'))
         values[f"{layout['status']}{n}"]='DRAFT / '+('REVIEW: '+', '.join(row['issues']) if row else 'unresolved mapping')
+        if row and row.get('row7'):
+            values[f"{layout['status']}{n}"] = row['row7']['result']
         if not row:continue
         for key,col in [('current_thickness_mm','current'),('previous_thickness_mm','previous'),('adopted_rate_mm_year','rate'),('remaining_life_years','life'),('inspection_interval_years','interval')]:values[f'{layout[col]}{n}']=row[key]
         values[f"{layout['required']}{n}"]=row['required_thickness_mm'] or (row['pressure_thickness_mm'] if row['evaluation_status']!='NEEDS_REVIEW' else None)
@@ -100,7 +102,7 @@ def export_form(service, result):
         if forecast.get('net_thickness_mm') is not None:values[f"{layout['future']}{n}"]=forecast['net_thickness_mm']
         if layout['date']:values[f"{layout['date']}{n}"]=row['due_date']
         profile=row['profile']
-        stress='SMYS_psi' if profile.get('code_family') in {'ASME B31.4','ASME B31.8'} else 'S_allow_psi'
+        stress='SMYS_psi' if not row.get('row7') and profile.get('code_family') in {'ASME B31.4','ASME B31.8'} else 'S_allow_psi'
         cols={'material':'C','P_psi':'D',stress:'F','D_outside_in':'H' if family=='separator' else 'E','nominal_thickness_mm':'J' if family=='separator' else 'G'}
         if family=='separator':cols.update(D_inside_in='I',temperature_F='E',E_joint='G')
         elif sheet in {'Evaluation 6-2025','Evalation 4-2026','Reassess 1500 Psi May-2025'}:cols['schedule']='H'

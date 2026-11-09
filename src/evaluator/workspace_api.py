@@ -6,6 +6,9 @@ from evaluator.workspace import Workspace
 def action(service, name, payload):
     workspace=Workspace(service)
     cid=payload.get('comparison_id');rev=payload.get('revision');result={}
+    if name in {'delete_source','reset_project','restore_cleanup'}:
+        from evaluator.project_cleanup import cleanup,restore
+        return restore(service,rev) if name=='restore_cleanup' else cleanup(service,rev,'delete' if name=='delete_source' else 'reset',payload.get('source_id') if name=='delete_source' else payload.get('confirmation'))
     if name=='import':
         result=workspace.open_sheet(payload['source_id'],payload['sheet'],rev,payload.get('previous',''),payload.get('current','')) if payload.get('sheet') else workspace.auto_open(payload['source_id'],rev)
     elif name=='sample':
@@ -16,12 +19,14 @@ def action(service, name, payload):
         source=service.add_source(Path(__file__).resolve().parents[2]/'sources'/'workbooks'/filename)
         service.inspect(source.sha256)
         result=workspace.auto_open(source.sha256,service.workflow.revision())
-    elif name=='apply':workspace.apply(cid,rev,payload.get('ids',[]),payload.get('values'),payload.get('template_id'),payload.get('dimension_key'),payload.get('scenario'),payload.get('clear',False))
+    elif name=='apply':result=workspace.apply(cid,rev,payload.get('ids',[]),payload.get('values'),payload.get('template_id'),payload.get('dimension_key'),payload.get('scenario'),payload.get('clear',False),payload.get('fill_missing',False))
     elif name=='template':result=workspace.save_template(rev,payload.get('name',''),payload.get('values',{}))
     elif name=='evaluate':result=workspace.evaluate(cid,rev,payload.get('scenario'),payload.get('basis'))
     elif name=='policy':workspace.policy(cid,rev,payload.get('basis'),payload.get('scenario'))
     elif name=='correct':result={'comparison_id':workspace.correct(cid,rev,payload['id'],payload['value'])}
-    elif name=='dates':result={'comparison_id':workspace.dates(cid,rev,payload.get('previous_date',''),payload.get('current_date',''))}
+    elif name=='dates':result={'comparison_id':workspace.campaign_dates(cid,rev,payload['campaign_dates']) if payload.get('campaign_dates') else workspace.dates(cid,rev,payload.get('previous_date',''),payload.get('current_date',''))}
+    elif name=='pair':result={'comparison_id':workspace.pair_source_row(cid,rev,payload['id'])}
+    elif name=='identity':result={'comparison_id':workspace.rematch(cid,rev,payload.get('id'),payload.get('values'),payload.get('previous_id'))}
     elif name=='undo':service.workflow.undo(rev,'Local workspace user','Undo most recent saved action')
     elif name=='asset_list':result={'assets':service.assets.assets()}
     elif name=='asset_create':service.assets.create_asset(payload['asset_id'],payload['label'],who=payload['who']);result={'assets':service.assets.assets()}
@@ -56,4 +61,6 @@ def action(service, name, payload):
         target=ReadingsOnlyService(service).export_copy(payload['source_id'],result_ids=payload.get('result_ids'))
         result={'path':str(target),'name':target.name}
     else:raise ValueError('Unknown workspace action')
+    if name in {'import','sample'} and result.get('comparison_id'):
+        workspace.policy(result['comparison_id'], service.workflow.revision(), 'row7')
     return result

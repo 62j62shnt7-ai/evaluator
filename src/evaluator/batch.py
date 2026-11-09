@@ -196,40 +196,46 @@ class BatchService:
         return dict(comparison=comp,profile_sheet=selected,sheets=sorted({p['sheet'] for p in profiles}),profiles=chosen,rows=rows,groups=list(groups.values()),settings=config,preview_token=token,
                     counts=dict(current=sum(r['current_id'] is not None for r in rows),life_ready=sum(r['remaining_life_years'] is not None for r in rows),historical_ready=sum(r['apparent_rate_mm_year'] is not None for r in rows),issues=dict(Counter(i for r in rows for i in r['issues']))))
 
-    def apply_overrides(self,comparison_id,expected_revision,group_ids,row_ids,values,profile_sheet=None):
+    def apply_overrides(self,comparison_id,expected_revision,group_ids,row_ids,values,profile_sheet=None,per_row_values=None):
         clean={k:str(v).strip() for k,v in values.items() if v not in ('',None)}
-        if not clean or not set(clean)<=(NUMERIC_OVERRIDES|TEXT_OVERRIDES):raise ValueError('Select valid grouped input changes')
-        for k,v in clean.items():
+        per_row_values={oid:{k:str(v).strip() for k,v in row_values.items() if v not in ('',None)} for oid,row_values in (per_row_values or {}).items()}
+        allowed=NUMERIC_OVERRIDES|TEXT_OVERRIDES
+        if (not clean and not per_row_values) or not set(clean)<=allowed or any(not set(row_values)<=allowed for row_values in per_row_values.values()):raise ValueError('Select valid grouped input changes')
+        for k,v in {**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}.items():
             if k in NUMERIC_OVERRIDES and _num(v) is None:raise ValueError(k+' must be finite and nonnegative')
         for key in ('reviewed','reconcile_conflict'):
             if key in clean and clean[key] not in {'yes','no'}:raise ValueError('Invalid review decision')
-        if clean.get('geometry') and clean['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
-        if clean.get('rule') and clean['rule'] not in RULES:raise ValueError('Unsupported rule')
+        all_values={**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}
+        if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
+        if all_values.get('rule') and all_values['rule'] not in RULES:raise ValueError('Unsupported rule')
         preview=self.preview(comparison_id,profile_sheet)
-        if not set(group_ids)<={g['id'] for g in preview['groups']} or not set(row_ids)<={r['current_id'] for r in preview['rows'] if r['current_id']}:raise ValueError('Selected input scope changed; refresh the batch preview')
-        if not group_ids and not row_ids:raise ValueError('Choose at least one compatible group or location')
+        if not set(group_ids)<={g['id'] for g in preview['groups']} or not (set(row_ids)|set(per_row_values))<={r['current_id'] for r in preview['rows'] if r['current_id']}:raise ValueError('Selected input scope changed; refresh the batch preview')
+        if not group_ids and not row_ids and not per_row_values:raise ValueError('Choose at least one compatible group or location')
         with self.flow.change('Set grouped component inputs',inputs=False,expected=expected_revision,actor='Local batch reviewer',reason='Explicit defaults/overrides for selected component scope') as db:
             original_row_overrides=deepcopy(preview['settings'].get('row_overrides',{}))
             config=deepcopy(preview['settings'])
             config['profile_sheet']=preview['profile_sheet']
             for scope,ids in [('group_overrides',group_ids),('row_overrides',row_ids)]:
                 for identifier in ids:config.setdefault(scope,{}).setdefault(identifier,{}).update(clean)
+            for identifier,row_values in per_row_values.items():
+                config.setdefault('row_overrides',{}).setdefault(identifier,{}).update(row_values)
             # Compare with the previous effective context, not just the original
             # source record: earlier lookup/manual overrides must also expire.
             context_keys=('material','temperature_F','code_family','code_edition','geometry')
             for row in preview['rows']:
                 oid=row['current_id']
-                if not oid or not (oid in row_ids or row['group_id'] in group_ids):continue
+                if not oid or not (oid in row_ids or oid in per_row_values or row['group_id'] in group_ids):continue
+                row_clean={**clean,**per_row_values.get(oid,{})}
                 profile=row['profile'] or {}
                 entry=config.setdefault('row_overrides',{}).setdefault(oid,{})
                 def previous(key):return profile.get(key) if key in PROFILE_TEXT else _value(profile,key)
-                changed=any(key in clean and str(clean[key])!=str(previous(key)) and (oid in row_ids or key not in original_row_overrides.get(oid,{})) for key in context_keys)
+                changed=any(key in row_clean and str(row_clean[key])!=str(previous(key)) and (oid in row_ids or key not in original_row_overrides.get(oid,{})) for key in context_keys)
                 if changed:
                     for key in ('S_allow_psi','SMYS_psi'):
-                        if key not in clean:entry[key]=None
+                        if key not in row_clean:entry[key]=None
                         elif oid not in row_ids:entry.pop(key,None)
                     if 'reviewed' not in clean:entry['reviewed']='no'
-                if (changed or {'S_allow_psi','SMYS_psi'}&set(clean)) and 'material_reference' not in clean:entry['material_reference']=''
+                if (changed or {'S_allow_psi','SMYS_psi'}&set(row_clean)) and 'material_reference' not in row_clean:entry['material_reference']=''
                 elif changed and oid not in row_ids:entry.pop('material_reference',None)
             db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(comparison_id,json.dumps(config)))
             self._stale(db,comparison_id)
@@ -266,6 +272,19 @@ class BatchService:
         current,old,pair,p=item['current'],item['previous'],item['pair'],item['profile']
         gid=self._group(p);oid=current['observation_id'] if current else None
         override=dict(config.get('group_overrides',{}).get(gid,{}));override.update(config.get('row_overrides',{}).get(oid,{}))
+        if config.get('basis')=='row7' and p is not None:
+            override.setdefault('S_allow_psi',_value(p,'S_allow_psi'))
+        if config.get('basis')=='row7' and current and hasattr(self,'service'):
+            from evaluator.importing.ut_defaults import defaults
+            cache=getattr(self,'_ut_source_defaults',{})
+            key=(current['source_id'],current['sheet_name'])
+            if key not in cache:cache[key]=self.service.imported_sheet(*key) or {}
+            self._ut_source_defaults=cache
+            source_defaults=defaults(cache[key],current['cell'],_location(current)[-1])
+            identity=self.flow.match_identity(current)
+            if identity['component']!='unknown':
+                source_defaults.update(geometry=identity['component'],material='A106 B' if identity['component']=='straight_pipe' else 'A234 WPB')
+            override=dict(source_defaults,**override)
         config=dict(config)
         if config.get('workspace_review'):config.update(confirm_records=False,confirm_history=False,confirm_rules=False)
         if override.get('reviewed')=='yes':
@@ -295,6 +314,8 @@ class BatchService:
                  inspection_date=current['inspection_date'] if current else None,previous_inspection_date=old['inspection_date'] if old else None,nominal_size=item['nominal_size'],assignment_basis=item['assignment_basis'],
                  required_thickness_mm=None,pressure_thickness_mm=None,adopted_rate_mm_year=None,apparent_rate_mm_year=None,elapsed_days=None,issues=[],input_trace={},outputs={},output_readiness={})
         issues=row['issues'];blocked=False
+        if config.get('basis') == 'row7':
+            return self._row7(row, item, override)
         if not current:issues.append('CURRENT_MISSING');blocked=True
         elif current.get('review_status')=='excluded':issues.append('CURRENT_EXCLUDED');blocked=True
         elif current.get('raw_unit')!='mm':issues.append('UNIT_NOT_SUPPORTED');blocked=True
@@ -437,6 +458,52 @@ class BatchService:
         done=sum(row[k] is not None for k in ('remaining_life_years','inspection_interval_years','due_date','mawp_MPa','forecast_mawp_MPa'))
         row['evaluation_status']='NEEDS_REVIEW' if blocked else 'EVALUATED' if done==5 else 'PARTIAL' if done else 'MISSING_INPUTS'
         row['issues']=list(dict.fromkeys(issues))
+        return row
+
+    def _row7(self, row, item, override):
+        from evaluator.engineering.row_example import calculate
+        p = row['profile'] or {}
+        raw = lambda key: override.get(key, _value(p, key))
+        output_keys = ('thickness_margin_mm','remaining_life_years','inspection_interval_years',
+                       'maximum_inspection_interval_years','due_date','mawp_MPa','forecast_mawp_MPa')
+        row.update({key: None for key in output_keys})
+        row.update(maximum_interval_years=None, selected_interval_years=None, rule='ROW7',
+                   required_basis='Row 7: MAX(pressure thickness, structural minimum)', row7=None)
+        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi') or {'A106 B':'20000','A234 WPB':'20000','API 5L X52':'22000'}.get(str(raw('material') or '').upper().replace('ASTM ', '').replace('GRADE ', '').replace('GR ', '').replace(' ', '')), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+                      nominal_mm=raw('nominal_thickness_mm'), structural_mm=raw('structural_minimum_mm'),
+                      selected_cr=raw('adopted_rate_mm_year'), previous_mm=row['previous_thickness_mm'],
+                      current_mm=row['current_thickness_mm'], previous_date=row['previous_inspection_date'],
+                      current_date=row['inspection_date'])
+        row['input_trace'] = dict(basis='row7', inputs=inputs, overrides=override,
+                                 history=dict(previous_cell=row['previous_cell'],current_cell=row['current_cell'],
+                                              previous_date=row['previous_inspection_date'],current_date=row['inspection_date']))
+        try:
+            if not item['current'] or not item['previous'] or item['pair']['kind'] not in {'matched','lifecycle_mismatch'}:
+                raise ValueError('A unique previous/current reading pair is required')
+            if any(r.get('raw_unit') != 'mm' or r.get('review_status') == 'excluded' for r in (item['current'], item['previous'])):
+                raise ValueError('Both readings must be included measurements in mm')
+            missing = [key for key,value in inputs.items() if value in (None,'') and key not in {'selected_cr','s_allow_psi'}]
+            if missing:
+                raise ValueError('Missing inputs: ' + ', '.join(missing))
+            result = calculate(inputs)
+            if row['profile'] is not None:
+                row['profile'].setdefault('fields', {})['S_allow_psi'] = dict(value=str(result['s_psi']),kind='manual_override' if raw('S_allow_psi') not in (None,'') else 'fixed_material_lookup',basis='Batch input' if raw('S_allow_psi') not in (None,'') else 'User-selected fixed material S for row 7 workflow')
+            row.update(row7=result, elapsed_days=result['elapsed_days'],
+                       pressure_thickness_mm=str(result['pressure_mm']), required_thickness_mm=str(result['required_mm']),
+                       apparent_rate_mm_year=str(result['calculated_cr']), adopted_rate_mm_year=str(result['cr_used']),
+                       remaining_life_years=str(result['remaining_life']), inspection_interval_years=str(result['interval']),
+                       maximum_inspection_interval_years=str(result['interval']), maximum_interval_years=str(result['interval']),
+                       thickness_margin_mm=str(float(inputs['current_mm'])-result['required_mm']),
+                       due_date=result['next_inspection'], mawp_MPa=str(result['mawp_psi']*.006894757293168),
+                       forecast_mawp_MPa=str(result['mawp_psi']*.006894757293168))
+            if result['remaining_life'] == 0: row['issues'].append('BELOW_OR_AT_REQUIRED_THICKNESS')
+            row['evaluation_status'] = 'EVALUATED'
+        except (ValueError, TypeError, KeyError, OverflowError) as exc:
+            row['issues'].append(str(exc))
+            row['evaluation_status'] = 'MISSING_INPUTS'
+        row['outputs'] = {key: row[key] for key in output_keys}
+        row['outputs'].update(trace={'row7':row['row7'], 'forecast_mawp_MPa':{'net_thickness_mm':str(row['row7']['mawp_thickness_mm'])} if row['row7'] else {}}, issues={key:list(row['issues']) for key in output_keys})
+        row['output_readiness'] = {key:dict(state='evaluated' if row[key] is not None else 'withheld',issues=list(row['issues'])) for key in output_keys}
         return row
 
     def evaluate(self,comparison_id,expected_revision,options,preview_token=None):

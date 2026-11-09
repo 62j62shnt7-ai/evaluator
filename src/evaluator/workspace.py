@@ -85,31 +85,57 @@ class Workspace:
         with connection(self.service.repository.path) as db:
             return [json.loads(r[0]) for r in db.execute('SELECT payload FROM wf_templates ORDER BY id')]
 
-    def state(self, cid=None, sheet=None):
+    def state(self, cid=None, sheet=None, row_ids=None):
+        partial=row_ids is not None
+        requested=set(row_ids or ())
         comparisons=self.flow.comparisons()
         cid=cid or (comparisons[0]['id'] if comparisons else None)
-        base=dict(revision=self.flow.revision(),sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. Other contexts require a checked record; workbook properties remain proposals.','Fittings require geometry-specific engineering methods; unsupported methods are withheld.'])
+        base={'revision':self.flow.revision()}
+        if not partial:
+            base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. Other contexts require a checked record; workbook properties remain proposals.'])
+            from evaluator.project_cleanup import latest_backup
+            base['cleanup_backup_available']=latest_backup(self.service) is not None
         if not cid:return dict(base,workspace=None)
         comp=self.flow.comparison(cid)
-        preview=self.service.batch.preview(cid,sheet)
-        config=preview['settings'];config.update(confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True)
+        preview=self.service.batch.preview(cid,sheet,dict(basis='row7',confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
+        config=preview['settings']
         profiles=preview['profiles']
-        rows=[self.service.batch._calculate_row(item,config) for item in self.service.batch._assign(comp,profiles,config)]
+        rows=preview['rows']
+        rows=[row for row in rows if row['current_id']]
+        if partial:rows=[row for row in rows if row['current_id'] in requested]
         settings=config.get('row_overrides',{})
         for row in rows:
             p=row['profile'] or {};over=settings.get(row['current_id'],{})
             row['reviewed']=over.get('reviewed')=='yes'
-            row['segment']=over.get('segment') or p.get('section') or row['location'].split(' / ')[0]
+            row['segment']=over.get('segment') or p.get('segment') or p.get('section') or row['location'].split(' / ')[0]
             row['component']=p.get('component') or ' / '.join(row['location'].split(' / ')[1:3])
-            row['material']=_value(p,'material');row['schedule']=_value(p,'schedule');row['nps']=_value(p,'nps')
+            row['material']=over.get('material',_value(p,'material'));row['schedule']=_value(p,'schedule');row['nps']=_value(p,'nps')
             row['nominal_thickness_mm']=_value(p,'nominal_thickness_mm')
-            row['geometry']=p.get('geometry','unknown');row['code_family']=p.get('code_family');row['code_edition']=p.get('code_edition')
+            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=p.get('code_family');row['code_edition']=p.get('code_edition')
             od=_value(p,'D_outside_in')
             if not row['nps'] and od:
                 matches={d['nps'] for d in dimensions() if abs(Decimal(d['od_in'])-Decimal(str(od)))<Decimal('.001')}
                 if len(matches)==1:row['nps']=matches.pop();row['size_basis']='API 574 OD correspondence; schedule requires source evidence or confirmation'
-            row['status']='Below minimum' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'Review' if row['issues'] else 'Calculated'
+            row['status']='Below minimum' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'Review' if row['issues'] else (row.get('row7') or {}).get('result','Calculated')
             row['attention']=bool(row['issues']) or not row['reviewed']
+        readings={r['observation_id']:r for r in self.flow._selection(*comp['current_selection'])}
+        previous=self.flow._selection(*comp['baseline'])
+        previous_choices=[dict(id=r['observation_id'],identity=self.flow.match_identity(r),cell=r['cell'],date=r['inspection_date'],value=r.get('effective_value',r['raw_value'])) for r in previous if r.get('review_status')!='excluded']
+        previous_by_section={}
+        for choice in previous_choices:previous_by_section.setdefault(choice['identity']['section'],[]).append(choice)
+        for row in rows:
+            identity=self.flow.match_identity(readings[row['current_id']])
+            identity['component']=settings.get(row['current_id'],{}).get('geometry') or identity['component']
+            row['match_identity']=identity
+            row['previous_section']=identity['section']
+            row['match_flags']=[]
+            if not identity['size']:row['match_flags'].append('Size missing; verify physical location')
+            if identity['component']=='unknown':row['match_flags'].append('Component type unclear; choose pipe or fitting')
+            if not row['previous_id']:row['match_flags'].append('No unique previous reading; review identity or choose a previous reading')
+            elif row['previous_id']:
+                prior=next((r for r in previous if r['observation_id']==row['previous_id']),None)
+                if prior and self.flow._key(prior)!=self.flow._key(readings[row['current_id']]):row['match_flags'].append('Manually selected previous reading has different identity fields; review the assignment')
+            if row['match_flags']:row['attention']=True
         def natural(row):return [int(t) if t.isdigit() else t.casefold() for t in re.split(r'(\d+)',row['location'])]
         rows.sort(key=natural)
         catalog={}
@@ -120,9 +146,10 @@ class Workspace:
             if signature not in catalog:catalog[signature]=dict(id=p['id'],values=values,label=' · '.join(str(v) for v in [values.get('material'),values.get('geometry'),values.get('D_outside_in','?')+' in OD',values.get('schedule'),values.get('code_family'),values.get('code_edition')] if v),source=dict(sheet=p['sheet'],row=p['row'],source_id=p['source_id']))
         campaigns=single_sheet_campaigns(self.service,*comp['current_selection'][:2])
         if comp.get('baseline_per_location'):campaigns.append(dict(campaign=comp['baseline'][2],label=comp['baseline_label'],count=len(self.flow._selection(*comp['baseline'])),date_rank=''))
-        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum(r['status']=='Below minimum' for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
+        if partial:return dict(revision=base['revision'],workspace=dict(rows=rows))
+        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,previous_choices_by_section=previous_by_section,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum(r['status']=='Below minimum' for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
 
-    def apply(self, cid, revision, ids, values=None, template_id=None, dimension_key=None, sheet=None, clear=False):
+    def apply(self, cid, revision, ids, values=None, template_id=None, dimension_key=None, sheet=None, clear=False, fill_missing=False):
         values=dict(values or {})
         with _LOCK,connection(self.service.repository.path) as db:
             if not db.in_transaction:db.execute('BEGIN IMMEDIATE')
@@ -135,7 +162,7 @@ class Workspace:
                 d=dimension(*dimension_key)
                 values.update(nps=d['nps'],schedule=d['schedule'],D_outside_in=d['od_in'],nominal_thickness_mm=d['nominal_mm'],dimension_reference=f"{d['reference']}; PDF page {d['pdf_page']}; SHA256 {d['source_sha256']}")
             stress=material_stress(values.get('material'),values.get('geometry'),values.get('code_family'),values.get('code_edition'),values.get('temperature_F'))
-            if stress and 'S_allow_psi' not in values:
+            if stress and 'S_allow_psi' not in values and 'material' in values:
                 values.update(S_allow_psi=stress['S_allow_psi'],material_reference=stress['reference']+'; SHA256 '+stress['source_sha256'])
             if clear:
                 preview=self.service.batch.preview(cid,sheet)
@@ -155,7 +182,18 @@ class Workspace:
                 # A manual material/temperature/code change cannot inherit a stress silently.
                 if set(values)&{'material','temperature_F','code_family','code_edition'}:
                     values.setdefault('review_note','Changed material/code/temperature; confirm property applicability')
-                self.service.batch.apply_overrides(cid,revision,[],ids,values,sheet)
+                if fill_missing:
+                    current={r['current_id']:r for r in self.state(cid,sheet)['workspace']['rows']}
+                    if not ids or not set(ids)<=set(current):raise ValueError('Choose existing current locations')
+                    aliases=dict(P_psi='pd_psi',D_outside_in='od_in',nominal_thickness_mm='nominal_mm',structural_minimum_mm='structural_mm',adopted_rate_mm_year='selected_cr',material='material',S_allow_psi='s_allow_psi')
+                    per_row={}
+                    for oid in ids:
+                        row=current[oid];inputs=row.get('input_trace',{}).get('inputs',{})
+                        missing={k:v for k,v in values.items() if (inputs.get(aliases[k]) if k in aliases else (row.get('geometry') if k=='geometry' else row.get(k))) in (None,'','unknown') or (k=='S_allow_psi' and row.get('input_trace',{}).get('inputs',{}).get('s_allow_psi')!=v)}
+                        if missing:per_row[oid]=missing
+                    if per_row:self.service.batch.apply_overrides(cid,revision,[],[],{},sheet,per_row_values=per_row)
+                else:self.service.batch.apply_overrides(cid,revision,[],ids,values,sheet)
+        return dict(comparison_id=cid,refresh_ids=list(ids))
 
     def save_template(self, revision, name, values):
         values={k:str(v) for k,v in values.items() if k in CONFIG_FIELDS and v not in ('',None)}
@@ -170,7 +208,7 @@ class Workspace:
         return record
 
     def policy(self,cid,revision,basis,sheet=None):
-        if basis not in {'provided','recalculate'}:raise ValueError('Unsupported calculation basis')
+        if basis not in {'provided','recalculate','row7'}:raise ValueError('Unsupported calculation basis')
         with self.flow.change('Change workspace calculation basis',inputs=False,expected=revision,actor=local_actor(),reason='Explicit source or recalculation method') as db:
             config=self.service.batch.preview(cid,sheet)['settings'];config['basis']=basis
             db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(cid,json.dumps(config)))
@@ -178,7 +216,7 @@ class Workspace:
 
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.
-        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis=basis or self.service.batch.settings(cid).get('basis','provided'),workspace_review=True))
+        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis='row7',workspace_review=True))
 
     def _refresh(self, db, comp, changed_ids):
         readings={r['observation_id']:r for r in self.service.readings()}
@@ -222,4 +260,63 @@ class Workspace:
                     campaigns={r['campaign'] for r in self.flow._selection(*selection)}
                     for campaign in campaigns:self.service.resolve_campaign_date.__wrapped__(self.service,*selection[:2],campaign,chosen,local_actor(),'Inspection date confirmed in workspace')
             self._refresh(db,comp,ids)
+        return cid
+
+    def campaign_dates(self,cid,revision,dates):
+        comp=self.flow.comparison(cid)
+        selections=[comp['baseline'],comp['current_selection']]
+        readings=[r for selection in selections for r in self.flow._selection(*selection)]
+        allowed={r['campaign'] for r in readings}
+        if not dates or not set(dates)<=allowed:raise ValueError('Choose dates for inspection campaigns in this comparison')
+        with self.flow.change('Confirm individual campaign dates',expected=revision,actor=local_actor(),reason='Exact inspection dates entered per reading campaign') as db:
+            for campaign,chosen in dates.items():
+                self.service.resolve_campaign_date.__wrapped__(self.service,*comp['current_selection'][:2],campaign,chosen,local_actor(),'Exact campaign date confirmed in workspace')
+            self._refresh(db,comp,{r['observation_id'] for r in readings if r['campaign'] in dates})
+        return cid
+
+    def pair_source_row(self,cid,revision,oid):
+        comp=self.flow.comparison(cid)
+        current=next((r for r in self.flow._selection(*comp['current_selection']) if r['observation_id']==oid),None)
+        if not current:raise ValueError('Choose a current reading')
+        matches=[r for r in self.flow._selection(*comp['baseline']) if (r['source_id'],r['sheet_name'],re.search(r'\d+',r['cell'])[0])==(current['source_id'],current['sheet_name'],re.search(r'\d+',current['cell'])[0])]
+        if len(matches)!=1:raise ValueError('No unique previous measurement exists on this source row')
+        self.flow.pair(cid,matches[0]['observation_id'],oid,True,local_actor(),'Confirmed same physical UT source row: '+matches[0]['cell']+' to '+current['cell'],revision)
+        return cid
+
+    def rematch(self,cid,revision,oid=None,values=None,previous_id=None):
+        from evaluator.importing.reading_identity import normalize
+        comp=self.flow.comparison(cid)
+        current={r['observation_id']:r for r in self.flow._selection(*comp['current_selection'])}
+        if oid and oid not in current:raise ValueError('Choose a current reading in this comparison')
+        if previous_id:
+            available={r['observation_id'] for r in self.flow._selection(*comp['baseline'])}
+            if previous_id not in available:raise ValueError('Previous reading is outside this comparison')
+            if any(r.get('accepted') and r.get('previous_id')==previous_id and r.get('current_id')!=oid for r in comp['rows']):raise ValueError('That previous reading is already assigned to another location')
+            with _LOCK,connection(self.service.repository.path) as db:
+                if not db.in_transaction:db.execute('BEGIN IMMEDIATE')
+                with self.flow.change('Review inline previous-reading assignment',inputs=False,expected=revision,actor=local_actor(),reason='Replace selected current reading match'):
+                    for pair in comp['rows']:
+                        if pair.get('current_id')==oid:pair['accepted']=False
+                    db.execute('UPDATE wf_comparisons SET payload=? WHERE id=?',(json.dumps(comp),cid))
+                self.flow.pair(cid,previous_id,oid,True,local_actor(),'Previous UT selected inline after review of section, joint, band and size',self.flow.revision())
+            return cid
+        allowed={'section','joint','band','size','component'}
+        if values and (not set(values)<=allowed or any(not str(v).strip() for v in values.values())):raise ValueError('Enter nonempty identity fields')
+        if values and values.get('component') and values['component'] not in {'straight_pipe','elbow','tee','reducer','fitting','unknown'}:raise ValueError('Unknown component type')
+        with self.flow.change('Review reading identity and rematch',inputs=False,expected=revision,actor=local_actor(),reason='Inline identity correction; raw source labels retained') as db:
+            if oid and values:
+                old=db.execute('SELECT payload FROM wf_match_identity WHERE observation_id=?',(oid,)).fetchone()
+                corrected=json.loads(old[0]) if old else {}
+                corrected.update({k:normalize(v) if k!='component' else v for k,v in values.items()})
+                db.execute('INSERT OR REPLACE INTO wf_match_identity VALUES(?,?,?)',(oid,current[oid]['source_id'],json.dumps(corrected)))
+                if 'component' in values:
+                    config=self.service.batch.settings(cid)
+                    entry=config.setdefault('row_overrides',{}).setdefault(oid,{})
+                    entry['geometry']=values['component']
+                    if values['component']!='unknown':entry['material']='A106 B' if values['component']=='straight_pipe' else 'A234 WPB'
+                    db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(cid,json.dumps(config)))
+            self.flow._identity_revision=None
+            comp['rows']=self.flow._match_records(self.flow._selection(*comp['baseline']),self.flow._selection(*comp['current_selection']),True)
+            db.execute('UPDATE wf_comparisons SET payload=?,stale=0 WHERE id=?',(json.dumps(comp),cid))
+            self.flow._stale_comparison_results(db,cid)
         return cid

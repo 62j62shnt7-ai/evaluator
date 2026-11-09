@@ -232,7 +232,7 @@ class ProjectService:
         with connection(self.repository.path) as db:
             db.execute('BEGIN IMMEDIATE') if not db.in_transaction else None
             db.execute('DELETE FROM reading_overrides WHERE observation_id IN (SELECT observation_id FROM readings WHERE source_id=?)',(source_id,))
-            for table in ('readings','imported_sheets','workbook_sheets','workbooks','audit_log','sheet_dates','campaign_dates','wf_profiles','wf_profile_imports','wf_campaign_sets'):
+            for table in ('readings','imported_sheets','workbook_sheets','workbooks','audit_log','sheet_dates','campaign_dates','wf_profiles','wf_profile_imports','wf_campaign_sets','wf_match_identity'):
                 db.execute(f"DELETE FROM {table} WHERE source_id=?",(source_id,))
             dependent_ids={r['id'] for r in db.execute('SELECT id,payload FROM wf_comparisons') if source_id in r['payload']}
             for table in ('wf_comparisons','wf_evaluations','wf_designs','wf_batches'):

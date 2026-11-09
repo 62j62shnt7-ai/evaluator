@@ -44,6 +44,47 @@ def test_reference_dimensions_and_source_discrepancies():
     assert all(d['source_sha256']==digest for d in data)
 
 
+def test_row7_group_inputs_individual_override_and_saved_results(project):
+    s,w,cid,_=project
+    w.policy(cid,s.workflow.revision(),'row7')
+    rows=w.state(cid)['workspace']['rows']
+    ids=[r['current_id'] for r in rows if r['current_id'] and r['previous_id']][:2]
+    w.apply(cid,s.workflow.revision(),ids,dict(material='A106 B',P_psi='800',structural_minimum_mm='2.8',adopted_rate_mm_year='.2'),dimension_key=['ferritic','8','80'])
+    w.apply(cid,s.workflow.revision(),[ids[0]],dict(P_psi='900'))
+    updated={r['id']:r for r in w.state(cid)['workspace']['rows']}
+    assert updated[ids[0]]['row7'] is not None
+    assert updated[ids[1]]['row7'] is not None
+    assert updated[ids[0]]['input_trace']['inputs']['pd_psi']=='900'
+    assert updated[ids[1]]['input_trace']['inputs']['pd_psi']=='800'
+    assert updated[ids[0]]['nominal_thickness_mm']=='12.70'
+    saved=w.evaluate(cid,s.workflow.revision())
+    assert sum(bool(r['current_id']) for r in saved['rows'])==len(rows)
+    assert next(r for r in saved['rows'] if r['id']==ids[0])['row7']==updated[ids[0]]['row7']
+
+
+def test_fill_missing_preserves_inline_override(project):
+    s,w,cid,_=project
+    w.policy(cid,s.workflow.revision(),'row7')
+    rows=w.state(cid)['workspace']['rows'];ids=[r['current_id'] for r in rows][:2]
+    w.apply(cid,s.workflow.revision(),[ids[0]],dict(structural_minimum_mm='4.2'))
+    before=s.workflow.revision()
+    w.apply(cid,before,ids,dict(structural_minimum_mm='2.8',P_psi='999'),fill_missing=True)
+    assert s.workflow.revision()==before+1
+    updated={r['current_id']:r for r in w.state(cid)['workspace']['rows']}
+    assert updated[ids[0]]['input_trace']['inputs']['structural_mm']=='4.2'
+    assert updated[ids[1]]['input_trace']['inputs']['structural_mm'] is not None
+    assert updated[ids[0]]['material'] in {'A106 B','A234 WPB'}
+
+
+def test_partial_workspace_refresh_returns_only_requested_rows(project):
+    s,w,cid,_=project
+    all_rows=w.state(cid)['workspace']['rows']
+    ids=[r['current_id'] for r in all_rows if r['current_id']][:2]
+    partial=w.state(cid,row_ids=[ids[0]])
+    assert [r['current_id'] for r in partial['workspace']['rows']]==[ids[0]]
+    assert set(partial)=={'revision','workspace'}
+
+
 def test_confirmation_is_per_row_and_actual_arithmetic(project):
     s,w,cid,_=project
     state=w.state(cid)['workspace']

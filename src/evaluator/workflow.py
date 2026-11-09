@@ -20,7 +20,7 @@ import zipfile
 from evaluator.storage.database import connection
 
 _LOCK = threading.RLock()
-TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets')
+TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets','wf_match_identity')
 
 def tracked(label, *, inputs=True, undoable=True):
     def decorate(fn):
@@ -54,6 +54,7 @@ class Workflow:
         self.path = service.repository.path
         with connection(self.path) as db:
             for sql in (
+                'CREATE TABLE IF NOT EXISTS wf_match_identity (observation_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_campaign_sets (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, sheet TEXT NOT NULL, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_templates (id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_profiles (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, sheet TEXT NOT NULL, payload TEXT NOT NULL)',
@@ -167,12 +168,22 @@ class Workflow:
             return [r for r in self.service.readings() if r['observation_id'] in ids and r['source_id']==source and r['sheet_name']==sheet]
         return [r for r in self.service.readings() if r['source_id']==source and r['sheet_name']==sheet and r['campaign']==campaign]
 
-    @staticmethod
-    def _key(reading):
-        loc=json.loads(reading.get('effective_location',reading['location_candidates']))
-        # Labels without a section or joint cannot establish physical continuity.
-        if len(loc)<3 or any(not str(x).strip() for x in loc[:3]): return None
-        return tuple(' '.join(str(x).split()).casefold() for x in loc)
+    def match_identity(self,reading):
+        from evaluator.importing.reading_identity import identity,component
+        revision=self.revision()
+        if getattr(self,'_identity_revision',None)!=revision:
+            self._identity_sheets={}
+            with connection(self.path) as db:self._identity_overrides={r['observation_id']:json.loads(r['payload']) for r in db.execute('SELECT observation_id,payload FROM wf_match_identity')}
+            self._identity_revision=revision
+        key=(reading['source_id'],reading['sheet_name'])
+        if key not in self._identity_sheets:self._identity_sheets[key]=self.service.imported_sheet(*key) or {}
+        result=identity(reading,self._identity_sheets[key]);overrides=self._identity_overrides.get(reading['observation_id'],{});result.update(overrides)
+        if 'band' in overrides and 'component' not in overrides:result['component'],result['material']=component(result['band'])
+        return result
+
+    def _key(self,reading):
+        from evaluator.importing.reading_identity import key
+        return key(self.match_identity(reading))
 
     def compare(self, baseline_source, baseline_sheet, baseline_campaign, current_source, current_sheet,
                 current_campaign, asset, lifecycle, continuity, actor, reason, expected_revision=None):
@@ -182,6 +193,14 @@ class Workflow:
         after=self._selection(current_source,current_sheet,current_campaign)
         if not before or not after: raise ValueError('Both selected campaigns must contain extracted readings')
         if {r['observation_id'] for r in before} & {r['observation_id'] for r in after}: raise ValueError('Select two different campaigns')
+        rows=self._match_records(before,after,continuity)
+        comp={'id':_id(),'asset':asset.strip(),'lifecycle':lifecycle.strip(),'continuity':bool(continuity),'actor':actor,'reason':reason,'baseline':[baseline_source,baseline_sheet,baseline_campaign],'current_selection':[current_source,current_sheet,current_campaign],'rows':rows,'created':_now()}
+        with self.change('Create history comparison',inputs=False,actor=actor,reason=reason,expected=expected_revision) as db:
+            comp['revision']=self.revision()+1
+            db.execute('INSERT INTO wf_comparisons VALUES(?,?,0)',(comp['id'],json.dumps(comp)))
+        return comp
+
+    def _match_records(self,before,after,continuity):
         by_old=defaultdict(list); by_new=defaultdict(list); rows=[]
         for label, records, target in [('previous_only',before,by_old),('current_only',after,by_new)]:
             for record in records:
@@ -197,14 +216,10 @@ class Workflow:
                 kind='matched' if continuity else 'lifecycle_mismatch'
                 if olds[0]['review_status']=='excluded' or news[0]['review_status']=='excluded': kind='excluded'
                 if olds[0]['raw_unit']!=news[0]['raw_unit']: kind='unit_mismatch'
-                rows.append(self._row(kind,olds[0],news[0],'Exact section, joint/band and position; lifecycle continuity supplied by reviewer'))
+                rows.append(self._row(kind,olds[0],news[0],'Normalized section, joint, band, size and position'))
             else:
                 rows.append(self._row('previous_only' if olds else 'current_only',olds[0] if olds else None,news[0] if news else None,'Historical union retained'))
-        comp={'id':_id(),'asset':asset.strip(),'lifecycle':lifecycle.strip(),'continuity':bool(continuity),'actor':actor,'reason':reason,'baseline':[baseline_source,baseline_sheet,baseline_campaign],'current_selection':[current_source,current_sheet,current_campaign],'rows':rows,'created':_now()}
-        with self.change('Create history comparison',inputs=False,actor=actor,reason=reason,expected=expected_revision) as db:
-            comp['revision']=self.revision()+1
-            db.execute('INSERT INTO wf_comparisons VALUES(?,?,0)',(comp['id'],json.dumps(comp)))
-        return comp
+        return rows
 
     def rebuild(self, comparison_id, expected_revision, actor, reason):
         """Create a fresh comparison without rewriting its historical snapshot."""
