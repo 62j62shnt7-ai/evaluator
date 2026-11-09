@@ -17,7 +17,7 @@ from evaluator.app_services import ProjectService
 
 
 def page(service, notice=''):
-    return (Path(__file__).parent/'static'/'workspace.html').read_text()
+    return (Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8')
 
 
 def make_handler(service):
@@ -48,7 +48,7 @@ def make_handler(service):
                     writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]+['; '.join(row['issues'])])
                 self._reply(output.getvalue(),200,'text/csv; charset=utf-8',(('Content-Disposition','attachment; filename="UT-evaluation.csv"'),));return
             if path in {'/','/workspace'}:
-                self._reply((Path(__file__).parent/'static'/'workspace.html').read_text());return
+                self._reply((Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8'));return
             if path.startswith('/assets/'):
                 name=path.removeprefix('/assets/')
                 if name not in {'workspace.css','workspace.js'}:self._reply('Not found',404,'text/plain');return
