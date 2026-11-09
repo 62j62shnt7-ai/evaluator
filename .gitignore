@@ -11,3 +11,22 @@ engineering-calculations/
 ut-inspection-evaluator-code-only.zip
 
 *.egg-info/
+
+# Local credentials, databases, and build output
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+/build/
+/dist/
