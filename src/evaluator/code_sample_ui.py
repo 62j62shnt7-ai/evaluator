@@ -38,7 +38,7 @@ PRESETS = {
     'VIII_UG32_TORI': ('VIII-1 · Standard torispherical head', (
         ('P_MPa', 'Design pressure (MPa)', '1.0342'), ('L_inside_crown_mm', 'Inside crown radius (mm)', '1200'),
         ('S_allow_MPa', 'Allowable stress S (MPa)', '138'), ('E_joint', 'Joint efficiency E', '0.85'))),
-    'CR_ST': ('API 510 / API 570 · Observed corrosion rate and remaining life', (
+    'CR_ST': ('API 510 · Vessel corrosion rate and remaining life', (
         ('t_previous_mm', 'Previous measured wall (mm)', '11.8'),
         ('t_current_mm', 'Current measured wall (mm)', '11.2'),
         ('elapsed_years', 'Years between UT readings', '2'),
@@ -49,8 +49,18 @@ PRESETS = {
         ('CA_mm', 'Corrosion allowance (mm)', '2'), ('St_MPa', 'Hydrotest stress (MPa)', '171'))),
 }
 
+PRESETS['API570_PIPE'] = ('API 570 · In-service straight process piping', PRESETS['B31_3_304_1_2'][1] + (
+    ('initial_mm', 'Initial measured thickness (mm)', '12.4'),
+    ('previous_mm', 'Previous measured thickness (mm)', '11.8'),
+    ('measured_mm', 'Current measured thickness (mm)', '11.2'),
+    ('long_years', 'Years from initial to current UT', '5'),
+    ('elapsed_years', 'Years from previous to current UT', '2'),
+    ('structural_mm', 'Reviewed structural minimum (mm)', '3'),
+))
+
 
 PIPE_RULES = ('B31_3_304_1_2', 'B31_4_403_2_1', 'B31_8_841_1_1')
+API570_REFERENCE = 'API 570, 5th edition with Addendum 1, §§6.3.3, 7.1, 7.2 and 7.6; Table 1 (PDF p. 53)'
 STRESS_CONTEXTS = {
     PIPE_RULES[0]: ('ASME B31.3', '2024', 'pipe', 'S_B313_MPa'),
     'VIII_UG27_HOOP': ('ASME VIII-1', '2025', 'plate', 'S_allow_MPa'),
@@ -64,7 +74,8 @@ CODES = {
     'b314': ('ASME B31.4 · 2025', 'B31_4_403_2_1'),
     'b318': ('ASME B31.8 · 2025', 'B31_8_841_1_1'),
     'viii': ('ASME VIII-1 · 2025', 'VIII_UG27_HOOP'),
-    'inspection': ('API 510 / API 570 · Inspection history', 'CR_ST'),
+    'api510': ('API 510 · 11th edition', 'CR_ST'),
+    'api570': ('API 570 · 5th edition', 'API570_PIPE'),
     'api650': ('API 650 · 14th edition', 'API650_ONE_FOOT_PRODUCT'),
 }
 VESSEL_FORMS = {'VIII_UG27_HOOP': 'Cylindrical shell', 'VIII_UG32_ELLIP': '2:1 ellipsoidal head',
@@ -103,7 +114,7 @@ def _reference_controls(rule, submitted):
     def select(name, label):
         controls.append(f'<label>{label}<select name="{name}"><option value="">Manual entry</option></select></label>')
 
-    if rule in PIPE_RULES:
+    if rule in (*PIPE_RULES, 'API570_PIPE'):
         data['dimensions'] = [
             dict(family=row['family'], nps=row['nps'], schedule=row['schedule'],
                  od=str(convert(row['od_in'], 'in', 'mm')), wall=row['nominal_mm'],
@@ -113,8 +124,9 @@ def _reference_controls(rule, submitted):
         select('pipe_family', 'Pipe dimension table')
         select('nps', 'Nominal pipe size (NPS)')
         select('schedule', 'Pipe schedule')
-    if rule in STRESS_CONTEXTS:
-        code, edition, product, target = STRESS_CONTEXTS[rule]
+    stress_rule = PIPE_RULES[0] if rule == 'API570_PIPE' else rule
+    if stress_rule in STRESS_CONTEXTS:
+        code, edition, product, target = STRESS_CONTEXTS[stress_rule]
         select('material', f'Material · {code} {edition} · {product}')
         select('temperature', 'Exact design temperature from table')
         data['stressTarget'] = target
@@ -230,9 +242,94 @@ def _pressure_result(rule, rules, inputs, wall):
     )
 
 
+
+def _api570_result(inputs):
+    current = Decimal(inputs.get('measured_mm', ''))
+    short_rate = _observed_rate(inputs.get('previous_mm', ''), current, inputs.get('elapsed_years', ''))
+    long_rate = _observed_rate(inputs.get('initial_mm', ''), current, inputs.get('long_years', ''))
+    if Decimal(inputs['long_years']) <= Decimal(inputs['elapsed_years']):
+        raise ValueError('The initial reading must be older than the previous reading.')
+    basis = inputs.get('rate_basis')
+    if basis not in {'short', 'long', 'reviewed'}:
+        raise ValueError('Choose a reviewed corrosion-rate basis.')
+    rate = {'short': short_rate, 'long': long_rate}.get(basis)
+    if basis == 'reviewed':
+        rate = Decimal(inputs.get('reviewed_rate') or '0')
+    if not rate.is_finite() or rate <= 0:
+        raise ValueError('Select a positive observed rate or enter a positive reviewed rate.')
+    pipe_rule = PIPE_RULES[0]
+    check = evaluate(pipe_rule, inputs)
+    if check['value'] is None:
+        raise ValueError(' '.join(check['issues']))
+    pressure_wall = Decimal(check['value'])
+    structural = Decimal(inputs.get('structural_mm', ''))
+    deduction = Decimal(inputs.get('wall_deduction_mm') or '0')
+    if not structural.is_finite() or structural <= 0 or not deduction.is_finite() or deduction < 0:
+        raise ValueError('Enter a positive structural minimum and a nonnegative wall deduction.')
+    required = max(pressure_wall, structural)
+    life = (current - required) / rate
+    service_class = inputs.get('service_class')
+    caps = {'1': Decimal(5), '2': Decimal(10), '3': Decimal(10)}
+    if service_class not in caps:
+        raise ValueError('Choose API 570 service Class 1, 2 or 3 for this non-RBI interval method.')
+    entries = [
+        ('Short-term corrosion rate', short_rate, 'mm/year'), ('Long-term corrosion rate', long_rate, 'mm/year'),
+        ('Selected corrosion rate', rate, 'mm/year'), ('Pressure thickness', pressure_wall, 'mm'),
+        ('Governing required thickness', required, 'mm'),
+    ]
+    notes = []
+    if life <= 0:
+        notes.append('Current wall is at or below the required wall. Remaining life and next-inspection results are withheld.')
+    else:
+        cap = min(life / 2, caps[service_class])
+        if life < 4 and inputs.get('short_life_option') == 'yes':
+            cap = min(life, Decimal(2), caps[service_class])
+        years = Decimal(inputs.get('next_years') or cap)
+        if not years.is_finite() or years <= 0 or years > cap:
+            raise ValueError(f'Enter an interval above zero and at most {numeric(cap)} years, or leave it blank.')
+        projected = current - rate * years
+        entries.extend([
+            ('Remaining life', life, 'years'), ('Maximum UT interval', cap, 'years'),
+            ('Selected next inspection interval', years, 'years'), ('Projected wall', projected, 'mm'),
+        ])
+        for label, wall in [('Current MAWP candidate', current), ('Next-inspection MAWP candidate', projected)]:
+            try:
+                pressure, _ = pressure_at_thickness(wall - deduction, pipe_rule, inputs)
+            except (ValueError, DecimalException) as exc:
+                notes.append(f'{label} withheld: {exc}')
+            else:
+                entries.append((label, pressure, 'MPa'))
+    rows = ''.join(f'<dt>{label}</dt><dd>{E(numeric(value))} {unit}</dd>' for label, value, unit in entries)
+    messages = ''.join(f'<p class="warn">{E(note)}</p>' for note in notes)
+    return (f'<div class="sample-result" role="status"><h3>Draft API 570 piping assessment</h3>'
+            f'<dl>{rows}</dl>{messages}<p>{E(API570_REFERENCE)}</p><p>{E(check["source_reference"])}</p></div>')
+
+
+def _api570_controls(submitted):
+    values = submitted or {}
+    def select(name, label, options, default):
+        selected = values.get(name, default)
+        options = ''.join(f'<option value="{key}"{" selected" if key == selected else ""}>{text}</option>'
+                          for key, text in options)
+        return f'<label>{label}<select name="{name}" required>{options}</select></label>'
+
+    return (
+        select('service_class', 'API 570 piping service class', [(str(i), f'Class {i}') for i in (1, 2, 3)], '2')
+        + select('rate_basis', 'Governing corrosion-rate basis',
+                 [('short', 'Short-term UT'), ('long', 'Long-term UT'), ('reviewed', 'Reviewed manual rate')], 'short')
+        + field('reviewed_rate', 'Reviewed manual rate (mm/year)', values.get('reviewed_rate', ''), 'number', False)
+        + field('next_years', 'Next inspection interval (years), blank uses maximum', values.get('next_years', ''), 'number', False)
+        + '<label><input type="checkbox" name="short_life_option" value="yes"'
+        + (' checked' if values.get('short_life_option') == 'yes' else '')
+        + '> Use reviewed short-life interval provision when remaining life is under four years</label>'
+    )
+
+
 def _result(rule, inputs):
     if rule == 'CR_ST':
         return _inspection_result(inputs)
+    if rule == 'API570_PIPE':
+        return _api570_result(inputs)
     measured = inputs.get('measured_mm', '')
     wall = Decimal(measured) if measured else None
     if wall is not None and (not wall.is_finite() or wall <= 0):
@@ -262,17 +359,19 @@ def panel(sample='', submitted=None):
     for key, label, default in PRESETS[rule][1]:
         value = default if submitted is None else submitted.get(key, '')
         controls.append(field(key, label, value, kind='number'))
-    if rule != 'CR_ST':
+    if rule not in {'CR_ST', 'API570_PIPE'}:
         controls.append(field('measured_mm', 'Current measured thickness (mm)',
                               (submitted or {}).get('measured_mm', '12'), kind='number', required=False))
-    if rule in PIPE_RULES:
+    if rule in (*PIPE_RULES, 'API570_PIPE'):
         controls.append(field('nominal_mm', 'Nominal wall (mm), reference only',
                               (submitted or {}).get('nominal_mm', ''), kind='number', required=False))
     if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST'}:
         controls.append(field('wall_deduction_mm', 'Wall deduction for pressure check (mm)',
                               (submitted or {}).get('wall_deduction_mm', '0'), kind='number', required=False))
+    if rule == 'API570_PIPE':
+        controls.append(_api570_controls(submitted))
     forecast_fields = ''
-    if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST'}:
+    if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST', 'API570_PIPE'}:
         forecast_fields = ('<fieldset><legend>Next inspection (optional)</legend><div class="fields">'
                            + ''.join(field(key, label, (submitted or {}).get(key, ''), kind='number', required=False)
                                      for key, label in (
@@ -297,7 +396,9 @@ def panel(sample='', submitted=None):
         + _code_picker(rule)
         + f'<h3>{E(PRESETS[rule][0].split(" · ", 1)[1])}</h3>'
         + f'<form id="sample-inputs" action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
-        f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>'
+        + (f'<p>Non-RBI Class 1–3 straight process piping. Use comparable UT readings from the same CML. '
+         f'Pressure calculations use {E(REFERENCES[PIPE_RULES[0]])}.</p>' if rule == 'API570_PIPE'
+         else f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>')
         + _reference_controls(rule, submitted)
         + '<div class="fields">' + ''.join(controls) + '</div>' + forecast_fields
         + '<button class="primary">Calculate sample</button></form>' + output + '</section>'
