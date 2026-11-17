@@ -98,5 +98,5 @@ def action(service, name, payload):
         result={'path':str(target),'name':target.name}
     else:raise ValueError('Unknown workspace action')
     if name in {'import','sample'} and result.get('comparison_id'):
-        workspace.policy(result['comparison_id'], service.workflow.revision(), 'row7')
+        workspace.policy(result['comparison_id'], service.workflow.revision(), 'assigned')
     return result

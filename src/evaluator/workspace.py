@@ -99,7 +99,7 @@ class Workspace:
             base['cleanup_backup_available']=latest_backup(self.service) is not None
         if not cid:return dict(base,workspace=None)
         comp=self.flow.comparison(cid)
-        preview=self.service.batch.preview(cid,sheet,dict(basis=self.service.batch.settings(cid).get('basis','row7'),confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
+        preview=self.service.batch.preview(cid,sheet,dict(basis=self.service.batch.settings(cid).get('basis','assigned'),confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
         config=preview['settings']
         profiles=preview['profiles']
         rows=preview['rows']
@@ -215,7 +215,7 @@ class Workspace:
         return record
 
     def policy(self,cid,revision,basis,sheet=None):
-        if basis not in {'provided','recalculate','row7'}:raise ValueError('Unsupported calculation basis')
+        if basis not in {'provided','recalculate','row7','assigned'}:raise ValueError('Unsupported calculation basis')
         with self.flow.change('Change workspace calculation basis',inputs=False,expected=revision,actor=local_actor(),reason='Explicit source or recalculation method') as db:
             config=self.service.batch.preview(cid,sheet)['settings'];config['basis']=basis
             db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(cid,json.dumps(config)))
@@ -223,8 +223,8 @@ class Workspace:
 
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.
-        basis = basis or self.service.batch.settings(cid).get('basis', 'row7')
-        if basis not in {'row7', 'recalculate', 'provided'}:
+        basis = basis or self.service.batch.settings(cid).get('basis', 'assigned')
+        if basis not in {'row7', 'recalculate', 'provided', 'assigned'}:
             raise ValueError('Unsupported calculation basis')
         return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis=basis,workspace_review=True))
 

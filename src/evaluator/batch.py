@@ -22,7 +22,7 @@ PROFILE_TEXT={'component','geometry','code_family','code_edition','segment','pro
 NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm'})
 TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase','product_form'}
 TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
-TEXT_OVERRIDES.update({'code_asset_type', 'gas_basic_class'})
+TEXT_OVERRIDES.update({'code_asset_type', 'gas_basic_class', 'pipe_method'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
 
 
@@ -338,6 +338,9 @@ class BatchService:
                  inspection_date=current['inspection_date'] if current else None,previous_inspection_date=old['inspection_date'] if old else None,nominal_size=item['nominal_size'],assignment_basis=item['assignment_basis'],
                  required_thickness_mm=None,pressure_thickness_mm=None,adopted_rate_mm_year=None,apparent_rate_mm_year=None,elapsed_days=None,issues=[],input_trace={},outputs={},output_readiness={})
         issues=row['issues'];blocked=False
+        if config.get('basis') == 'assigned':
+            is_straight_process_pipe = (p or {}).get('code_family') == 'ASME B31.3' and (p or {}).get('geometry') == 'straight_pipe'
+            config['basis'] = 'row7' if is_straight_process_pipe and override.get('pipe_method') != 'code' else 'recalculate'
         if config.get('basis') == 'row7':
             return self._row7(row, item, override)
         if not current:issues.append('CURRENT_MISSING');blocked=True

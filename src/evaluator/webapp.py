@@ -53,6 +53,22 @@ def make_handler(service):
                 for row in result['rows']:
                     if not row.get('current_id'):continue
                     i=row.get('input_trace',{}).get('inputs',{});r=row.get('row7') or {}
+                    if not r and row.get('input_trace', {}).get('basis') == 'recalculate':
+                        from evaluator.engineering.batch_rules import convert
+                        fields = (row.get('profile') or {}).get('fields', {})
+                        raw = lambda key: fields.get(key, {}).get('value')
+                        trace = row['input_trace']
+                        pressure = row.get('mawp_MPa')
+                        i = dict(material=raw('material'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+                                 nominal_mm=raw('nominal_thickness_mm'),
+                                 structural_mm=trace.get('overrides', {}).get('structural_minimum_mm'))
+                        r = dict(s_psi=raw('S_allow_psi'), pressure_mm=row.get('pressure_thickness_mm'),
+                                 required_mm=row.get('required_thickness_mm'), calculated_cr=row.get('apparent_rate_mm_year'),
+                                 cr_used=row.get('adopted_rate_mm_year'), cr_basis=trace.get('rate_basis'),
+                                 remaining_life=row.get('remaining_life_years'), interval=row.get('inspection_interval_years'),
+                                 mawp_thickness_mm=row.get('outputs', {}).get('trace', {}).get('mawp_MPa', {}).get('net_thickness_mm'),
+                                 mawp_psi=str(convert(pressure, 'MPa', 'psi')) if pressure is not None else None,
+                                 result=row.get('evaluation_status'), next_inspection=row.get('due_date'))
                     values=[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]
                     if values[10]:values[10]='DRAFT / NOT VALIDATED · '+str(values[10])
                     writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+values+['; '.join(row['issues'])])
@@ -142,7 +158,7 @@ def make_handler(service):
                     from evaluator.workspace import Workspace
                     workspace=Workspace(service)
                     result=workspace.auto_open(record.sha256,service.workflow.revision())
-                    if result.get('comparison_id'):workspace.policy(result['comparison_id'],service.workflow.revision(),'row7')
+                    if result.get('comparison_id'):workspace.policy(result['comparison_id'],service.workflow.revision(),'assigned')
                     self._reply(json.dumps(result),200,'application/json');return
             except (ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
                 self._reply(json.dumps({'error':str(exc)}),400,'application/json')

@@ -99,3 +99,28 @@ def test_vessel_lookup_requires_verified_context():
     assert material_stress(*args, product_form='forging') is None
     assert material_stress(*args[:-1], '300', product_form='plate') is None
     assert material_stress(*args[:3], '2023', '302', product_form='plate') is None
+
+
+def test_one_workspace_action_calculates_mixed_components_and_retains_unready_rows(tmp_path):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = open_fixture(tmp_path, 'Mixed.xlsx', [(11.8, 11.2), (12.4, 12), (11, 10)])
+    pipe, shell, unready = workspace.state(cid)['workspace']['rows']
+    workspace.apply(cid, service.workflow.revision(), [pipe['current_id']], dict(
+        geometry='straight_pipe', material='A106 B', temperature_F='300', P_psi='800',
+        structural_minimum_mm='2.8', code_asset_type='process_piping', code_family='ASME B31.3',
+        code_edition='2024', code_evidence='Synthetic line list', code_owner_confirmed='yes',
+        reviewed='yes'), dimension_key=['ferritic', '8', '80'])
+    workspace.apply(cid, service.workflow.revision(), [shell['current_id']], dict(
+        geometry='cylindrical_shell', material='SA-516 Grade 70', product_form='plate',
+        temperature_F='302', P_psi='150', D_inside_in='48', E_joint='.85', structural_minimum_mm='3',
+        code_asset_type='pressure_vessel', code_family='ASME VIII-1', code_edition='2025',
+        code_evidence='Synthetic drawing', code_owner_confirmed='yes', reviewed='yes'))
+    result = action(service, 'evaluate', dict(comparison_id=cid, revision=service.workflow.revision(), basis='assigned'))
+    rows = {row['current_id']: row for row in result['rows'] if row['current_id']}
+    assert rows[pipe['current_id']]['rule'] == 'ROW7'
+    assert rows[pipe['current_id']]['row7']['pressure_mm'] == pytest.approx(4.3125)
+    assert rows[shell['current_id']]['rule'] == 'VIII_SHELL'
+    assert rows[shell['current_id']]['pressure_thickness_mm'] is not None
+    assert rows[unready['current_id']]['pressure_thickness_mm'] is None
+    assert rows[unready['current_id']]['issues']
