@@ -302,7 +302,7 @@ class BatchService:
         row=dict(id=oid or 'history-'+str(pair['id']),pair_id=pair['id'],current_id=oid,previous_id=old['observation_id'] if old else None,
                  location=' / '.join(_location(current or old)) if current or old else 'Ambiguous source location',group_id=gid,profile_id=p['id'] if p else None,profile=p,
                  candidate_profile_ids=[candidate['id'] for candidate in item.get('candidates',[])],
-                 current_cell=current['cell'] if current else None,previous_cell=old['cell'] if old else None,current_sheet=current['sheet_name'] if current else None,
+                 current_cell=current['cell'] if current else None,previous_cell=old['cell'] if old else None,current_sheet=current['sheet_name'] if current else None,previous_sheet=old['sheet_name'] if old else None,
                  current_thickness_mm=str(_current(current)) if current else None,previous_thickness_mm=str(_current(old)) if old else None,
                  inspection_date=current['inspection_date'] if current else None,previous_inspection_date=old['inspection_date'] if old else None,nominal_size=item['nominal_size'],assignment_basis=item['assignment_basis'],
                  required_thickness_mm=None,pressure_thickness_mm=None,adopted_rate_mm_year=None,apparent_rate_mm_year=None,elapsed_days=None,issues=[],input_trace={},outputs={},output_readiness={})
