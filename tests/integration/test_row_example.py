@@ -85,3 +85,22 @@ def test_sample_style_ut_headers_import_previous_and_current(tmp_path):
     assert [o.source.cell for o in observations]==['E134','F134']
     assert [o.inspection_date for o in observations]==['2023-08','2026-11']
     assert all(o.location_candidates==('section #1','2','2') for o in observations)
+
+
+def test_row7_calculator_reproduces_worksheet_with_dated_ut_and_optional_fallback():
+    from evaluator.code_sample_ui import panel, row7_example_values
+
+    blank = panel()
+    assert 'Calculate Row 7' in blank
+    assert 'name="previous_date"' in blank and 'name="current_date"' in blank
+    assert 'name="initial_mm"' not in blank and 'name="service_class"' not in blank
+    assert 'name="P_psi" value=""' in blank
+    values = row7_example_values()
+    result = panel('ROW7', dict(values, selected_cr=''))
+    assert 'Remaining life</dt><dd>74.5971 yr' in result
+    assert 'Inspection interval</dt><dd>10 yr' in result
+    assert 'MAWP at next inspection</dt><dd>1782.5251 psi' in result
+    assert 'Next inspection date</dt><dd>2036-11-03' in result
+    no_loss = dict(values, previous_mm=values['current_mm'])
+    assert 'Selected manual CR' in panel('ROW7', no_loss)
+    assert 'Enter a positive fallback corrosion rate' in panel('ROW7', dict(no_loss, selected_cr=''))

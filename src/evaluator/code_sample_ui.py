@@ -8,6 +8,7 @@ from evaluator.engineering.reference_rules import (
     GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, gas_temperature_factor,
     LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE, LIQUID_WELD_FACTORS, LIQUID_WELD_REFERENCE,
 )
+from evaluator.engineering.row_example import EXAMPLE, calculate as calculate_row7
 from evaluator.engineering.references import dimensions, material_stresses
 from evaluator.engineering.structural_reference import CLASSES, LOOKUP_FIELDS, NPS, structural_cell, structural_tables
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
@@ -93,6 +94,7 @@ STRESS_CONTEXTS = {
 
 
 CODES = {
+    'row7': ('Row 7 · TL-B worksheet', 'ROW7'),
     'b313': ('ASME B31.3 · 2024', 'B31_3_304_1_2'),
     'b314': ('ASME B31.4 · 2025', 'B31_4_403_2_1'),
     'b318': ('ASME B31.8 · 2025', 'B31_8_841_1_1'),
@@ -155,7 +157,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
     def select(name, label):
         controls.append(f'<label>{label}<select name="{name}"><option value="">Manual entry</option></select></label>')
 
-    if rule in (*PIPE_RULES, 'API570_PIPE'):
+    if rule in (*PIPE_RULES, 'API570_PIPE', 'ROW7'):
         data['dimensions'] = [
             dict(family=row['family'], nps=row['nps'], schedule=row['schedule'],
                  od=row['od_in'], wall=row['nominal_mm'],
@@ -165,7 +167,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
         select('pipe_family', 'Pipe dimension table')
         select('nps', 'Nominal pipe size (NPS)')
         select('schedule', 'Pipe schedule')
-    stress_rule = PIPE_RULES[0] if rule == 'API570_PIPE' else API510_FORMS.get(rule, rule)
+    stress_rule = PIPE_RULES[0] if rule in {'API570_PIPE', 'ROW7'} else API510_FORMS.get(rule, rule)
     if stress_rule in STRESS_CONTEXTS:
         code, edition, product, target = STRESS_CONTEXTS[stress_rule]
         select('material', f'Material · {code} {edition} · {product}')
@@ -204,8 +206,8 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
         )
     if not controls:
         return ''
-    data['factorDefaults'] = {key: value for key, _, value in PRESETS[rule][1] if key in EDITABLE_FACTORS}
-    annex = _structural_controls(annex_tables, annex_error) if rule == 'API570_PIPE' else ''
+    data['factorDefaults'] = {key: value for key, _, value in PRESETS.get(rule, ('', ()))[1] if key in EDITABLE_FACTORS}
+    annex = _structural_controls(annex_tables, annex_error) if rule in {'API570_PIPE', 'ROW7'} else ''
     if annex_tables:
         data['structural'] = dict(tables=annex_tables, sizes=NPS, classes=CLASSES)
         data['selection'].update({key: values.get(key, '') for key in LOOKUP_FIELDS})
@@ -568,6 +570,8 @@ def _result(rule, inputs, annex_tables=()):
 
 
 def panel(sample='', submitted=None):
+    if sample in {'', 'ROW7'}:
+        return _row7_panel(submitted)
     rule = sample if sample in PRESETS else next(iter(PRESETS))
     values = submitted or {}
     fields = PRESETS[rule][1]
@@ -666,3 +670,72 @@ def panel(sample='', submitted=None):
         + '<div class="fields">' + ''.join(controls) + '</div>' + forecast_fields
         + '<button class="primary">Calculate sample</button></form>' + output + '</section>'
     )
+
+
+def _row7_panel(submitted):
+    values = submitted or {}
+    try:
+        tables, error = structural_tables(), ''
+    except ValueError as exc:
+        tables, error = (), str(exc)
+    fields = (
+        ('P_psi', 'Pd · Design pressure (psi)', 'number', True),
+        ('D_outside_in', 'OD · Outside diameter (in)', 'number', True),
+        ('S_B313_psi', 'S · Allowable stress (psi)', 'number', True),
+        ('structural_mm', 'tstrc · Structural minimum (mm)', 'number', True),
+        ('previous_date', 'Previous UT date', 'date', True),
+        ('previous_mm', 'Previous minimum UT (mm)', 'number', True),
+        ('current_date', 'Current UT date', 'date', True),
+        ('current_mm', 'Current minimum UT (mm)', 'number', True),
+        ('selected_cr', 'Fallback corrosion rate (mm/yr)', 'number', False),
+    )
+    controls = ''.join(field(key, label, values.get(key, ''), kind, required)
+                       for key, label, kind, required in fields)
+    output = ''
+    if submitted is not None:
+        try:
+            result = calculate_row7(dict(
+                values, material=values.get('material', ''), pd_psi=values['P_psi'],
+                od_in=values['D_outside_in'], s_allow_psi=values['S_B313_psi']))
+            rows = _result_rows((label, result[key], unit) for label, key, unit in (
+                ('tPd · Pressure thickness', 'pressure_mm', 'mm'),
+                ('tReq · Required thickness', 'required_mm', 'mm'),
+                ('Calculated corrosion rate', 'calculated_cr', 'mm/yr'),
+                ('Corrosion rate used', 'cr_used', 'mm/yr'),
+                ('Remaining life', 'remaining_life', 'yr'),
+                ('Inspection interval', 'interval', 'yr'),
+                ('t in MAWP · Wall credited', 'mawp_thickness_mm', 'mm'),
+                ('MAWP at next inspection', 'mawp_psi', 'psi'),
+            ))
+            comparison = ('Meets Row 7 wall and pressure comparison' if result['result'] == 'Safe'
+                          else 'Does not meet Row 7 wall and pressure comparison')
+            output = (f'<div class="sample-result" role="status"><h3>Row 7 result</h3><dl>{rows}'
+                      f'<dt>Rate basis</dt><dd>{E(result["cr_basis"])}</dd>'
+                      f'<dt>Next inspection date</dt><dd>{E(result["next_inspection"])}</dd>'
+                      f'<dt>Worksheet comparison</dt><dd>{E(comparison)}</dd></dl></div>')
+        except KeyError as exc:
+            output = f'<p class="warn" role="alert">Enter {E(exc.args[0])} to complete Row 7.</p>'
+        except (ValueError, OverflowError) as exc:
+            output = f'<p class="warn" role="alert">{E(exc)}</p>'
+    return (
+        '<section id="sample-calculator"><h2>Calculator</h2>' + _code_picker('ROW7')
+        + '<h3>Row 7 worksheet calculation</h3>'
+        '<p>Enter the two dated minimum UT readings and the design inputs. The fallback corrosion rate '
+        'only applies if the observed rate is zero or negative.</p>'
+        '<p><a href="/codes?code=row7&amp;example=1#sample-calculator">Load the Row 7 example</a></p>'
+        '<form id="sample-inputs" action="/codes#sample-calculator" method="post">'
+        + hidden('sample', 'ROW7') + '<div class="fields">' + controls + '</div>'
+        + '<details><summary>Look up OD, allowable stress or structural minimum</summary>'
+        + _reference_controls('ROW7', submitted, tables, error)
+        + '</details><button class="primary">Calculate Row 7</button></form>'
+        + output
+        + '<p>Worksheet interval = min(10 years, remaining life ÷ 2). MAWP wall = current UT − '
+        '2 × rate used × interval. The separate API 570 calculator applies the inspection service-class limits.</p>'
+        '</section>'
+    )
+
+
+def row7_example_values():
+    return dict(P_psi=EXAMPLE['pd_psi'], D_outside_in=EXAMPLE['od_in'], S_B313_psi='20000',
+                **{key: EXAMPLE[key] for key in ('structural_mm', 'previous_date', 'previous_mm',
+                                                'current_date', 'current_mm', 'selected_cr')})

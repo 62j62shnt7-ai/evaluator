@@ -23,7 +23,8 @@ def calculate(inputs):
     if stress is None:
         raise ValueError('Choose a material with a configured fixed S value')
     pd, od = number('pd_psi'), number('od_in')
-    number('nominal_mm')
+    if inputs.get('nominal_mm') not in (None, ''):
+        number('nominal_mm')
     structural = number('structural_mm', False)
     previous, current = number('previous_mm'), number('current_mm')
     days = float(elapsed_days(inputs['previous_date'], inputs['current_date'], 365))
@@ -33,6 +34,8 @@ def calculate(inputs):
     if days <= 0:
         raise ValueError('Current UT date must be after previous UT date')
     cr = (previous - current) / (days / 365)
+    if cr <= 0 and inputs.get('selected_cr') in (None, ''):
+        raise ValueError('Enter a positive fallback corrosion rate when the observed rate is zero or negative.')
     rate = cr if cr > 0 else number('selected_cr')
     pressure = pd * od * 25.4 / (2 * stress + .8 * pd)
     required = max(structural, pressure)
