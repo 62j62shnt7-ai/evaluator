@@ -687,6 +687,10 @@ WORKSHEET_FACTORS = PRESETS[PIPE_RULES[0]][1][3:]
 
 
 def _worksheet_inputs(values):
+    inspection_fields = {'service_class': 'API 570 piping service class', 'rate_basis': 'governing corrosion-rate basis'}
+    missing = [label for key, label in inspection_fields.items() if not values.get(key)]
+    if missing:
+        raise ValueError(f'Choose {" and ".join(missing)} in API 570 inspection basis.')
     inputs = dict(values, measured_mm=values.get('current_mm'))
     readings = []
     for key, label in WORKSHEET_UT:
@@ -773,21 +777,28 @@ def _row7_panel(submitted):
                  + f'</dl><p>Structural thickness basis: {E(structural_basis)}</p>'
                  + f'<p>{E(pressure_basis)} · {E(API570_REFERENCE)}</p></details>')
     messages = ''.join(f'<p class="warn" role="alert">{E(note)}</p>' for note in notes)
+    mawp = results.get('Next-inspection MAWP candidate')
+    summary = ''
+    if mawp is not None:
+        summary = ('<p class="sample-result" role="status"><strong>'
+                   f'MAWP at next inspection: {E(numeric(mawp))} psi</strong> · '
+                   f'Interval: {E(numeric(results["Selected next inspection interval"]))} yr</p>')
     return (
         '<section id="sample-calculator"><h2>Piping worksheet calculator</h2>' + _code_picker('ROW7')
         + '<p>API 570 non-RBI inspection of B31.3 straight process piping. Fill UT columns from oldest to newest. '
         'The latest prior reading gives ST; a second prior reading enables LT using the oldest. '
         'Elapsed years use actual days divided by 365.</p>'
         '<p><a href="/codes?code=row7&amp;example=1#sample-calculator">Load a worked example</a></p>'
-        '<form id="sample-inputs" action="/codes#sample-calculator" method="post">'
+        '<form id="sample-inputs" action="/codes?code=row7#worksheet-feedback" method="post" novalidate>'
         + hidden('sample', 'ROW7') + '<details open><summary>Reference dropdowns</summary>'
         + _reference_controls('ROW7', submitted, tables, error) + '</details>' + grid
-        + '<fieldset><legend>API 570 inspection basis</legend><div class="fields">'
+        + '<fieldset><legend>API 570 inspection basis</legend>'
+        '<p>Choose the inspection service class and corrosion-rate basis before calculating.</p><div class="fields">'
         + _api570_controls(submitted) + '</div></fieldset>'
         + '<details><summary>B31.3 factors and other wall deduction</summary>'
         + '<p>Confirm the prefilled E, W and Y values for your piping.</p><div class="fields">' + factors
         + '</div></details><button class="primary">Calculate worksheet</button></form>'
-        + messages + trace + '</section>'
+        + '<div id="worksheet-feedback">' + messages + summary + trace + '</div></section>'
     )
 
 
