@@ -49,6 +49,38 @@ STRESS_CONTEXTS = {
 }
 
 
+CODES = {
+    'b313': ('ASME B31.3 · 2024', 'B31_3_304_1_2'),
+    'b314': ('ASME B31.4 · 2025', 'B31_4_403_2_1'),
+    'b318': ('ASME B31.8 · 2025', 'B31_8_841_1_1'),
+    'viii': ('ASME VIII-1 · 2025', 'VIII_UG27_HOOP'),
+    'api650': ('API 650 · 14th edition', 'API650_ONE_FOOT_PRODUCT'),
+}
+VESSEL_FORMS = {'VIII_UG27_HOOP': 'Cylindrical shell', 'VIII_UG32_ELLIP': '2:1 ellipsoidal head'}
+
+
+def code_rule(code, geometry):
+    if code == 'viii' and geometry in VESSEL_FORMS:
+        return geometry
+    return CODES.get(code, ('', ''))[1]
+
+
+def _code_picker(rule):
+    selected = 'viii' if rule in VESSEL_FORMS else next(
+        code for code, (_, candidate) in CODES.items() if candidate == rule)
+    options = ''.join(f'<option value="{code}"{" selected" if code == selected else ""}>{label}</option>'
+                      for code, (label, _) in CODES.items())
+    geometry = ''
+    if selected == 'viii':
+        forms = ''.join(f'<option value="{key}"{" selected" if key == rule else ""}>{label}</option>'
+                        for key, label in VESSEL_FORMS.items())
+        geometry = f'<label>Vessel geometry<select name="geometry">{forms}</select></label>'
+    return ('<form class="sample-picker" action="/codes#sample-calculator" method="get">'
+            f'<label>Calculation code<select name="code">{options}</select></label>{geometry}'
+            '<button id="apply-calculation-code">Apply code</button></form>'
+            '<script defer src="/assets/code-sample.js"></script>')
+
+
 def _reference_controls(rule, submitted):
     values = submitted or {}
     data = {'selection': {key: values.get(key, '') for key in (
@@ -102,8 +134,7 @@ def _reference_controls(rule, submitted):
     payload = json.dumps(data).replace('<', '\u003c')
     return ('<fieldset><legend>Reference lookups</legend><div class="fields">'
             + ''.join(controls) + '</div><p class="sample-sources" aria-live="polite"></p></fieldset>'
-            f'<script type="application/json" id="sample-reference-data">{payload}</script>'
-            '<script defer src="/assets/code-sample.js"></script>')
+            f'<script type="application/json" id="sample-reference-data">{payload}</script>')
 
 
 def _pressure_result(rule, rules, inputs, wall):
@@ -154,8 +185,6 @@ def _result(rule, inputs):
 
 def panel(sample='', submitted=None):
     rule = sample if sample in PRESETS else next(iter(PRESETS))
-    options = ''.join(f'<option value="{key}"{" selected" if key == rule else ""}>{E(label)}</option>'
-                      for key, (label, _) in PRESETS.items())
     controls = []
     for key, label, default in PRESETS[rule][1]:
         value = default if submitted is None else submitted.get(key, '')
@@ -180,12 +209,11 @@ def panel(sample='', submitted=None):
             output = f'<p class="warn" role="alert">{E(exc)}</p>'
     return (
         '<section id="sample-calculator"><h2>Sample calculator</h2>'
-        '<p>Load an example and edit any value. These draft calculations do not save to your project. '
+        '<p>Choose a code, then edit the example values or use the reference dropdowns. Samples do not save to your project. '
         'The thickness comparison covers the equations shown. Review other applicable limits separately.</p>'
-        '<form class="sample-picker" action="/codes#sample-calculator" method="get">'
-        f'<label>Example preset<select name="sample">{options}</select></label>'
-        '<button>Load preset</button></form>'
-        f'<form id="sample-inputs" action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
+        + _code_picker(rule)
+        + f'<h3>{E(PRESETS[rule][0].split(" · ", 1)[1])}</h3>'
+        + f'<form id="sample-inputs" action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
         f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>'
         + _reference_controls(rule, submitted)
         + '<div class="fields">' + ''.join(controls) + '</div>'

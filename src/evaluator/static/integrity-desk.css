@@ -260,3 +260,8 @@
 #sample-calculator fieldset { margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; }
 #sample-calculator legend { color: var(--muted); font-weight: 650; }
 #sample-calculator .sample-sources:empty { display: none; }
+
+.dimension-filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.dimension-filters label { flex: 1 1 150px; max-width: 250px; }
+.dimension-filters p { margin: 0 0 13px; }
+.dimension-scroll { max-height: 490px; }

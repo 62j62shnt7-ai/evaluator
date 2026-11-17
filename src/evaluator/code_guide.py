@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
 from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE
-from evaluator.engineering.references import dimension, material_stresses
+from evaluator.engineering.references import dimension, dimensions, material_stresses
 from evaluator.desk_ui import shell
 from evaluator.workflow_ui import E
 
@@ -78,12 +78,43 @@ def _lookup_table():
             '<tbody>' + ''.join(body) + '</tbody></table></div>')
 
 
+def _dimension_library():
+    body = []
+    for row in dimensions():
+        family = 'Ferritic' if row['family'] == 'ferritic' else 'Stainless'
+        issue = '; '.join(row['issues'])
+        cells = [family, row['nps'], row['dn'], row['schedule'], row['od_in'], row['od_mm'],
+                 'Withheld' if issue else row['nominal_mm'],
+                 f"{row['reference']}, PDF p. {row['pdf_page']}" + (f" · {issue}" if issue else '')]
+        body.append(f'<tr data-family="{E(row["family"])}" data-nps="{E(row["nps"])}" '
+                    f'data-schedule="{E(row["schedule"])}">'
+                    + ''.join(f'<td>{E(cell)}</td>' for cell in cells) + '</tr>')
+    return (
+        '<section id="pipe-dimensions"><h2>Pipe dimensions library</h2>'
+        '<p>Browse the API RP 574 dimensions used by the calculator. Entries flagged for source discrepancies are withheld from its dropdowns.</p>'
+        '<div class="dimension-filters" hidden>'
+        '<label>Pipe family<select id="library-family"><option value="">All families</option>'
+        '<option value="ferritic">Ferritic</option><option value="stainless">Stainless</option></select></label>'
+        '<label>Nominal pipe size<select id="library-nps"></select></label>'
+        '<label>Schedule<select id="library-schedule"></select></label>'
+        '<p id="dimension-count" role="status"></p></div>'
+        '<div class="scroll dimension-scroll"><table><thead><tr><th>Family</th><th>NPS</th><th>DN</th>'
+        '<th>Schedule</th><th>OD (in)</th><th>OD (mm)</th><th>Nominal wall (mm)</th>'
+        '<th>Source and notes</th></tr></thead><tbody>' + ''.join(body) + '</tbody></table></div></section>'
+    )
+
+
 def page(sample='', submitted=None):
     from evaluator.code_sample_ui import panel
 
     nav = ' '.join(f'<a class="pill" href="#{key}">{E(title)}</a>' for key, title, *_ in GUIDES)
     parts = [
         '<h1>Codes &amp; Calculations</h1><p>Learn which method applies, where each input comes from, and how to read the result.</p>',
+        '<nav class="pills" aria-label="Code library sections">'
+        '<a class="pill" href="#sample-calculator">Calculator</a>'
+        '<a class="pill" href="#lookups">Materials library</a>'
+        '<a class="pill" href="#pipe-dimensions">Pipe dimensions library</a>'
+        '<a class="pill" href="#gas-lookups">Gas pipeline reference values</a></nav>',
         panel(sample, submitted),
         '<section><h2>Start with your report</h2><ol>'
         '<li>Import Excel and check the matched previous and current thicknesses, dates and locations.</li>'
@@ -94,7 +125,7 @@ def page(sample='', submitted=None):
         '<p><strong>Workbook</strong> supplies UT readings and dates. <strong>Equipment records</strong> supply facts such as geometry, service, material and pressure. '
         '<strong>Code references</strong> supply verified lookup values. <strong>The app</strong> calculates thickness, rate, life and method-specific candidates.</p>'
         '<p><strong>DRAFT / NOT VALIDATED</strong> applies to calculated results. Each method has its own applicability and input review.</p></section>',
-        '<nav class="pills" aria-label="Jump to code">' + nav + '<a class="pill" href="#lookups">Material values</a></nav>',
+        '<nav class="pills" aria-label="Jump to code">' + nav + '</nav>',
     ]
     for key, title, subtitle, steps, rules in GUIDES:
         parts.append(f'<section id="{key}"><h2>{E(title)}</h2><h3>{E(subtitle)}</h3>')
@@ -133,13 +164,14 @@ def page(sample='', submitted=None):
         'The screen also accepts values in the displayed imperial units and converts them for the assigned-code calculation. '
         'In the tank equations, D and H are in metres, G is specific gravity, and CA is corrosion allowance in mm. '
         'E, W, Y, F and T are the method-specific factors described in each code section.</p></section>',
-        '<section id="lookups"><h2>Material stress values currently in the app</h2>'
+        '<section id="lookups"><h2>Materials library</h2>'
         '<p>Allowable stress S is matched to the exact code edition, material, product form and listed temperature. '
         'Confirm table notes and the actual equipment inputs before use. Pipeline SMYS is a different property.</p>' + _lookup_table() + '</section>',
+        _dimension_library(),
         '<section><h2>Coverage boundaries</h2><p>ASME B31G metal-loss assessment, system MAOP/MOP, and whole-tank approval are outside the current calculation paths. A production flowline needs its construction code assigned from records.</p></section>',
     ])
     gas_values = ', '.join(f'{grade}: {value:,} psi' for grade, value in GAS_5L_SMYS_PSI.items())
-    parts.append('<section><h2>Gas pipeline reference inputs</h2>'
+    parts.append('<section id="gas-lookups"><h2>Gas pipeline reference inputs</h2>'
                  f'<p>API 5L SMYS for listed manufacturing types: {E(gas_values)}.</p>'
                  f'<p><small>{E(GAS_SMYS_REFERENCE["reference"])}</small></p>'
                  '<p>Temperature factor uses the supplied table through 450 °F, including interpolation between entries.</p>'

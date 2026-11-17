@@ -48,8 +48,11 @@ def make_handler(service):
                 return
             if path == '/codes':
                 from evaluator.code_guide import page as code_guide
-                sample = parse_qs(urlsplit(self.path).query).get('sample', [''])[0]
-                self._reply(code_guide(sample))
+                from evaluator.code_sample_ui import code_rule
+
+                params = parse_qs(urlsplit(self.path).query)
+                sample = code_rule(params.get('code', [''])[0], params.get('geometry', [''])[0])
+                self._reply(code_guide(sample or params.get('sample', [''])[0]))
                 return
             if path == '/tanks':
                 from evaluator.tank_ui import page as tank_page
