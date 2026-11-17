@@ -186,3 +186,65 @@
     .integrity-desk .source { flex-wrap: wrap; }
     .tool-menu #revision { display: inline; }
 }
+
+.rail nav a[aria-current="page"] {
+    background: #493469;
+    color: white;
+    border-color: #604a81;
+}
+
+.desk-document .document-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.desk-document h1 { font-size: clamp(32px, 4vw, 52px); }
+.desk-document > p { max-width: 75ch; }
+.desk-document > section {
+    margin-top: 18px;
+    padding: clamp(16px, 2vw, 28px);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    min-width: 0;
+}
+.desk-document :is(p, li) { max-width: 95ch; }
+.desk-document .scroll { overflow-x: auto; }
+.desk-document table td { white-space: normal; vertical-align: top; }
+.desk-document nav.pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+.desk-document .pill {
+    background: var(--mint);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+.desk-document .warn { background: #fff1d5; color: #785018; padding: 10px 14px; border-radius: 8px; }
+.desk-document :is(code, pre, dd) { overflow-wrap: anywhere; }
+.desk-document pre { white-space: pre-wrap; }
+.tank-methods { display: grid; gap: 10px; }
+.tank-methods .tank-method { margin: 0; padding: 16px 20px; }
+.tank-method summary, #saved-tank-calculations summary { font-size: 15px; }
+.tank-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    align-items: end;
+    gap: 6px 16px;
+    padding-top: 14px;
+}
+.tank-form > label { margin: 0; }
+.tank-form :is(p, details, .check) { grid-column: 1 / -1; }
+.tank-form p { margin: 6px 0; color: var(--muted); }
+.tank-form :is(input, select, textarea) { font-size: 14px; }
+.tank-form label.check {
+    flex-direction: row;
+    align-items: flex-start;
+    font-size: 13px;
+    margin: 8px 0;
+}
+.tank-form label.check input { flex-shrink: 0; margin: 3px 0 0; }
+.tank-form button { justify-self: start; margin-top: 8px; }
+#saved-tank-calculations dt { font-size: 13px; color: var(--muted); }
+#saved-tank-calculations dd { margin: 0 0 9px; font-weight: 650; }

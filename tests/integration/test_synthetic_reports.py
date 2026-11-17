@@ -127,6 +127,8 @@ def test_one_workspace_action_calculates_mixed_components_and_retains_unready_ro
 
     from evaluator.calculation_trace_ui import page
     explanation = page(result, rows[shell['current_id']])
+    assert 'class="integrity-desk"' in explanation
+    assert 'view=results' in explanation
     assert 'Vessel shell hoop · governs' in explanation
     assert 'Vessel shell longitudinal' in explanation
     assert 'Table 1A line 43' in explanation

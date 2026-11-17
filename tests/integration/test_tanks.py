@@ -63,11 +63,20 @@ def test_tank_workspace_saves_exports_and_undoes(tmp_path):
         return response.status, response.read()
 
     try:
-        assert b'/tanks' in request('GET', '/')[1]
+        for path in ('/', '/tanks', '/codes'):
+            status, document = request('GET', path)
+            assert status == 200
+            assert b'class="integrity-desk"' in document
+            assert b'/assets/integrity-desk.css' in document
+        assert b'aria-current="page">Tank assessments' in request('GET', '/tanks')[1]
+        assert b'aria-current="page">Code reference library' in request('GET', '/codes')[1]
         revision = service.workflow.revision()
         form = dict(DESIGN, method='api650', revision=revision, tank='T-1', component='Course 1',
                     reviewer='Test reviewer', reason='Reviewed drawing and stress records', applicability='yes')
-        assert request('POST', '/tanks', dict(form, applicability='no'))[0] == 400
+        status, document = request('POST', '/tanks', dict(form, applicability='no'))
+        assert status == 400
+        assert b'role="alert"' in document
+        assert b'class="card tank-method" open' in document
         assert request('POST', '/tanks', form)[0] == 303
         assert request('POST', '/tanks', form)[0] == 400
         shell = dict(form, **SHELL, method='api653_shell', scope='local')

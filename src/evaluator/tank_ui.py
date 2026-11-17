@@ -1,14 +1,21 @@
 """Server-rendered tank assessment forms and saved calculation records."""
 from evaluator.tanks import METHODS, STATUS, history
 from evaluator.tank_ut import MAPPINGS
-from evaluator.workflow_ui import E, field, hidden, person, shell
+from evaluator.desk_ui import shell
+from evaluator.workflow_ui import E, field, hidden, person
 
 
-def page(service, notice=''):
+def page(service, notice='', *, active_method=None):
     revision = service.workflow.revision()
-    body = f'<p><a href="/">Back to UT Evaluator</a></p><h1>Tank assessments</h1><p>{STATUS}</p>'
+    records = history(service.workflow)
+    body = ('<div class="document-heading"><div><h1>Tank assessments</h1>'
+            '<p>Choose a design or in-service check. API 653 shell and bottom checks can use readings from an imported workbook.</p></div>'
+            '<a href="#saved-tank-calculations">Saved calculations</a></div>'
+            '<div class="tank-methods">')
     for method, (label, fields) in METHODS.items():
-        body += f'<section><h2>{E(label)}</h2><form method="post" action="/tanks">'
+        opened = ' open' if method == active_method else ''
+        body += (f'<details class="card tank-method"{opened}><summary>{E(label)}</summary>'
+                 '<form class="tank-form" method="post" action="/tanks">')
         body += hidden('revision', revision) + hidden('method', method)
         body += field('tank', 'Tank ID') + field('component', 'Course / area / bottom zone')
         if method == 'api650':
@@ -26,7 +33,7 @@ def page(service, notice=''):
             choices = ''.join(f'<option value="{E(source["source_id"])}">{E(source["file_name"])} · {E(source["source_id"][:10])}</option>'
                               for source in service.sources())
             body += ('<details><summary>Use cells from an imported UT workbook</summary>'
-                     '<p>Choose a workbook already imported through UT Evaluator. Map cells by address, separated by commas. '
+                     '<p>Choose a workbook already imported through the workbook library. Map cells by address, separated by commas. '
                      'Selected cells supply the thickness inputs in place of manually entered values.</p>'
                      f'<label>Workbook<select name="ut_source"><option value="">Manual thickness inputs</option>{choices}</select></label>')
             body += field('ut_sheet', 'Exact worksheet name', required=False)
@@ -69,11 +76,14 @@ def page(service, notice=''):
         body += person()
         body += ('<label class="check"><input name="applicability" type="checkbox" value="yes" required>'
                  'I checked the method, scope, edition and input sources for this component.</label>'
-                 '<button>Calculate and save draft</button></form></section>')
-    body += '<section><h2>Saved tank calculations</h2>'
-    for record in history(service.workflow):
+                 '<button class="primary">Calculate and save draft</button></form></details>')
+    body += '</div><section id="saved-tank-calculations"><h2>Saved tank calculations</h2>'
+    if not records:
+        body += '<p>Saved assessments will appear here after you run a check.</p>'
+    for index, record in enumerate(records):
         label = METHODS[record['method']][0]
-        body += f'<details><summary>{E(record["tank"])} / {E(record["component"])} · {E(label)}</summary>'
+        opened = ' open' if index == 0 else ''
+        body += f'<details{opened}><summary>{E(record["tank"])} / {E(record["component"])} · {E(label)}</summary>'
         body += f'<p>{STATUS} · {E(record["reference"])} · Input revision {record["input_revision"]}</p>'
         body += f'<p>{E(record["note"])}</p><dl>'
         labels = {
@@ -111,4 +121,4 @@ def page(service, notice=''):
                 readings = ', '.join(f'{cell}: {value} mm' for cell, value in group['cells'].items())
                 body += f'<dt>{E(group["aggregation"].title())} of mapped cells</dt><dd>{E(readings)}</dd>'
         body += f'</dl><p>{E(record["reviewer"])} · {E(record["reason"])}</p></details>'
-    return shell('Tank assessments', body + '</section>', notice)
+    return shell('Tank assessments', body + '</section>', notice, active='/tanks')

@@ -344,7 +344,8 @@ $('closeDrawer').onclick=()=>$('drawer').hidden=true;document.onkeydown=e=>{if(e
 $('pipeFamily').onchange=()=>{$('nps').value='';$('schedule').value='';dimensions();};$('nps').onchange=()=>{$('schedule').value='';dimensions();};$('schedule').onchange=()=>{dimensions();const d=dimension();if(d&&!d.issues.length){$('batchForm').elements.D_outside_in.value=d.od_in;$('batchForm').elements.nominal_thickness_mm.value=d.nominal_mm;}};
 for(const key of ['D_outside_in','nominal_thickness_mm'])$('batchForm').elements.namedItem(key).oninput=()=>{$('nps').value='';$('schedule').value='';dimensions();};
 $('materialGrade').onchange=()=>{$('materialCustom').hidden=$('materialGrade').value!=='Custom…';if($('materialGrade').value==='Custom…')$('materialCustom').focus();};$('batchForm').onsubmit=e=>{e.preventDefault();if(!requireSelected())return;const payload={ids:[...selected],values:values(),fill_missing:$('fillMissing').checked},d=dimension();if(d)payload.dimension_key=[d.family,d.nps,d.schedule];else if(payload.values.D_outside_in||payload.values.nominal_thickness_mm)Object.assign(payload.values,{nps:'Custom',schedule:'Custom'});action('apply',payload);};$('resetSelected').onclick=()=>{if(requireSelected())action('apply',{ids:[...selected],clear:true});};$('evaluate').onclick=()=>action('evaluate',{basis:'assigned'});$('undo').onclick=()=>action('undo');$('backWorkspace').onclick=()=>navigate('workspace');
-load().then(()=>navigate(workspace()?'workspace':'import')).catch(e=>message(e.message,true));
+const initialView = new URLSearchParams(location.search).get('view');
+load().then(()=>navigate(workspace()?(initialView==='results'?'results':'workspace'):'import')).catch(e=>message(e.message,true));
 
 let pendingCleanup=null;
 function renderWorkbooks(){

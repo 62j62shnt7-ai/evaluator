@@ -17,7 +17,9 @@ from evaluator.app_services import ProjectService
 
 
 def page(service, notice=''):
-    return (Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8')
+    from evaluator.desk_ui import workspace_page
+
+    return workspace_page()
 
 
 def make_handler(service):
@@ -87,7 +89,7 @@ def make_handler(service):
                     writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+values+['; '.join(row['issues'])])
                 self._reply(output.getvalue(),200,'text/csv; charset=utf-8',(('Content-Disposition','attachment; filename="UT-evaluation.csv"'),));return
             if path in {'/','/workspace'}:
-                self._reply((Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8'));return
+                self._reply(page(service));return
             if path.startswith('/assets/'):
                 name=path.removeprefix('/assets/')
                 if name not in {'workspace.css','workspace.js','integrity-desk.css'}:self._reply('Not found',404,'text/plain');return
@@ -139,9 +141,9 @@ def make_handler(service):
                     try:
                         save(service.workflow, form)
                     except ValueError as exc:
-                        self._reply(tank_page(service, str(exc)), 400)
+                        self._reply(tank_page(service, str(exc), active_method=form.get('method')), 400)
                         return
-                    self._reply('', 303, 'text/plain', (('Location', '/tanks'),))
+                    self._reply('', 303, 'text/plain', (('Location', '/tanks#saved-tank-calculations'),))
                     return
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return

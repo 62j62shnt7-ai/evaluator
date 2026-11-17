@@ -4,7 +4,8 @@ from decimal import Decimal
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
 from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE
 from evaluator.engineering.references import dimension, material_stresses
-from evaluator.workflow_ui import E, shell
+from evaluator.desk_ui import shell
+from evaluator.workflow_ui import E
 
 
 GUIDES = (
@@ -81,7 +82,6 @@ def page():
     nav = ' '.join(f'<a class="pill" href="#{key}">{E(title)}</a>' for key, title, *_ in GUIDES)
     parts = [
         '<h1>Codes &amp; Calculations</h1><p>Learn which method applies, where each input comes from, and how to read the result.</p>',
-        '<div class="pills"><a class="pill" href="/">Back to UT workspace</a><a class="pill" href="/tanks">Tank assessments</a></div>',
         '<section><h2>Start with your report</h2><ol>'
         '<li>Import Excel and check the matched previous and current thicknesses, dates and locations.</li>'
         '<li>Assign the governing code, edition, component geometry and source evidence.</li>'
@@ -141,4 +141,4 @@ def page():
                  f'<p><small>{E(GAS_SMYS_REFERENCE["reference"])}</small></p>'
                  '<p>Temperature factor uses the supplied table through 450 °F, including interpolation between entries.</p>'
                  f'<p><small>{E(GAS_TEMPERATURE_REFERENCE["reference"])}</small></p></section>')
-    return shell('Codes & Calculations', ''.join(parts))
+    return shell('Code reference library', ''.join(parts), active='/codes')

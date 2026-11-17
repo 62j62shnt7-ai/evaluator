@@ -2,7 +2,8 @@
 import re
 from urllib.parse import urlencode
 
-from evaluator.workflow_ui import E, shell
+from evaluator.desk_ui import shell
+from evaluator.workflow_ui import E
 
 _LABELS = {
     'VIII_UG27_HOOP': 'Vessel shell hoop', 'VIII_UG27_LONG': 'Vessel shell longitudinal',
@@ -37,8 +38,8 @@ def _table(headers, values):
 def page(batch, row):
     trace = row.get('input_trace', {})
     profile = row.get('profile') or {}
-    href = '/?' + urlencode({'comparison': batch['comparison_id']})
-    body = [f'<p><a href="{E(href)}">Back to workspace</a></p><h1>How was this calculated?</h1>',
+    href = '/?' + urlencode({'comparison': batch['comparison_id'], 'view': 'results'})
+    body = [f'<p><a href="{E(href)}">Back to calculation results</a></p><h1>How was this calculated?</h1>',
             f'<h2>{E(row["location"])}</h2><p>DRAFT / NOT VALIDATED · Saved input revision {E(batch.get("input_revision"))}</p>',
             f'<p>Assigned code: {E(profile.get("code_family"))} {E(profile.get("code_edition"))} · Method: {E(row.get("rule"))}</p>']
     if batch.get('stale'):
@@ -122,5 +123,5 @@ def page(batch, row):
                                                 for label, key in output_labels]))
     if row.get('issues'):
         body.append('<h3>Review items</h3><ul>' + ''.join(f'<li>{E(issue)}</li>' for issue in row['issues']) + '</ul>')
-    return shell('How was this calculated?', ''.join(body) + '</section>')
+    return shell('How was this calculated?', ''.join(body) + '</section>', workspace_url=href)
 
