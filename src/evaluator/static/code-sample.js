@@ -77,6 +77,28 @@ function bindReferences(referenceData) {
         groups.push(lookup);
     }
 
+    if (referenceData.liquidStrength) {
+        const grades = referenceData.liquidStrength;
+        const lookup = () => {
+            const row = grades[control('material').value];
+            return row && {fields: {SMYS_MPa: row.value}, reference: row.reference};
+        };
+        setOptions('material', choices(Object.keys(grades)), referenceData.selection.material);
+        control('material').addEventListener('change', () => populateGroup(lookup(), ['SMYS_MPa']));
+        groups.push(lookup);
+    }
+
+    if (referenceData.liquidWeld) {
+        const weld = referenceData.liquidWeld;
+        const lookup = () => {
+            const value = weld.values[control('liquid_weld').value];
+            return value && {fields: {E_weld: value}, reference: weld.reference};
+        };
+        setOptions('liquid_weld', choices(Object.keys(weld.values)), referenceData.selection.liquid_weld);
+        control('liquid_weld').addEventListener('change', () => populateGroup(lookup(), ['E_weld']));
+        groups.push(lookup);
+    }
+
     if (referenceData.gas) {
         const gas = referenceData.gas;
         const bind = (name, options, lookup, target) => {

@@ -106,6 +106,9 @@ def _dimension_library():
 
 def page(sample='', submitted=None):
     from evaluator.code_sample_ui import panel
+    from evaluator.engineering.reference_rules import (
+        LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE, LIQUID_WELD_FACTORS, LIQUID_WELD_REFERENCE,
+    )
 
     nav = ' '.join(f'<a class="pill" href="#{key}">{E(title)}</a>' for key, title, *_ in GUIDES)
     parts = [
@@ -114,7 +117,9 @@ def page(sample='', submitted=None):
         '<a class="pill" href="#sample-calculator">Calculator</a>'
         '<a class="pill" href="#lookups">Materials library</a>'
         '<a class="pill" href="#pipe-dimensions">Pipe dimensions library</a>'
-        '<a class="pill" href="#gas-lookups">Gas pipeline reference values</a></nav>',
+        '<a class="pill" href="#liquid-lookups">Liquid pipeline reference values</a>'
+        '<a class="pill" href="#gas-lookups">Gas pipeline reference values</a>'
+        '<a class="pill" href="/tanks">API 653 tank calculators</a></nav>',
         panel(sample, submitted),
         '<section><h2>Start with your report</h2><ol>'
         '<li>Import Excel and check the matched previous and current thicknesses, dates and locations.</li>'
@@ -170,6 +175,17 @@ def page(sample='', submitted=None):
         _dimension_library(),
         '<section><h2>Coverage boundaries</h2><p>ASME B31G metal-loss assessment, system MAOP/MOP, and whole-tank approval are outside the current calculation paths. A production flowline needs its construction code assigned from records.</p></section>',
     ])
+    weld_rows = ''.join(f'<tr><td>{E(spec)}</td><td>{E(factor)}</td></tr>'
+                        for spec, factor in LIQUID_WELD_FACTORS.items())
+    strengths = ', '.join(f'{grade}: {int(psi):,} psi (line {line})'
+                          for grade, (psi, line) in LIQUID_PIPE_SMYS.items())
+    parts.append('<section id="liquid-lookups"><h2>Liquid pipeline material and weld references</h2>'
+                 '<p>Confirm pipe specification, grade and SMYS against the material record. '
+                 'For other grades, enter the reviewed SMYS manually.</p>'
+                 f'<p>Sample SMYS options: {E(strengths)}. {E(LIQUID_PIPE_SMYS_REFERENCE)}.</p>'
+                 f'<p>{E(LIQUID_WELD_REFERENCE["reference"])}</p>'
+                 '<div class="scroll"><table><thead><tr><th>Pipe specification and manufacture</th>'
+                 '<th>Weld factor E</th></tr></thead><tbody>' + weld_rows + '</tbody></table></div></section>')
     gas_values = ', '.join(f'{grade}: {value:,} psi' for grade, value in GAS_5L_SMYS_PSI.items())
     parts.append('<section id="gas-lookups"><h2>Gas pipeline reference inputs</h2>'
                  f'<p>API 5L SMYS for listed manufacturing types: {E(gas_values)}.</p>'
