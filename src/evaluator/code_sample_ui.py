@@ -8,7 +8,6 @@ from evaluator.engineering.reference_rules import (
     GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, gas_temperature_factor,
     LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE, LIQUID_WELD_FACTORS, LIQUID_WELD_REFERENCE,
 )
-from evaluator.engineering.row_example import EXAMPLE
 from evaluator.inspection_time import elapsed_days
 from evaluator.engineering.references import dimensions, material_stresses
 from evaluator.engineering.structural_reference import CLASSES, LOOKUP_FIELDS, NPS, structural_cell, structural_tables
@@ -95,13 +94,12 @@ STRESS_CONTEXTS = {
 
 
 CODES = {
-    'row7': ('API 570 / B31.3 · Worksheet layout', 'ROW7'),
     'b313': ('ASME B31.3 · 2024', 'B31_3_304_1_2'),
     'b314': ('ASME B31.4 · 2025', 'B31_4_403_2_1'),
     'b318': ('ASME B31.8 · 2025', 'B31_8_841_1_1'),
     'viii': ('ASME VIII-1 · 2025', 'VIII_UG27_HOOP'),
     'api510': ('API 510 · 11th edition', 'CR_ST'),
-    'api570': ('API 570 · 5th edition', 'API570_PIPE'),
+    'api570': ('API 570 · 5th edition', 'API570_DATED'),
     'api650': ('API 650 · 14th edition', 'API650_ONE_FOOT_PRODUCT'),
 }
 VESSEL_FORMS = {'VIII_UG27_HOOP': 'Cylindrical shell', 'VIII_UG32_ELLIP': '2:1 ellipsoidal head',
@@ -123,6 +121,8 @@ for sample, geometry in API510_FORMS.items():
 
 
 def code_rule(code, geometry):
+    if code == 'row7':
+        code = 'api570'
     if code == 'viii' and geometry in VESSEL_FORMS:
         return geometry
     if code == 'api510' and geometry in API510_FORMS:
@@ -131,6 +131,8 @@ def code_rule(code, geometry):
 
 
 def _code_picker(rule):
+    if rule == 'API570_PIPE':
+        rule = 'API570_DATED'
     selected = 'api510' if rule in API510_FORMS else 'viii' if rule in VESSEL_FORMS else next(
         code for code, (_, candidate) in CODES.items() if candidate == rule)
     options = ''.join(f'<option value="{code}"{" selected" if code == selected else ""}>{label}</option>'
@@ -158,7 +160,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
     def select(name, label):
         controls.append(f'<label>{label}<select name="{name}"><option value="">Manual entry</option></select></label>')
 
-    if rule in (*PIPE_RULES, 'API570_PIPE', 'ROW7'):
+    if rule in (*PIPE_RULES, 'API570_PIPE', 'API570_DATED'):
         data['dimensions'] = [
             dict(family=row['family'], nps=row['nps'], schedule=row['schedule'],
                  od=row['od_in'], wall=row['nominal_mm'],
@@ -168,7 +170,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
         select('pipe_family', 'Pipe dimension table')
         select('nps', 'Nominal pipe size (NPS)')
         select('schedule', 'Pipe schedule')
-    stress_rule = PIPE_RULES[0] if rule in {'API570_PIPE', 'ROW7'} else API510_FORMS.get(rule, rule)
+    stress_rule = PIPE_RULES[0] if rule in {'API570_PIPE', 'API570_DATED'} else API510_FORMS.get(rule, rule)
     if stress_rule in STRESS_CONTEXTS:
         code, edition, product, target = STRESS_CONTEXTS[stress_rule]
         select('material', f'Material · {code} {edition} · {product}')
@@ -208,7 +210,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
     if not controls:
         return ''
     data['factorDefaults'] = {key: value for key, _, value in PRESETS.get(rule, ('', ()))[1] if key in EDITABLE_FACTORS}
-    annex = _structural_controls(annex_tables, annex_error) if rule in {'API570_PIPE', 'ROW7'} else ''
+    annex = _structural_controls(annex_tables, annex_error) if rule in {'API570_PIPE', 'API570_DATED'} else ''
     if annex_tables:
         data['structural'] = dict(tables=annex_tables, sizes=NPS, classes=CLASSES)
         data['selection'].update({key: values.get(key, '') for key in LOOKUP_FIELDS})
@@ -580,8 +582,8 @@ def _result(rule, inputs, annex_tables=()):
 
 
 def panel(sample='', submitted=None):
-    if sample in {'', 'ROW7'}:
-        return _row7_panel(submitted)
+    if sample in {'', 'ROW7', 'API570_DATED'}:
+        return _api570_panel(submitted)
     rule = sample if sample in PRESETS else next(iter(PRESETS))
     values = submitted or {}
     fields = PRESETS[rule][1]
@@ -683,21 +685,18 @@ def panel(sample='', submitted=None):
 
 
 
-WORKSHEET_UT = (
-    ('older', 'Previous 1'), ('middle', 'Previous 2'),
-    ('previous', 'Previous 3'), ('current', 'Current'),
-)
-WORKSHEET_FACTORS = PRESETS[PIPE_RULES[0]][1][3:]
+API570_UT = (('older', 'Initial'), ('previous', 'Previous'), ('current', 'Current'))
+API570_FACTORS = PRESETS[PIPE_RULES[0]][1][3:]
 
 
-def _worksheet_inputs(values):
+def _dated_pipe_inputs(values):
     inspection_fields = {'service_class': 'API 570 piping service class', 'rate_basis': 'governing corrosion-rate basis'}
     missing = [label for key, label in inspection_fields.items() if not values.get(key)]
     if missing:
         raise ValueError(f'Choose {" and ".join(missing)} in API 570 inspection basis.')
     inputs = dict(values, measured_mm=values.get('current_mm'))
     readings = []
-    for key, label in WORKSHEET_UT:
+    for key, label in API570_UT:
         day, wall = values.get(f'{key}_date'), values.get(f'{key}_mm')
         if bool(day) != bool(wall) or (key == 'current' and not day):
             raise ValueError(f'Enter both the UT date and reading for {label.lower()}.')
@@ -722,95 +721,54 @@ def _worksheet_inputs(values):
     return inputs
 
 
-def _row7_panel(submitted):
+
+def _api570_panel(submitted):
     values = submitted or {}
     try:
         tables, error = structural_tables(), ''
     except ValueError as exc:
         tables, error = (), str(exc)
-    entries, notes, structural_basis, pressure_basis = (), (), '', ''
+    output = ''
     if submitted is not None:
         try:
-            entries, notes, structural_basis, pressure_basis = _api570_calculation(_worksheet_inputs(values), tables)
+            output = _api570_result(_dated_pipe_inputs(values), tables)
         except (DecimalException, ValueError, TypeError) as exc:
-            notes = (str(exc) if isinstance(exc, ValueError) else 'Complete the required numeric inputs.',)
-    results = {label: value for label, value, _ in entries}
+            reason = str(exc) if isinstance(exc, ValueError) else 'Complete the required numeric inputs.'
+            output = f'<p class="warn" role="alert">{E(reason)}</p>'
 
-    def cell(key, label, kind='number', required=True):
-        return '<td>' + field(key, label, values.get(key, ''), kind, required) + '</td>'
+    def number(key, label, *, default='', required=True):
+        return field(key, label, values.get(key, default), 'number', required)
 
-    def result(label):
-        value = results.get(label)
-        shown = _display_value(label, value, 'psi' if label == 'Next-inspection MAWP candidate' else '') if value is not None else '—'
-        return f'<td class="worksheet-result">{E(shown)}</td>'
-
-    headers = (
-        ('Pd (psi)', 1), ('OD (in)', 1), ('S (psi)', 1), ('tstrc (mm) · API RP 574', 1),
-        ('tPd (mm)', 1), ('tReq (mm)', 1), ('Min. UT reading (mm)', 4),
-        ('CR (mm/yr)', 2), ('RL (yr)', 1), ('Interv. (yr)', 1), ('t in MAWP (mm)', 1), ('MAWP (psi)', 1),
-    )
-    head = ''.join(f'<th colspan="{span}" scope="{"colgroup" if span > 1 else "col"}">{E(label)}</th>'
-                   for label, span in headers)
-    subhead = ('<td colspan="6"></td>'
-               + ''.join(f'<th scope="col">{label}</th>' for _, label in WORKSHEET_UT)
-               + '<th scope="col">ST</th><th scope="col">Selected</th><td colspan="4"></td>')
-    readings = ''.join(
-        '<td>' + field(f'{key}_date', f'{label} UT date', values.get(f'{key}_date', ''), 'date', key == 'current')
-        + field(f'{key}_mm', f'{label} UT (mm)', values.get(f'{key}_mm', ''), 'number', key == 'current') + '</td>'
-        for key, label in WORKSHEET_UT
-    )
-    line = (cell('P_psi', 'Design pressure') + cell('D_outside_in', 'Outside diameter')
-            + cell('S_B313_psi', 'Allowable stress') + cell('structural_mm', 'Structural minimum')
-            + result('Pressure thickness') + result('Governing required thickness') + readings
-            + ''.join(result(label) for label in ('Short-term corrosion rate', 'Selected corrosion rate',
-                         'Remaining life', 'Selected next inspection interval',
-                         'Wall used for next-inspection mawp candidate', 'Next-inspection MAWP candidate')))
-    grid = ('<div class="scroll worksheet-scroll" tabindex="0" aria-label="Piping worksheet">'
-            f'<table class="worksheet-grid"><thead><tr>{head}</tr><tr>{subhead}</tr></thead>'
-            f'<tbody><tr>{line}</tr></tbody></table></div>')
-    factors = ''.join(field(key, label, values.get(key, default), 'number')
-                      for key, label, default in WORKSHEET_FACTORS)
-    factors += field('wall_deduction_mm', 'Other wall deduction for pressure (mm)',
-                     values.get('wall_deduction_mm', ''), 'number', False)
-    trace = ''
-    if entries:
-        extras = ('Long-term corrosion rate', 'Maximum UT interval', 'Margin to required thickness',
-                  'Projected wall', 'API 570 MAWP corrosion deduction (2 × estimated loss)',
-                  'Current MAWP candidate')
-        trace = ('<details><summary>Calculation details</summary><dl>'
-                 + _result_rows((label, value, unit) for label, value, unit in entries
-                                if label in extras and value is not None)
-                 + f'</dl><p>Structural thickness basis: {E(structural_basis)}</p>'
-                 + f'<p>{E(pressure_basis)} · {E(API570_REFERENCE)}</p></details>')
-    messages = ''.join(f'<p class="warn" role="alert">{E(note)}</p>' for note in notes)
-    mawp = results.get('Next-inspection MAWP candidate')
-    summary = ''
-    if mawp is not None:
-        summary = ('<p class="sample-result" role="status"><strong>'
-                   f'MAWP at next inspection: {E(format(mawp, ".0f"))} psi</strong> · '
-                   f'Interval: {E(numeric(results["Selected next inspection interval"]))} yr</p>')
+    design = ''.join(number(key, label) for key, label in (
+        ('P_psi', 'Design pressure (psi)'), ('D_outside_in', 'Outside diameter (in)'),
+        ('S_B313_psi', 'Allowable stress S (psi)'), ('structural_mm', 'Structural minimum (mm)'),
+    ))
+    readings = []
+    for key, label in API570_UT:
+        required = key == 'current'
+        readings.append(field(f'{key}_date', f'{label} UT date', values.get(f'{key}_date', ''),
+                              'date', required))
+        readings.append(number(f'{key}_mm', f'{label} minimum UT (mm)', required=required))
+    factors = ''.join(number(key, label, default=default) for key, label, default in API570_FACTORS)
+    factors += number('wall_deduction_mm', 'Other wall deduction for pressure (mm)', required=False)
     return (
-        '<section id="sample-calculator"><h2>Piping worksheet calculator</h2>' + _code_picker('ROW7')
-        + '<p>API 570 non-RBI inspection of B31.3 straight process piping. Fill UT columns from oldest to newest. '
-        'The latest prior reading gives ST; a second prior reading enables LT using the oldest. '
-        'Elapsed years use actual days divided by 365.</p>'
-        '<p><a href="/codes?code=row7&amp;example=1#sample-calculator">Load a worked example</a></p>'
-        '<form id="sample-inputs" action="/codes?code=row7#worksheet-feedback" method="post" novalidate>'
-        + hidden('sample', 'ROW7') + '<details open><summary>Reference dropdowns</summary>'
-        + _reference_controls('ROW7', submitted, tables, error) + '</details>' + grid
-        + '<fieldset><legend>API 570 inspection basis</legend>'
-        '<p>Choose the inspection service class and corrosion-rate basis before calculating.</p><div class="fields">'
+        '<section id="sample-calculator"><h2>Calculator</h2>' + _code_picker('API570_DATED')
+        + '<h3>API 570 · Straight process piping</h3>'
+        '<p>Non-RBI inspection for B31.3 piping. Use the previous and current readings for short-term corrosion. '
+        'Add the initial reading for a long-term rate. Elapsed years use actual days divided by 365.</p>'
+        '<form id="sample-inputs" action="/codes?code=api570#calculation-feedback" method="post" novalidate>'
+        + hidden('sample', 'API570_DATED')
+        + '<fieldset><legend>Pipe design</legend><div class="fields">' + design + '</div>'
+        + '<details><summary>Look up OD, allowable stress or structural minimum</summary>'
+        + _reference_controls('API570_DATED', submitted, tables, error) + '</details></fieldset>'
+        + '<fieldset><legend>Ultrasonic thickness readings</legend><div class="fields">'
+        + ''.join(readings[2:]) + '</div><details' + (' open' if values.get('older_date') or values.get('older_mm') else '')
+        + '><summary>Initial reading for long-term rate</summary><div class="fields">'
+        + ''.join(readings[:2]) + '</div></details></fieldset>'
+        + '<fieldset><legend>API 570 inspection basis</legend><div class="fields">'
         + _api570_controls(submitted) + '</div></fieldset>'
         + '<details><summary>B31.3 factors and other wall deduction</summary>'
         + '<p>Confirm the prefilled E, W and Y values for your piping.</p><div class="fields">' + factors
-        + '</div></details><button class="primary">Calculate worksheet</button></form>'
-        + '<div id="worksheet-feedback">' + messages + summary + trace + '</div></section>'
+        + '</div></details><button class="primary">Calculate</button></form>'
+        + '<div id="calculation-feedback">' + output + '</div></section>'
     )
-
-
-def row7_example_values():
-    return dict(P_psi=EXAMPLE['pd_psi'], D_outside_in=EXAMPLE['od_in'], S_B313_psi='20000',
-                service_class='1', rate_basis='short',
-                **{key: default for key, _, default in WORKSHEET_FACTORS},
-                **{key: EXAMPLE[key] for key in ('structural_mm', 'previous_date', 'previous_mm',
-                                                'current_date', 'current_mm')})

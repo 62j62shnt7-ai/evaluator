@@ -41,8 +41,8 @@ def test_new_material_rows_and_code_specific_weld_dropdown():
 def test_api570_has_its_own_rates_class_interval_and_pressure_forecast():
     from evaluator.code_sample_ui import code_rule
 
-    rule = code_rule('api570', '')
-    assert rule != code_rule('api510', '')
+    rule = 'API570_PIPE'
+    assert code_rule('api570', '') != code_rule('api510', '')
     form = sample_form(rule)
     form.update(service_class='1', rate_basis='short', next_years='4', wall_deduction_mm='0.5')
     result = panel(rule, form)
@@ -211,3 +211,32 @@ def test_api570_short_term_method_does_not_require_initial_reading():
     assert 'Next-inspection MAWP candidate</dt><dd>' in result
     assert 'Long-term corrosion rate</dt>' not in result
     assert 'name="nominal_mm"' not in result
+
+
+def test_api570_code_page_uses_dated_ut_and_class_limit():
+    import re
+    from evaluator.code_sample_ui import code_rule
+
+    rule = code_rule('api570', '')
+    blank = panel(rule)
+    assert blank.count('API 570 · 5th edition</option>') == 1
+    assert 'Worksheet layout' not in blank
+    inputs = dict(re.findall(r'<input type="(?:date|number)" name="([^"]+)" value="([^"]*)"', blank))
+    for slot in ('older', 'previous', 'current'):
+        assert inputs[f'{slot}_date'] == inputs[f'{slot}_mm'] == ''
+    assert 'elapsed_years' not in inputs and 'middle_mm' not in inputs
+
+    values = dict(sample_form('API570_PIPE'), previous_date='2024-06-01', current_date='2026-06-01',
+                  current_mm='11.2', service_class='1', rate_basis='short')
+    values.update(initial_mm='', long_years='', elapsed_years='')
+    result = panel(rule, values)
+    assert 'Selected corrosion rate</dt><dd>0.3 mm/year' in result
+    assert 'Maximum UT interval</dt><dd>5 years' in result
+    assert 'Next-inspection MAWP candidate</dt><dd>1543 psi' in result
+    assert 'at most 5 years' in panel(rule, dict(values, next_years='10'))
+    assert 'UT dates must increase' in panel(rule, dict(values, previous_date=values['current_date']))
+    assert 'Enter both the UT date and reading' in panel(rule, dict(values, older_date='2016-01-01'))
+    assert 'Choose API 570 piping service class and governing corrosion-rate basis' in panel(
+        rule, dict(values, service_class='', rate_basis=''))
+    long = dict(values, older_date='2021-06-02', older_mm='12.4', rate_basis='long')
+    assert 'Long-term corrosion rate</dt><dd>0.24 mm/year' in panel(rule, long)

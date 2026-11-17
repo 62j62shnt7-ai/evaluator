@@ -85,37 +85,3 @@ def test_sample_style_ut_headers_import_previous_and_current(tmp_path):
     assert [o.source.cell for o in observations]==['E134','F134']
     assert [o.inspection_date for o in observations]==['2023-08','2026-11']
     assert all(o.location_candidates==('section #1','2','2') for o in observations)
-
-
-def test_worksheet_layout_applies_api570_instead_of_historical_row7_policy():
-    import re
-    from evaluator.code_sample_ui import panel, row7_example_values
-
-    blank = panel()
-    assert 'Calculate worksheet' in blank
-    headers = ['Pd (psi)', 'OD (in)', 'S (psi)', 'tstrc (mm)', 'tPd (mm)', 'tReq (mm)',
-               'Min. UT reading (mm)', 'CR (mm/yr)', 'RL (yr)', 'Interv. (yr)', 't in MAWP (mm)', 'MAWP (psi)']
-    positions = [blank.index(label) for label in headers]
-    assert positions == sorted(positions)
-    inputs = dict(re.findall(r'<input type="(?:date|number)" name="([^"]+)" value="([^"]*)"', blank))
-    for slot in ('older', 'middle', 'previous', 'current'):
-        assert inputs[f'{slot}_date'] == inputs[f'{slot}_mm'] == ''
-    for key in ('P_psi', 'D_outside_in', 'S_B313_psi', 'structural_mm'):
-        assert inputs[key] == ''
-
-    values = row7_example_values()
-    incomplete = panel('ROW7', dict(values, service_class='', rate_basis=''))
-    assert 'Choose API 570 piping service class and governing corrosion-rate basis' in incomplete
-    assert 'id="worksheet-feedback"' in incomplete and 'novalidate' in incomplete
-    result = panel('ROW7', values)
-    assert 'MAWP at next inspection: 1967 psi' in result
-    cells = re.findall(r'class="worksheet-result">([^<]+)', result)
-    assert cells == ['4.3125', '4.3125', '0.0937', '0.0937', '74.5971', '5', '10.3633', '1967']
-    assert 'at most 5 years' in panel('ROW7', dict(values, next_years='10'))
-    assert 'UT dates must increase' in panel('ROW7', dict(values, previous_date=values['current_date']))
-    assert 'Enter both the UT date and reading' in panel('ROW7', dict(values, older_date='2016-01-01'))
-    assert 'Select a positive observed rate' in panel('ROW7', dict(values, previous_mm=values['current_mm']))
-    reviewed = dict(values, previous_mm=values['current_mm'], rate_basis='reviewed', reviewed_rate='.2')
-    assert re.findall(r'class="worksheet-result">([^<]+)', panel('ROW7', reviewed))[3] == '0.2'
-    long = dict(values, older_date='2021-08-25', older_mm='12.2', rate_basis='long')
-    assert 'Long-term corrosion rate</dt>' in panel('ROW7', long)

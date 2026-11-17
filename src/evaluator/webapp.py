@@ -48,12 +48,11 @@ def make_handler(service):
                 return
             if path == '/codes':
                 from evaluator.code_guide import page as code_guide
-                from evaluator.code_sample_ui import code_rule, row7_example_values
+                from evaluator.code_sample_ui import code_rule
 
                 params = parse_qs(urlsplit(self.path).query)
                 sample = code_rule(params.get('code', [''])[0], params.get('geometry', [''])[0])
-                example = row7_example_values() if sample == 'ROW7' and params.get('example') == ['1'] else None
-                self._reply(code_guide(sample or params.get('sample', [''])[0], example))
+                self._reply(code_guide(sample or params.get('sample', [''])[0]))
                 return
             if path == '/tanks':
                 from evaluator.tank_ui import page as tank_page
