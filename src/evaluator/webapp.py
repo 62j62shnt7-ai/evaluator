@@ -90,7 +90,7 @@ def make_handler(service):
                 self._reply((Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8'));return
             if path.startswith('/assets/'):
                 name=path.removeprefix('/assets/')
-                if name not in {'workspace.css','workspace.js'}:self._reply('Not found',404,'text/plain');return
+                if name not in {'workspace.css','workspace.js','integrity-desk.css'}:self._reply('Not found',404,'text/plain');return
                 self._reply((Path(__file__).parent/'static'/name).read_bytes(),200,'text/css' if name.endswith('.css') else 'text/javascript');return
             if path=='/api/workspace':
                 from evaluator.workspace import Workspace
