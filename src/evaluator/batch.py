@@ -22,7 +22,7 @@ PROFILE_TEXT={'component','geometry','code_family','code_edition','segment','pro
 NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm'})
 TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase','product_form'}
 TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
-TEXT_OVERRIDES.update({'code_asset_type'})
+TEXT_OVERRIDES.update({'code_asset_type', 'gas_basic_class'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
 
 
