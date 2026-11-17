@@ -24,6 +24,7 @@ def action(service, name, payload):
         from evaluator.engineering.reference_rules import (
             GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE,
             gas_pipe_smys, gas_temperature_factor,
+            LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE,
         )
         from evaluator.engineering.references import material_stress
 
@@ -37,9 +38,13 @@ def action(service, name, payload):
         entries = []
         stress = material_stress(material, geometry, code, edition, temperature, product)
         if stress and not values.get('S_allow_psi'):
-            value = stress.get('S_allow_MPa')
-            label = f"{value} MPa" if value else f"{stress['S_allow_psi']} psi"
-            entries.append(dict(label='Allowable stress S', value=label, reference=stress['reference']))
+            entries.append(dict(label='Allowable stress S', value=f"{stress['S_allow_psi']} psi", reference=stress['reference']))
+        if code == 'ASME B31.4' and edition == '2025' and geometry == 'straight_pipe' and not values.get('SMYS_psi'):
+            grade = LIQUID_PIPE_SMYS.get(material)
+            if grade:
+                smys, line = grade
+                entries.append(dict(label='SMYS', value=f'{int(smys):,} psi',
+                                    reference=f'{LIQUID_PIPE_SMYS_REFERENCE}, line {line}'))
         if code == 'ASME B31.8' and edition == '2025' and geometry == 'straight_pipe':
             factor = GAS_BASIC_CLASS_F.get(values.get('gas_basic_class'))
             if factor and not values.get('F_class'):

@@ -12,6 +12,7 @@ import re
 from openpyxl import load_workbook
 from openpyxl.formula.translate import Translator
 from evaluator.importing.cells import merged_value
+from evaluator.importing.tlb import _dated_columns
 
 
 def _token(value):
@@ -149,6 +150,31 @@ def import_records(path: Path) -> list[dict]:
         cached = load_workbook(path, data_only=True, keep_links=False)
         for ws in wb:
             caption = '\n'.join(str(c.value) for row in ws.iter_rows(min_row=1, max_row=1) for c in row if c.value is not None)
+            headers = tuple(_token(ws.cell(2, c).value) for c in range(1, 11))
+            if headers == ('JOINT','BAND','MATERIAL','PDPSI','ODIN','SPSI','TSTRCMMAPI574','TPDMM','TREQMM','MINUTREADINGMM') and 'B31.3' in caption:
+                readings = _dated_columns(ws, digest, ws.title)
+                current_date = max((reading.inspection_date for reading in readings), default=None)
+                columns = dict(material=('C',None), P_psi=('D','psi'), D_outside_in=('E','in'),
+                               S_allow_psi=('F','psi'), structural_minimum_mm=('G','mm'),
+                               pressure_thickness_mm=('H','mm'), required_thickness_mm=('I','mm'))
+                optional = {
+                    'adopted_rate_mm_year': ('O', 'mm/year', 'O3', 'SELECTED'),
+                    'selected_interval_years': ('Q', 'year', 'Q2', 'INTERVYR'),
+                    'forecast_thickness_mm': ('R', 'mm', 'R2', 'TINMAWPMM'),
+                    'forecast_pressure_psi': ('S', 'psi', 'S2', 'MAWPPSI'),
+                }
+                for field, (column, unit, header, expected) in optional.items():
+                    if _token(ws[header].value) == expected:
+                        columns[field] = (column, unit)
+                for reading in readings:
+                    if reading.inspection_date != current_date:
+                        continue
+                    col, row_text = re.fullmatch(r'([A-Z]+)(\d+)', reading.source.cell).groups()
+                    record = _record(ws, cached[ws.title], digest, 'pipeline', reading.location_candidates[0],
+                                     int(row_text), dict(columns, current_mm=(col,'mm')), col+'4',
+                                     caption, 'Q', 'P')
+                    records.append(record)
+                continue
             if ws.title == 'Evaluation 2026' and 'ASME-VIII' in caption:
                 for section, start, end, required, rate, interval, life, dt in [('CMLS',5,23,'N','R','U','T','M4'),('NOZZLES',27,45,'S','V','Y','X','M26')]:
                     due = 'X' if section == 'CMLS' else 'AB'

@@ -322,6 +322,46 @@ def test_uploaded_workbook_family_is_detected_from_structure_not_staging_name(tm
     assert Workspace(s).state(opened['comparison_id'])['workspace']['counts']['locations']==37
 
 
+def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(tmp_path):
+    from datetime import date
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Evaluation Nov-26'
+    sheet['F1'] = 'According to API-570 & ASME B31.3'
+    sheet.append(['JOINT', 'BAND', 'MATERIAL', 'Pd (Psi)', 'OD\n(in)', 'S (Psi)',
+                  'tstrc. (mm)\nAPI 574', 'tPd (mm)', 'tReq (mm)', 'Min. UT Reading (mm)'])
+    sheet.merge_cells('J2:M2')
+    sheet['L4'], sheet['M4'] = date(2018, 6, 20), date(2025, 7, 30)
+    sheet.append(['# 1', 'S', 'A106 B', 250, 8.625, 20000, 2.8, '=D5*E5', '=MAX(G5,H5)',
+                  None, None, 6.5, 6.4])
+    for joint, band in enumerate(('E', 'T', 'R'), start=2):
+        sheet.append([f'# {joint}', band, 'SA-234-WPB', 250, 8.625, 20000, 2.8,
+                      None, None, None, None, 6.5, 6.4])
+    path = tmp_path / 'inspection.xlsx'
+    book.save(path)
+
+    service = ProjectService(tmp_path / 'project')
+    source = service.add_source(path)
+    service.inspect(source.sha256)
+    workspace = Workspace(service)
+    opened = workspace.auto_open(source.sha256, service.workflow.revision())
+    rows = workspace.state(opened['comparison_id'])['workspace']['rows']
+    assert {row['current_cell']: row['geometry'] for row in rows} == {
+        'M5': 'straight_pipe', 'M6': 'elbow', 'M7': 'tee', 'M8': 'reducer',
+    }
+    row = next(row for row in rows if row['current_cell'] == 'M5')
+    assert row['current_cell'] == 'M5'
+    assert row['previous_id']
+    assert row['match_identity']['size'] == '8.0'
+    assert row['material'] == 'A106 B'
+    assert row['profile']['fields']['structural_minimum_mm']['value'] == 2.8
+    assert row['code_family'] == 'ASME B31.3'
+    assert row['code_edition'] is None
+    assert row['routing']['status'] == 'NEEDS_CODE_CONFIRMATION'
+
+
 def test_later_context_edit_cannot_reuse_a_previously_looked_up_stress(project):
     s,w,cid,_=project
     target=next(r for r in w.state(cid)['workspace']['rows'] if r['current_cell']=='K158')

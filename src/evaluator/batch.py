@@ -15,7 +15,7 @@ from evaluator.engineering.records import import_records,identity
 from evaluator.engineering.batch_rules import outputs,convert,VERSION
 from evaluator.engineering.draft import evaluate as pressure_thickness
 
-ADAPTER_VERSION='records-6'
+ADAPTER_VERSION='records-7'
 NUMERIC_OVERRIDES={'required_thickness_mm','adopted_rate_mm_year','structural_minimum_mm','allowance_mm','interval_fraction','interval_cap_years','selected_interval_years','forecast_years','forecast_factor','year_days','F_class','E_weld','T_temp','E_quality','W_reduction','Y_coefficient','F_design','E_joint'}
 PROFILE_FIELDS={'material','P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm','schedule','nps'}
 PROFILE_TEXT={'component','geometry','code_family','code_edition','segment','product_form'}
@@ -103,6 +103,9 @@ class BatchService:
         sheet=self._nominal_sheets[key]
         if not sheet:return None
         row=re.search(r'\d+',reading['cell'])[0]
+        if str(sheet['cells'].get('C2', {}).get('value', '')).strip().upper() == 'MATERIAL':
+            from evaluator.importing.ut_defaults import defaults
+            return defaults(sheet, reading['cell'], '').get('nps')
         raw=sheet['cells'].get('C'+row,{}).get('value')
         return str(raw).strip() if raw not in ('',None) else None
 
@@ -129,6 +132,14 @@ class BatchService:
                 assigned[items[0]['current']['observation_id']]=(candidates[0],'Unique component/point label proposal')
                 continue
             for item in items:
+                current = item['current']
+                same_row = [p for p in candidates if p['source_id'] == current['source_id']
+                            and p['sheet'] == current['sheet_name']
+                            and p['fields'].get('current_mm', {}).get('cell') == current['cell']]
+                if len(same_row) == 1 and same_row[0]['id'] not in used:
+                    assigned[current['observation_id']] = (same_row[0], 'Same worksheet and current UT cell')
+                    used.add(same_row[0]['id'])
+                    continue
                 nominal=self._nominal(item['current']);known=size_map.get(nominal,set())
                 compatible=[p for p in candidates if str(_num(_value(p,'D_outside_in'),True)) in known]
                 if len(compatible)==1 and compatible[0]['id'] not in used:
@@ -264,6 +275,17 @@ class BatchService:
             value=raw(factor)
             if value not in ('',None):inputs[factor]=str(value)
         gas_2025 = profile.get('code_family') == 'ASME B31.8' and profile.get('code_edition') == '2025'
+        if (profile.get('code_family') == 'ASME B31.4' and profile.get('code_edition') == '2025'
+                and profile.get('geometry') == 'straight_pipe'
+                and 'SMYS_MPa' not in inputs and config.get('confirm_rules')):
+            from evaluator.engineering.reference_rules import LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE
+            grade = LIQUID_PIPE_SMYS.get(raw('material'))
+            if grade:
+                smys, line = grade
+                inputs['SMYS_MPa'] = str(convert(smys, 'psi', 'MPa'))
+                trace['SMYS_MPa'] = dict(reference=f'{LIQUID_PIPE_SMYS_REFERENCE}, line {line}',
+                                        value_psi=smys, converted=inputs['SMYS_MPa'], unit='MPa',
+                                        material=raw('material'))
         if gas_2025 and 'SMYS_MPa' not in inputs and config.get('confirm_rules'):
             from evaluator.engineering.reference_rules import GAS_SMYS_REFERENCE, gas_pipe_smys
             smys = gas_pipe_smys(raw('material'), profile.get('product_form'))

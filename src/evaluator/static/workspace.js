@@ -33,7 +33,7 @@ function codeEditor(id){const r=workspace().rows.find(x=>x.current_id===id);if(!
 <option value="code" ${r.input_trace?.overrides?.pipe_method==='code'?'selected':''}>B31.3 with entered E, W and Y</option>
 </select></label><p id="methodHint" aria-live="polite"></p>
 <div class="fields">
-<label>Reference material<select id="referenceMaterial"></select></label>
+<label>Material from code library<select id="referenceMaterial"></select></label>
 <label>Reference temperature<select id="referenceTemperature"></select></label>
 </div><label>Basic B31.8 pipeline class (only where the basic factor applies)
 <select name="gas_basic_class"><option value="manual">Use manual factor</option>
@@ -41,10 +41,9 @@ ${['1 Division 1','1 Division 2','2','3','4'].map(value=>`<option value="${value
 <output id="referencePreview" aria-live="polite"></output>
 <label>Material specification and grade<input name="material" value="${esc(r.material||'')}" placeholder="SA-516 Grade 70"></label>
 <label>Product form<select name="product_form"><option value="">Choose…</option><option value="plate" ${r.profile?.product_form==='plate'?'selected':''}>Plate</option>${['LFW','HFW','SMLS','SAWL','SAWH','COWL','COWH'].map(form=>`<option value="${form}" ${r.profile?.product_form===form?'selected':''}>${form}</option>`).join('')}</select></label>
-<p id="vesselLookupHint">Vessel stress lookup: SA-516 Grade 70 plate, VIII-1 2025. Enter an exact supported temperature (104, 149, 212, 257, 302, 392 or 482 °F), or supply a reviewed stress.</p>
 ${Object.entries({D_outside_in:'Outside diameter (in)',nominal_thickness_mm:'Nominal wall (mm)',adopted_rate_mm_year:'Adopted corrosion rate (mm/year)',temperature_F:'Design metal temperature (°F)',D_inside_in:'Inside diameter (in)',P_psi:'Design pressure (psi)',E_joint:'Joint efficiency',structural_minimum_mm:'Structural minimum (mm)',E_quality:'Pipe quality factor',W_reduction:'Weld strength reduction factor',Y_coefficient:'Y coefficient',F_class:'Gas pipeline class factor',F_design:'Liquid pipeline design factor',E_weld:'Pipeline weld factor',T_temp:'Gas pipeline temperature factor',SMYS_psi:'Pipeline SMYS (psi)',interval_fraction:'Inspection interval fraction of remaining life',interval_cap_years:'Inspection interval cap (years)'}).map(([key,label])=>`<label>${label}<input type="number" step="any" name="${key}" value="${esc(r.input_trace?.overrides?.[key]??r.profile?.fields?.[key]?.value??'')}"></label>`).join('')}
-<label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi"></label>
-<label>Manual allowable stress reference<input name="material_reference"></label>
+<label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi" value="${esc(r.input_trace?.overrides?.S_allow_psi??'')}"></label>
+<label>Manual material property reference<input name="material_reference" value="${esc(r.input_trace?.overrides?.material_reference??'')}"></label>
 </fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'));}
 function bindReferenceSelectors(form) {
     const material = $('referenceMaterial');
@@ -58,7 +57,7 @@ function bindReferenceSelectors(form) {
         const geometry = get('geometry');
         const product = get('code_family') === 'ASME VIII-1'
             ? (['shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head'].includes(geometry)
-                ? get('product_form') : '')
+                ? get('product_form') || 'plate' : '')
             : geometry === 'straight_pipe' ? 'pipe'
             : ['elbow','tee','reducer','branch'].includes(geometry) ? 'fitting' : '';
         return state.material_stresses.filter(row => row.code_family === get('code_family') &&
@@ -73,6 +72,7 @@ function bindReferenceSelectors(form) {
         const gas = straight && code === 'ASME B31.8';
         const liquid = straight && code === 'ASME B31.4';
         const process = straight && code === 'ASME B31.3';
+        const processFitting = code === 'ASME B31.3' && ['elbow','tee','reducer','branch'].includes(geometry);
         const simplified = process && get('pipe_method') !== 'code';
         const supported = vessel || gas || liquid || process;
         const fields = new Set();
@@ -80,6 +80,7 @@ function bindReferenceSelectors(form) {
             if (condition) for (const key of keys.split(' ')) fields.add(key);
         };
         include(supported, 'material P_psi structural_minimum_mm adopted_rate_mm_year');
+        include(processFitting, 'material temperature_F');
         include(supported && !simplified, 'interval_fraction interval_cap_years');
         include(gas || liquid || process, 'D_outside_in');
         include(process, 'pipe_method');
@@ -87,7 +88,8 @@ function bindReferenceSelectors(form) {
         include(process && !simplified, 'E_quality W_reduction Y_coefficient');
         include(vessel || gas, 'product_form');
         include(process || vessel || gas, 'temperature_F');
-        include(process || vessel, 'S_allow_psi material_reference');
+        include(process || vessel, 'S_allow_psi');
+        include(supported, 'material_reference');
         include(vessel, 'D_inside_in E_joint');
         include(gas || liquid, 'SMYS_psi E_weld');
         include(gas, 'gas_basic_class F_class T_temp');
@@ -96,10 +98,9 @@ function bindReferenceSelectors(form) {
             control.disabled = !fields.has(control.name);
             control.closest('label').hidden = control.disabled;
         }
-        const lookup = process || vessel || gas;
+        const lookup = supported || processFitting;
         material.closest('label').hidden = !lookup;
-        temperature.closest('label').hidden = !lookup;
-        $('vesselLookupHint').hidden = !vessel;
+        temperature.closest('label').hidden = !(process || processFitting || vessel || gas);
         preview.hidden = !lookup;
         $('methodHint').textContent = supported ? '' : code === 'API 650'
             ? 'Use Tank assessments for tank inputs and calculations.'
@@ -109,16 +110,26 @@ function bindReferenceSelectors(form) {
     async function refresh() {
         showMethodFields();
         const current = ++generation;
+        const editions = {'ASME B31.3':'2024', 'ASME B31.4':'2025', 'ASME B31.8':'2025', 'ASME VIII-1':'2025'};
+        const libraryEdition = editions[get('code_family')];
+        field('code_edition').placeholder = libraryEdition ? 'Library edition: ' + libraryEdition : 'Enter source edition';
         const rows = availableRows();
         const gas = get('code_family') === 'ASME B31.8' && get('code_edition') === '2025' &&
             get('geometry') === 'straight_pipe';
         const materials = [...new Set(rows.map(row => row.material))];
         if (gas) materials.push(...state.gas_pipe_grades.map(grade => 'API 5L ' + grade));
-        options(material.id, materials.map(value => [value, value]), get('material'), 'Choose or enter manually');
+        const liquid = get('code_family') === 'ASME B31.4' && get('code_edition') === '2025' &&
+            get('geometry') === 'straight_pipe';
+        if (liquid) materials.push(...state.liquid_pipe_grades);
+        options(material.id, materials.map(value => [value, value]), get('material'),
+            materials.length ? 'Choose a grade' : !get('code_edition') ? 'Enter the code edition first' : 'No library grades for this selection');
+        material.disabled = !materials.length;
         const points = rows.filter(row => row.material === get('material')).map(row => [
-            row.temperature_F, row.temperature_C ? row.temperature_C + ' °C' : row.temperature_F + ' °F']);
+            row.temperature_F, row.temperature_F + ' °F']);
         if (gas) points.push(...[250,300,350,400,450].map(value => [String(value), value + ' °F']));
-        options(temperature.id, points, get('temperature_F'), 'Choose or enter manually');
+        options(temperature.id, points, get('temperature_F'), points.length ? 'Choose a temperature' : 'Enter temperature below');
+        temperature.disabled = !points.length;
+        if (preview.hidden) return;
         preview.textContent = 'Checking reference values…';
         try {
             const response = await fetch('/api/workspace/reference_preview', {
@@ -135,10 +146,25 @@ function bindReferenceSelectors(form) {
             if (current === generation) preview.textContent = error.message;
         }
     }
+    function clearMaterialProperties() {
+        for (const key of ['S_allow_psi','SMYS_psi','material_reference']) field(key).value = '';
+    }
+
+    field('code_edition').addEventListener('input', () => {
+        clearMaterialProperties();
+        refresh();
+    });
     form.addEventListener('change', event => {
         if (event.target === field('gas_basic_class') && get('gas_basic_class') !== 'manual') field('F_class').value = '';
-        if (event.target === material && material.value) field('material').value = material.value;
+        if (event.target === material && material.value) {
+            field('material').value = material.value;
+            if (get('code_family') === 'ASME VIII-1' && !get('product_form')) field('product_form').value = 'plate';
+        }
         if (event.target === temperature && temperature.value) field('temperature_F').value = temperature.value;
+        if (['code_family','geometry','product_form','material','temperature_F'].includes(event.target.name) ||
+            event.target === material || event.target === temperature) {
+            clearMaterialProperties();
+        }
         refresh();
     });
     refresh();
