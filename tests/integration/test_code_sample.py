@@ -50,9 +50,11 @@ def test_api570_has_its_own_rates_class_interval_and_pressure_forecast():
     assert 'Long-term corrosion rate</dt><dd>0.24 mm/year' in result
     assert 'Maximum UT interval</dt><dd>5 years' in result
     assert 'Projected wall</dt><dd>10 mm' in result
-    assert 'Wall used for next-inspection mawp candidate</dt><dd>9.5 mm' in result
+    assert 'Estimated corrosion loss by next inspection</dt><dd>1.2 mm' in result
+    assert 'API 570 MAWP corrosion deduction (2 × estimated loss)</dt><dd>2.4 mm' in result
+    assert 'Wall used for next-inspection mawp candidate</dt><dd>8.3 mm' in result
     assert 'Current MAWP candidate</dt><dd>2033.1093 psi' in result
-    assert 'Next-inspection MAWP candidate</dt><dd>1796.9027 psi' in result
+    assert 'Next-inspection MAWP candidate</dt><dd>1562.831 psi' in result
     assert 'at most 5 years' in panel(rule, dict(form, next_years='6'))
 
     short = dict(form, structural_mm='10.3', next_years='')

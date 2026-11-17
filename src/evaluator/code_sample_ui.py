@@ -79,7 +79,7 @@ def _form_label(key, label):
 
 
 PIPE_RULES = ('B31_3_304_1_2', 'B31_4_403_2_1', 'B31_8_841_1_1')
-API570_REFERENCE = 'API 570, 5th edition with Addendum 1, §§6.3.3, 7.1, 7.2 and 7.6; Table 1 (PDF p. 53)'
+API570_REFERENCE = 'API 570, 5th edition with Addendum 1, §§6.3.3, 7.1, 7.2, 7.5 and 7.6; Table 1 (PDF p. 53); Annex C (PDF p. 87)'
 STRESS_CONTEXTS = {
     PIPE_RULES[0]: ('ASME B31.3', '2024', 'pipe', 'S_B313_MPa'),
     'VIII_UG27_HOOP': ('ASME VIII-1', '2025', 'plate', 'S_allow_MPa'),
@@ -325,12 +325,17 @@ def _api570_result(inputs, annex_tables):
         years = Decimal(inputs.get('next_years') or cap)
         if not years.is_finite() or years <= 0 or years > cap:
             raise ValueError(f'Enter an interval above zero and at most {numeric(cap)} years, or leave it blank.')
-        projected = current - rate * years
+        estimated_loss = rate * years
+        projected = current - estimated_loss
+        mawp_wall = current - 2 * estimated_loss
         entries.extend([
             ('Remaining life', life, 'years'), ('Maximum UT interval', cap, 'years'),
-            ('Selected next inspection interval', years, 'years'), ('Projected wall', projected, 'mm'),
+            ('Selected next inspection interval', years, 'years'),
+            ('Estimated corrosion loss by next inspection', estimated_loss, 'mm'),
+            ('Projected wall', projected, 'mm'),
+            ('API 570 MAWP corrosion deduction (2 × estimated loss)', 2 * estimated_loss, 'mm'),
         ])
-        for label, wall in [('Current MAWP candidate', current), ('Next-inspection MAWP candidate', projected)]:
+        for label, wall in [('Current MAWP candidate', current), ('Next-inspection MAWP candidate', mawp_wall)]:
             try:
                 pressure, _ = pressure_at_thickness(wall - deduction, pipe_rule, inputs)
             except (ValueError, DecimalException) as exc:
@@ -342,6 +347,9 @@ def _api570_result(inputs, annex_tables):
     messages = ''.join(f'<p class="warn">{E(note)}</p>' for note in notes)
     return (f'<div class="sample-result" role="status"><h3>Draft API 570 piping assessment</h3>'
             f'<dl>{rows}</dl>{messages}<p>Structural thickness basis: {E(structural_basis)}</p>'
+            '<p>The current MAWP candidate uses the measured wall. The continued-use MAWP candidate uses '
+            'measured wall minus twice the estimated loss to the next inspection (§7.5). '
+            'Any entered wall deduction is also applied to both pressure checks.</p>'
             f'<p>{E(API570_REFERENCE)}</p><p>{E(check["source_reference"])}</p></div>')
 
 
