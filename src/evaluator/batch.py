@@ -18,9 +18,9 @@ from evaluator.engineering.draft import evaluate as pressure_thickness
 ADAPTER_VERSION='records-6'
 NUMERIC_OVERRIDES={'required_thickness_mm','adopted_rate_mm_year','structural_minimum_mm','allowance_mm','interval_fraction','interval_cap_years','selected_interval_years','forecast_years','forecast_factor','year_days','F_class','E_weld','T_temp','E_quality','W_reduction','Y_coefficient','F_design','E_joint'}
 PROFILE_FIELDS={'material','P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm','schedule','nps'}
-PROFILE_TEXT={'component','geometry','code_family','code_edition','segment'}
+PROFILE_TEXT={'component','geometry','code_family','code_edition','segment','product_form'}
 NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm'})
-TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase'}
+TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase','product_form'}
 TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
 TEXT_OVERRIDES.update({'code_asset_type'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
@@ -153,7 +153,7 @@ class BatchService:
     @staticmethod
     def _group(profile):
         if not profile:return 'unmapped'
-        key=[profile.get(k) for k in ('code_family','code_edition','geometry')]+[_value(profile,k) for k in ('material','S_allow_psi','SMYS_psi','P_psi')]
+        key=[profile.get(k) for k in ('code_family','code_edition','geometry','product_form')]+[_value(profile,k) for k in ('material','S_allow_psi','SMYS_psi','P_psi')]
         return _hash(key)[:16]
 
     def _select_sheet(self,comp,profiles,selected):
@@ -224,7 +224,7 @@ class BatchService:
                 config.setdefault('row_overrides',{}).setdefault(identifier,{}).update(row_values)
             # Compare with the previous effective context, not just the original
             # source record: earlier lookup/manual overrides must also expire.
-            context_keys=('material','temperature_F','code_family','code_edition','geometry')
+            context_keys=('material','temperature_F','code_family','code_edition','geometry','product_form')
             for row in preview['rows']:
                 oid=row['current_id']
                 if not oid or not (oid in row_ids or oid in per_row_values or row['group_id'] in group_ids):continue
@@ -295,7 +295,7 @@ class BatchService:
             if 'code_evidence' in override:p['code_evidence']=override['code_evidence']
             if 'code_owner_confirmed' in override:p['code_owner_confirmed']=override['code_owner_confirmed']=='yes'
             if 'code_asset_type' in override:p['code_asset_type']=override['code_asset_type']
-            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry'))
+            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry','product_form'))
             if context_changed:
                 for key in ('S_allow_psi','SMYS_psi'):
                     if key not in override:p.setdefault('fields',{})[key]=dict(value=None,kind='invalidated',basis='Material/code/temperature changed; property must be supplied for this context')

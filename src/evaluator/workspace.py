@@ -92,12 +92,12 @@ class Workspace:
         cid=cid or (comparisons[0]['id'] if comparisons else None)
         base={'revision':self.flow.revision()}
         if not partial:
-            base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. Other contexts require a checked record; workbook properties remain proposals.'])
+            base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. VIII-1 2025 lookup covers SA-516 Grade 70 plate at selected exact II-D Metric table points. Other contexts require a checked record; workbook properties remain proposals.'])
             from evaluator.project_cleanup import latest_backup
             base['cleanup_backup_available']=latest_backup(self.service) is not None
         if not cid:return dict(base,workspace=None)
         comp=self.flow.comparison(cid)
-        preview=self.service.batch.preview(cid,sheet,dict(basis='row7',confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
+        preview=self.service.batch.preview(cid,sheet,dict(basis=self.service.batch.settings(cid).get('basis','row7'),confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
         config=preview['settings']
         profiles=preview['profiles']
         rows=preview['rows']
@@ -166,8 +166,8 @@ class Workspace:
             if dimension_key:
                 d=dimension(*dimension_key)
                 values.update(nps=d['nps'],schedule=d['schedule'],D_outside_in=d['od_in'],nominal_thickness_mm=d['nominal_mm'],dimension_reference=f"{d['reference']}; PDF page {d['pdf_page']}; SHA256 {d['source_sha256']}")
-            stress=material_stress(values.get('material'),values.get('geometry'),values.get('code_family'),values.get('code_edition'),values.get('temperature_F'))
-            if stress and 'S_allow_psi' not in values and 'material' in values:
+            stress=material_stress(values.get('material'),values.get('geometry'),values.get('code_family'),values.get('code_edition'),values.get('temperature_F'),values.get('product_form'))
+            if stress and 'S_allow_psi' not in values:
                 values.update(S_allow_psi=stress['S_allow_psi'],material_reference=stress['reference']+'; SHA256 '+stress['source_sha256'])
             if clear:
                 preview=self.service.batch.preview(cid,sheet)
@@ -221,7 +221,10 @@ class Workspace:
 
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.
-        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis='row7',workspace_review=True))
+        basis = basis or self.service.batch.settings(cid).get('basis', 'row7')
+        if basis not in {'row7', 'recalculate', 'provided'}:
+            raise ValueError('Unsupported calculation basis')
+        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis=basis,workspace_review=True))
 
     def _refresh(self, db, comp, changed_ids):
         readings={r['observation_id']:r for r in self.service.readings()}
