@@ -18,21 +18,21 @@ PIPE = (
     ('D_outside_mm', 'Outside diameter (mm)', '219.075'),
 )
 PRESETS = {
-    'B31_3_304_1_2': ('B31.3 · A106 B, NPS 8 Sch 80', PIPE + (
+    'B31_3_304_1_2': ('B31.3 · Straight process piping', PIPE + (
         ('S_B313_MPa', 'Allowable stress S (MPa)', '137.895'),
         ('E_quality', 'Quality factor E', '1'), ('W_reduction', 'Weld reduction factor W', '1'),
         ('Y_coefficient', 'Coefficient Y', '0.4'))),
     'B31_4_403_2_1': ('B31.4 · Liquid transmission', PIPE + (
         ('SMYS_MPa', 'Specified minimum yield strength (MPa)', '358.5274'),
         ('F_design', 'Design factor F', '0.72'), ('E_weld', 'Weld factor E', '1'))),
-    'B31_8_841_1_1': ('B31.8 · X52 seamless, Class 3', PIPE + (
+    'B31_8_841_1_1': ('B31.8 · Gas transmission', PIPE + (
         ('SMYS_MPa', 'Specified minimum yield strength (MPa)', '359.9063'),
         ('F_class', 'Class design factor F', '0.5'), ('E_weld', 'Weld factor E', '1'),
         ('T_temp', 'Temperature factor T', '1'))),
-    'VIII_UG27_HOOP': ('VIII-1 · SA-516 Grade 70 cylindrical shell', (
+    'VIII_UG27_HOOP': ('VIII-1 · Cylindrical shell', (
         ('P_MPa', 'Design pressure (MPa)', '1.0342'), ('R_inside_mm', 'Inside radius (mm)', '609.6'),
         ('S_allow_MPa', 'Allowable stress S (MPa)', '138'), ('E_joint', 'Joint efficiency E', '0.85'))),
-    'VIII_UG32_ELLIP': ('VIII-1 · SA-516 Grade 70 2:1 ellipsoidal head', (
+    'VIII_UG32_ELLIP': ('VIII-1 · 2:1 ellipsoidal head', (
         ('P_MPa', 'Design pressure (MPa)', '1.0342'), ('D_inside_mm', 'Inside diameter (mm)', '1219.2'),
         ('S_allow_MPa', 'Allowable stress S (MPa)', '138'), ('E_joint', 'Joint efficiency E', '0.85'))),
     'VIII_UG32_TORI': ('VIII-1 · Standard torispherical head', (
@@ -307,16 +307,16 @@ def _api570_result(inputs):
 
 def _api570_controls(submitted):
     values = submitted or {}
-    def select(name, label, options, default):
-        selected = values.get(name, default)
+    def select(name, label, options):
+        selected = values.get(name, '')
         options = ''.join(f'<option value="{key}"{" selected" if key == selected else ""}>{text}</option>'
                           for key, text in options)
-        return f'<label>{label}<select name="{name}" required>{options}</select></label>'
+        return f'<label>{label}<select name="{name}" required><option value="">Choose…</option>{options}</select></label>'
 
     return (
-        select('service_class', 'API 570 piping service class', [(str(i), f'Class {i}') for i in (1, 2, 3)], '2')
+        select('service_class', 'API 570 piping service class', [(str(i), f'Class {i}') for i in (1, 2, 3)])
         + select('rate_basis', 'Governing corrosion-rate basis',
-                 [('short', 'Short-term UT'), ('long', 'Long-term UT'), ('reviewed', 'Reviewed manual rate')], 'short')
+                 [('short', 'Short-term UT'), ('long', 'Long-term UT'), ('reviewed', 'Reviewed manual rate')])
         + field('reviewed_rate', 'Reviewed manual rate (mm/year)', values.get('reviewed_rate', ''), 'number', False)
         + field('next_years', 'Next inspection interval (years), blank uses maximum', values.get('next_years', ''), 'number', False)
         + '<label><input type="checkbox" name="short_life_option" value="yes"'
@@ -355,19 +355,18 @@ def _result(rule, inputs):
 
 def panel(sample='', submitted=None):
     rule = sample if sample in PRESETS else next(iter(PRESETS))
-    controls = []
-    for key, label, default in PRESETS[rule][1]:
-        value = default if submitted is None else submitted.get(key, '')
-        controls.append(field(key, label, value, kind='number'))
+    values = submitted or {}
+    controls = [field(key, label, values.get(key, ''), kind='number')
+                for key, label, _ in PRESETS[rule][1]]
     if rule not in {'CR_ST', 'API570_PIPE'}:
         controls.append(field('measured_mm', 'Current measured thickness (mm)',
-                              (submitted or {}).get('measured_mm', '12'), kind='number', required=False))
+                              (submitted or {}).get('measured_mm', ''), kind='number', required=False))
     if rule in (*PIPE_RULES, 'API570_PIPE'):
         controls.append(field('nominal_mm', 'Nominal wall (mm), reference only',
                               (submitted or {}).get('nominal_mm', ''), kind='number', required=False))
     if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST'}:
         controls.append(field('wall_deduction_mm', 'Wall deduction for pressure check (mm)',
-                              (submitted or {}).get('wall_deduction_mm', '0'), kind='number', required=False))
+                              (submitted or {}).get('wall_deduction_mm', ''), kind='number', required=False))
     if rule == 'API570_PIPE':
         controls.append(_api570_controls(submitted))
     forecast_fields = ''
@@ -391,7 +390,7 @@ def panel(sample='', submitted=None):
             output = f'<p class="warn" role="alert">{E(exc)}</p>'
     return (
         '<section id="sample-calculator"><h2>Sample calculator</h2>'
-        '<p>Choose a code, then edit the example values or use the reference dropdowns. Samples do not save to your project. '
+        '<p>Choose a code, fill in your inputs, and use the reference dropdowns for available table values. Samples do not save to your project. '
         'The thickness comparison covers the equations shown. Review other applicable limits separately.</p>'
         + _code_picker(rule)
         + f'<h3>{E(PRESETS[rule][0].split(" · ", 1)[1])}</h3>'

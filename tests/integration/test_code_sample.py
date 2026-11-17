@@ -48,3 +48,19 @@ def test_api570_has_its_own_rates_class_interval_and_pressure_forecast():
     short = dict(form, structural_mm='10.3', next_years='')
     assert 'Maximum UT interval</dt><dd>1.5 years' in panel(rule, short)
     assert 'Maximum UT interval</dt><dd>2 years' in panel(rule, dict(short, short_life_option='yes'))
+
+
+def test_sample_forms_start_with_blank_manual_inputs_and_keep_submitted_values():
+    import re
+
+    for rule in PRESETS:
+        inputs = re.findall(r'<input type="number"[^>]+ value="([^"]*)"', panel(rule))
+        assert inputs and not any(inputs), rule
+
+    api570 = panel('API570_PIPE')
+    assert '<select name="service_class" required><option value="">' in api570
+    assert '<select name="rate_basis" required><option value="">' in api570
+    assert ' selected>Class 2' not in api570
+    refilled = panel('API570_PIPE', {'measured_mm': '11.2', 'service_class': '2'})
+    assert 'name="measured_mm" value="11.2"' in refilled
+    assert 'value="2" selected>Class 2' in refilled
