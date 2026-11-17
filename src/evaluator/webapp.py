@@ -31,6 +31,10 @@ def make_handler(service):
             self._reply('',303,'text/plain',(('Location','/?'+urlencode({'notice':message})),))
         def do_GET(self):
             path=self.path.split('?',1)[0]
+            if path == '/tanks':
+                from evaluator.tank_ui import page as tank_page
+                self._reply(tank_page(service))
+                return
             if path not in {'/','/workspace','/api/workspace','/workspace/results.csv','/source-workbook','/sheet-object','/sheet'} and not path.startswith('/assets/'):
                 self._reply('Not found',404,'text/plain');return
             if path=='/workspace/results.csv':
@@ -92,6 +96,20 @@ def make_handler(service):
                 origin=self.headers.get('Origin')
                 if origin and origin not in {'http://'+expected_host,f'http://localhost:{self.server.server_port}'}: raise ValueError('Cross-origin project changes are blocked')
                 path=self.path.split('?',1)[0]
+                if path == '/tanks':
+                    from evaluator.tanks import save
+                    from evaluator.tank_ui import page as tank_page
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 32_768:
+                        raise ValueError('Invalid tank form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    try:
+                        save(service.workflow, form)
+                    except ValueError as exc:
+                        self._reply(tank_page(service, str(exc)), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/tanks'),))
+                    return
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return
                 if path.startswith('/api/workspace/'):
