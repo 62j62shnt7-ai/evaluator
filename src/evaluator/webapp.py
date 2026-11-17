@@ -31,6 +31,19 @@ def make_handler(service):
             self._reply('',303,'text/plain',(('Location','/?'+urlencode({'notice':message})),))
         def do_GET(self):
             path=self.path.split('?',1)[0]
+            if path == '/workspace/calculation':
+                from evaluator.calculation_trace_ui import page as calculation_page
+
+                params = parse_qs(urlsplit(self.path).query)
+                result_id = params.get('result', [''])[0]
+                row_id = params.get('row', [''])[0]
+                batch = next((entry for entry in service.batch.results() if entry['id'] == result_id), None)
+                row = next((entry for entry in batch['rows'] if entry['id'] == row_id), None) if batch else None
+                if row is None:
+                    self._reply('Saved calculation not found', 404, 'text/plain')
+                else:
+                    self._reply(calculation_page(batch, row))
+                return
             if path == '/codes':
                 from evaluator.code_guide import page as code_guide
                 self._reply(code_guide())

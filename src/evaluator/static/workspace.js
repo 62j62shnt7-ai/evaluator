@@ -222,7 +222,40 @@ function readiness(row) {
     return {missing, notes, sourced};
 }
 
+function suggestedGroups(rows) {
+    const groups = new Map();
+    for (const row of rows) {
+        const facts = [row.segment, row.code_family, row.code_edition, row.geometry, row.material];
+        if (facts.some(value => !value || value === 'unknown') || !row.code_owner_confirmed) continue;
+        const size = [row.nps, row.schedule, row.profile?.fields?.D_outside_in?.value,
+            row.profile?.fields?.D_inside_in?.value, row.profile?.product_form,
+            row.profile?.fields?.temperature_F?.value, row.profile?.fields?.P_psi?.value,
+            row.code_asset_type, row.code_evidence];
+        const key = JSON.stringify([...facts,...size]);
+        if (!groups.has(key)) groups.set(key, {label:facts.join(' · '), ids:[]});
+        groups.get(key).ids.push(row.current_id);
+    }
+    return [...groups.values()].filter(group => group.ids.length > 1);
+}
+
+function renderSuggestedGroups(rows) {
+    const groups = suggestedGroups(rows);
+    const container = $('suggestedGroups');
+    container.innerHTML = groups.length
+        ? '<h3>Suggested selections for shared inputs</h3><p>Review the selected rows before applying a change.</p>' +
+          groups.map((group, index) => `<button data-suggested-group="${index}">Select ${group.ids.length} · ${esc(group.label)}</button>`).join(' ')
+        : '';
+    container.onclick = event => {
+        const button = event.target.closest('[data-suggested-group]');
+        if (!button) return;
+        selected = new Set(groups[Number(button.dataset.suggestedGroup)].ids);
+        table();
+        $('inputScope').scrollIntoView({block:'nearest'});
+    };
+}
+
 function renderReadiness(rows = visible()) {
+    renderSuggestedGroups(rows);
     const records = rows.map(row => ({row, ...readiness(row)}));
     const outstanding = records.filter(record => record.missing.length || record.notes.length).length;
     $('readinessCount').textContent = '· ' + outstanding + ' of ' + records.length + ' shown need attention';
@@ -245,10 +278,34 @@ function dimension(){return state?.dimensions.find(d=>d.family===$('pipeFamily')
 function values(){const out=Object.fromEntries([...new FormData($('batchForm'))].filter(([k,v])=>v!==''&&k!=='materialCustom'));if($('materialGrade').value==='Custom…'){out.material=$('materialCustom').value.trim();}return out;}
 function requireSelected(){if(selected.size)return true;message('Select one or more readings first.',true);return false;}
 function detail(id){const r=workspace().rows.find(r=>r.id===id);if(!r)return;$('drawer').hidden=false;$('details').innerHTML=`<h2>${esc(r.location)}</h2><button id="editRow">Edit this row only</button>${r.current_id&&!r.previous_id?'<button id="pairRow">Use previous UT on same source row</button>':''}<p>Previous: ${esc(r.previous_inspection_date)} · ${esc(r.previous_cell)}<br>Current: ${esc(r.inspection_date)} · ${esc(r.current_cell)}</p><p>CR = (previous − current) / ((current date − previous date) / 365). Use selected CR only when calculated CR ≤ 0.</p><p>Required = MAX(pressure thickness, structural thickness).<br>Life = (current − required) / CR used.<br>Interval = MIN(10, life / 2).<br>t in MAWP = current − 2 × CR used × interval.</p><pre>${esc(JSON.stringify(r.row7||r.issues,null,2))}</pre>`;if($('pairRow'))$('pairRow').onclick=async()=>{await action('pair',{id:r.current_id});$('drawer').hidden=true;};$('editRow').onclick=()=>{selected=new Set([r.current_id]);$('batchForm').reset();const i=r.input_trace?.inputs||{};const fields={material:i.material,P_psi:i.pd_psi,D_outside_in:i.od_in,nominal_thickness_mm:i.nominal_mm,structural_minimum_mm:i.structural_mm,adopted_rate_mm_year:i.selected_cr,segment:r.segment};for(const [key,value] of Object.entries(fields))$('batchForm').elements.namedItem(key).value=value??'';dimensions();$('drawer').hidden=true;table();};}
-function results(){const w=workspace();if(!w)return;const result=w.results[0], codeBased=result&&!result.stale&&['assigned','recalculate'].includes(result.settings?.basis);
-const shown=codeBased?result.rows.filter(r=>r.current_id):w.rows;
-const ready=shown.filter(r=>codeBased?r.pressure_thickness_mm!=null:r.row7);
-$('codeResults').innerHTML=codeBased?'<table><thead><tr><th>Location</th><th>Method</th><th>S used (psi)</th><th>Stress source</th><th>Pressure thickness (mm)</th><th>Required thickness (mm)</th><th>Corrosion rate (mm/year)</th><th>Remaining life (years)</th><th>Pressure at end of remaining life (MPa)</th></tr></thead><tbody>'+ready.map(r=>`<tr><td>${esc(r.location)}</td><td>${esc(r.rule)}</td><td>${num(r.profile?.fields?.S_allow_psi?.value)}</td><td>${esc(r.profile?.fields?.S_allow_psi?.basis||'See component inputs')}</td><td>${num(r.pressure_thickness_mm)}</td><td>${num(r.required_thickness_mm)}</td><td>${num(r.apparent_rate_mm_year)}</td><td>${num(r.remaining_life_years)}</td><td>${num(r.mawp_MPa)}</td></tr>`).join('')+'</tbody></table>':'';$('metrics').innerHTML=`<div class="metric">${w.rows.length} locations</div><div class="metric">${ready.length} draft calculations</div><div class="metric">${w.rows.length-ready.length} need inputs or review</div>`;$('resultSummary').textContent=`${ready.length} of ${w.rows.length} locations have DRAFT / NOT VALIDATED calculations. These are not engineering dispositions.`;$('exports').innerHTML=result&&!result.stale&&['assigned','recalculate','row7'].includes(result.settings?.basis)?`<a href="/workspace/results.csv?${new URLSearchParams({result:result.id})}">Download evaluation CSV</a>`:'Calculate ready locations to save and export the current results.';$('reviewSummary').innerHTML=shown.filter(r=>!ready.includes(r)).map(r=>`<li>${esc(r.location)}: ${esc(r.issues.join('; '))}</li>`).join('')||'<li>No missing inputs.</li>';}
+function results() {
+    const w = workspace();
+    if (!w) return;
+    const result = w.results[0];
+    const current = result && !result.stale;
+    const savedRows = current ? result.rows.filter(row => row.current_id) : [];
+    const ready = savedRows.filter(row => row.pressure_thickness_mm != null);
+    const traceLink = row => `<a href="/workspace/calculation?${new URLSearchParams({result:result.id,row:row.id})}">How was this calculated?</a>`;
+    $('codeResults').innerHTML = ready.length ? `<table><thead><tr><th>Location</th><th>Method</th>
+        <th>Pressure thickness (mm)</th><th>Required thickness (mm)</th><th>Corrosion rate (mm/year)</th>
+        <th>Remaining life (years)</th><th>Pressure candidate (MPa)</th><th>Details</th></tr></thead><tbody>
+        ${ready.map(row => `<tr><td>${esc(row.location)}</td><td>${esc(row.rule)}</td>
+        <td>${num(row.pressure_thickness_mm)}</td><td>${num(row.required_thickness_mm)}</td>
+        <td>${num(row.apparent_rate_mm_year)}</td><td>${num(row.remaining_life_years)}</td>
+        <td>${num(row.mawp_MPa)}</td><td>${traceLink(row)}</td></tr>`).join('')}</tbody></table>` : '';
+    $('metrics').innerHTML = `<div class="metric">${w.rows.length} locations</div>
+        <div class="metric">${ready.length} saved draft calculations</div>
+        <div class="metric">${w.rows.length - ready.length} without a saved pressure calculation</div>`;
+    $('resultSummary').textContent = current
+        ? `${ready.length} of ${savedRows.length} locations have DRAFT / NOT VALIDATED pressure calculations.`
+        : 'Calculate ready locations to save the current results.';
+    $('exports').innerHTML = current
+        ? `<a href="/workspace/results.csv?${new URLSearchParams({result:result.id})}">Download evaluation CSV</a>` : '';
+    const review = (current ? savedRows : w.rows).filter(row => row.issues?.length);
+    $('reviewSummary').innerHTML = review.map(row => `<li>${esc(row.location)}: ${esc(row.issues.join('; '))}
+        ${current ? traceLink(row) : ''}</li>`).join('') || '<li>No review items for the displayed rows.</li>';
+}
+
 document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>navigate(b.dataset.screen));$('source').onchange=sheets;$('openSheet').onclick=()=>{if(!$('source').value||!$('sheet').value)return message('Choose a workbook and UT sheet.',true);action('import',{source_id:$('source').value,sheet:$('sheet').value});};
 $('upload').onsubmit=async e=>{e.preventDefault();$('busy').hidden=false;try{const response=await fetch('/workspace/upload',{method:'POST',body:new FormData(e.target)}),data=await response.json();if(!response.ok)throw Error(data.error);cid=data.comparison_id||cid;await load();navigate(data.comparison_id?'workspace':'import');message(data.message||'Workbook imported.');}catch(e){message(e.message,true);}finally{$('busy').hidden=true;}};
 $('comparison').onchange=async()=>{cid=$('comparison').value;selected.clear();try{await load();}catch(e){message(e.message,true);}};

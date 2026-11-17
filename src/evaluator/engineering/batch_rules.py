@@ -81,7 +81,7 @@ def _pressure(net, rule, inputs):
     if abs(Decimal(checked['value'])-net) > max(abs(net), d(1))*d('1e-24'):
         raise ValueError('Pressure roundtrip outside numerical tolerance')
     return pressure, {'rule':rule, 'source_reference':REFERENCES[rule], 'basis':'inverse of '+checked['formula'],
-                      'net_thickness_mm':str(net), 'inputs':checked['inputs'],
+                      'net_thickness_mm':str(net), 'pressure_MPa':str(pressure), 'inputs':checked['inputs'],
                       'limitations':'Candidate arithmetic only; applicability, geometry and other loads require verification'}
 
 

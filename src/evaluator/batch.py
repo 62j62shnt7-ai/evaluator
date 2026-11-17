@@ -434,6 +434,7 @@ class BatchService:
             if supplied and p['code_edition']!=supplied:
                 issues.append('CODE_EDITION_REFERENCE_UNAVAILABLE')
                 if mode=='recalculate':rule=None
+        pressure_checks = []
         if mode=='recalculate':
             required=None;pressure=None
             if rule:
@@ -441,6 +442,7 @@ class BatchService:
                 for candidate in (('VIII_UG27_HOOP','VIII_UG27_LONG') if rule=='VIII_SHELL' else (rule,)):
                     try:
                         result=pressure_thickness(candidate,inputs)
+                        pressure_checks.append(result)
                         if result['value'] is not None:values.append(Decimal(result['value']))
                         else:issues.extend(result['issues'])
                     except (ValueError,InvalidOperation,KeyError) as exc:issues.append('PRESSURE_INPUTS: '+str(exc))
@@ -491,7 +493,7 @@ class BatchService:
                    adopted_rate_mm_year=str(adopted) if adopted is not None else None,required_basis='recalculated draft pressure plus structural minimum' if mode=='recalculate' else 'provided governing source record' if _num(raw('required_thickness_mm'),True) is not None else 'provided pressure candidate plus explicit structural minimum' if structural is not None else 'source pressure-thickness basis for remaining-life estimate; governing minimum not established',
                    rule=rule,maximum_interval_years=None,selected_interval_years=str(selected_interval) if selected_interval is not None else None,
                    scheduled_due_date=scheduled_date,next_inspection_years=str(next_inspection_years) if next_inspection_years is not None else None,forecast_policy=forecast_policy,
-                   input_trace=dict(history=dict(formula='(previous thickness - current thickness) / elapsed years',source_reference='API 570 fifth edition 7.1.2',previous_date=old['inspection_date'] if old else None,current_date=current['inspection_date'] if current else None,elapsed_basis='calendar months / 12' if old and current and len(old.get('inspection_date') or '')==len(current.get('inspection_date') or '')==7 else 'elapsed days / year_days'),profile_fields=(p or {}).get('fields',{}),normalized_design=input_trace,design_inputs=inputs,overrides=override,basis=mode,interval_policy=dict(fraction=fraction,cap_years=cap),forecast_policy=forecast_policy,year_days=year_days,source_rate_selected=False,rate_basis='manual override' if 'adopted_rate_mm_year' in override else 'calculated historical CR'))
+                   input_trace=dict(history=dict(formula='(previous thickness - current thickness) / elapsed years',source_reference='API 570 fifth edition 7.1.2',previous_date=old['inspection_date'] if old else None,current_date=current['inspection_date'] if current else None,elapsed_basis='calendar months / 12' if old and current and len(old.get('inspection_date') or '')==len(current.get('inspection_date') or '')==7 else 'elapsed days / year_days'),profile_fields=(p or {}).get('fields',{}),normalized_design=input_trace,design_inputs=inputs,pressure_checks=pressure_checks,overrides=override,basis=mode,interval_policy=dict(fraction=fraction,cap_years=cap),forecast_policy=forecast_policy,year_days=year_days,source_rate_selected=False,rate_basis='manual override' if 'adopted_rate_mm_year' in override else 'calculated historical CR'))
         values=outputs(row['current_thickness_mm'] if current and current.get('review_status')!='excluded' else None,life_required,adopted,row['inspection_date'],year_days,fraction,cap,
                        'VIII_UG27_HOOP' if rule=='VIII_SHELL' else rule,inputs,allowance,forecast,factor,selected_interval,scheduled_date,next_inspection_years,manual_interval_override,manual_selected_interval)
         if route is None or not route.can_attempt_arithmetic or not rule:

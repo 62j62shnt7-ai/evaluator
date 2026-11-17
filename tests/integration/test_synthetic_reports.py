@@ -124,3 +124,13 @@ def test_one_workspace_action_calculates_mixed_components_and_retains_unready_ro
     assert rows[shell['current_id']]['pressure_thickness_mm'] is not None
     assert rows[unready['current_id']]['pressure_thickness_mm'] is None
     assert rows[unready['current_id']]['issues']
+
+    from evaluator.calculation_trace_ui import page
+    explanation = page(result, rows[shell['current_id']])
+    assert 'Vessel shell hoop · governs' in explanation
+    assert 'Vessel shell longitudinal' in explanation
+    assert 'Table 1A line 43' in explanation
+    assert 'End-of-life net wall' in explanation
+    pipe_explanation = page(result, rows[pipe['current_id']])
+    assert '4.3125 mm' in pipe_explanation
+    assert 'Projected wall' in pipe_explanation
