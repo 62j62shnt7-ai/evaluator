@@ -48,7 +48,8 @@ def make_handler(service):
                 return
             if path == '/codes':
                 from evaluator.code_guide import page as code_guide
-                self._reply(code_guide())
+                sample = parse_qs(urlsplit(self.path).query).get('sample', [''])[0]
+                self._reply(code_guide(sample))
                 return
             if path == '/tanks':
                 from evaluator.tank_ui import page as tank_page
@@ -131,6 +132,15 @@ def make_handler(service):
                 origin=self.headers.get('Origin')
                 if origin and origin not in {'http://'+expected_host,f'http://localhost:{self.server.server_port}'}: raise ValueError('Cross-origin project changes are blocked')
                 path=self.path.split('?',1)[0]
+                if path == '/codes':
+                    from evaluator.code_guide import page as code_guide
+
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 8192:
+                        raise ValueError('Invalid sample calculation form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    self._reply(code_guide(form.get('sample', ''), form))
+                    return
                 if path == '/tanks':
                     from evaluator.tanks import save
                     from evaluator.tank_ui import page as tank_page

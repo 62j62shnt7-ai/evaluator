@@ -78,10 +78,13 @@ def _lookup_table():
             '<tbody>' + ''.join(body) + '</tbody></table></div>')
 
 
-def page():
+def page(sample='', submitted=None):
+    from evaluator.code_sample_ui import panel
+
     nav = ' '.join(f'<a class="pill" href="#{key}">{E(title)}</a>' for key, title, *_ in GUIDES)
     parts = [
         '<h1>Codes &amp; Calculations</h1><p>Learn which method applies, where each input comes from, and how to read the result.</p>',
+        panel(sample, submitted),
         '<section><h2>Start with your report</h2><ol>'
         '<li>Import Excel and check the matched previous and current thicknesses, dates and locations.</li>'
         '<li>Assign the governing code, edition, component geometry and source evidence.</li>'

@@ -248,3 +248,11 @@
 .tank-form button { justify-self: start; margin-top: 8px; }
 #saved-tank-calculations dt { font-size: 13px; color: var(--muted); }
 #saved-tank-calculations dd { margin: 0 0 9px; font-weight: 650; }
+
+.sample-picker { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.sample-picker label { flex: 1 1 260px; margin: 0; }
+#sample-calculator .fields { grid-template-columns: repeat(auto-fit, minmax(min(190px,100%), 1fr)); }
+#sample-calculator :is(input, select) { font-size: 14px; }
+#sample-calculator button.primary { margin-top: 12px; }
+.sample-result { margin-top: 18px; padding: 14px 18px; background: var(--mint); border-radius: 10px; }
+.sample-result dd { margin: 0 0 12px; }
