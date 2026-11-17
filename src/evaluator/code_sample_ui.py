@@ -395,10 +395,16 @@ def _api570_result(inputs, annex_tables):
         ('Short-term corrosion rate', short_rate, 'mm/year'), ('Long-term corrosion rate', long_rate, 'mm/year'),
         ('Selected corrosion rate', rate, 'mm/year'), ('Pressure thickness', pressure_wall, 'mm'),
         ('Structural minimum', structural, 'mm'), ('Governing required thickness', required, 'mm'),
+        ('Current measured wall', current, 'mm'), ('Margin to required thickness', current - required, 'mm'),
     ]
     notes = []
     if life <= 0:
-        notes.append('Current wall is at or below the required wall. Remaining life and next-inspection results are withheld.')
+        basis = ('pressure thickness' if pressure_wall > structural else
+                 'structural minimum' if structural > pressure_wall else 'pressure and structural minima')
+        comparison = 'equals' if current == required else 'is below'
+        notes.append(f'Current measured wall ({numeric(current)} mm) {comparison} the required wall '
+                     f'({numeric(required)} mm, governed by {basis}). Remaining life and next-inspection '
+                     'results are withheld.')
     else:
         cap = min(life / 2, caps[service_class])
         if life < 4 and inputs.get('short_life_option') == 'yes':

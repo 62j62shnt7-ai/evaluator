@@ -56,6 +56,10 @@ def test_api570_has_its_own_rates_class_interval_and_pressure_forecast():
     assert 'Current MAWP candidate</dt><dd>2033.1093 psi' in result
     assert 'Next-inspection MAWP candidate</dt><dd>1562.831 psi' in result
     assert 'at most 5 years' in panel(rule, dict(form, next_years='6'))
+    below = panel(rule, dict(form, structural_mm='12'))
+    assert 'Margin to required thickness</dt><dd>-0.8 mm' in below
+    assert '11.2 mm) is below the required wall (12 mm, governed by structural minimum)' in below
+    assert 'Next-inspection MAWP candidate</dt>' not in below
 
     short = dict(form, structural_mm='10.3', next_years='')
     assert 'Maximum UT interval</dt><dd>1.5 years' in panel(rule, short)
