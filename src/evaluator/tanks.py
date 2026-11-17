@@ -31,6 +31,58 @@ METHODS = {
     }),
 }
 
+BOTTOM_FIELDS = {k: v for k, v in METHODS['api653_bottom'][1].items() if k != 'governing_min_mm'}
+TOE_FIELDS = {'toe_mm': 'Thickness at outer weld toe (mm)', 'projection_mm': 'Projection beyond outer weld toe (mm)'}
+METHODS.update({
+    'api653_pits': ('API 653 · Scattered shell pit screening', {
+        'shell_min_mm': 'Reviewed shell minimum excluding corrosion allowance (mm)',
+    }),
+    'api653_critical': ('API 653 · Bottom critical zone', {
+        **BOTTOM_FIELDS, **TOE_FIELDS, 'lower_shell_min_mm': 'Lower shell course minimum (mm)',
+    }),
+    'api653_annular': ('API 653 · Annular ring', {
+        **BOTTOM_FIELDS, **TOE_FIELDS, 'G': 'Highest product specific gravity',
+        'table_min_mm': 'Reviewed minimum from the applicable annular table (mm)',
+        'CA_mm': 'Specified annular corrosion allowance (mm)',
+    }),
+})
+
+
+def screen_pits(raw, minimum):
+    """Find maximum total pit extent in a sliding 200 mm vertical window."""
+    lines = {}
+    evidence = []
+    rows = raw.strip().splitlines()
+    if not rows or len(rows) > 200 or minimum < Decimal('2.5'):
+        raise ValueError('Supply 1–200 pit observations and a reviewed shell minimum of at least 2.5 mm')
+    for row in rows:
+        parts = [part.strip() for part in row.split(',')]
+        if len(parts) != 4 or not parts[0]:
+            raise ValueError('Each pit row needs vertical line ID, start, end and remaining thickness')
+        line, *numbers = parts
+        try:
+            start, end, remaining = map(Decimal, numbers)
+        except DecimalException:
+            raise ValueError('Pit dimensions and remaining thickness must be numeric') from None
+        if not all(n.is_finite() for n in (start, end, remaining)) or not 0 <= start < end or remaining < 0:
+            raise ValueError('Pit extents must be ordered and thickness nonnegative')
+        lines.setdefault(line, []).append((start, end))
+        evidence.append(dict(line=line, start_mm=str(start), end_mm=str(end), remaining_mm=str(remaining)))
+    maximum = Decimal(0)
+    width = Decimal(200)
+    for intervals in lines.values():
+        intervals.sort()
+        if any(end > next_start for (_, end), (next_start, _) in zip(intervals, intervals[1:])):
+            raise ValueError('Pit extents must be distinct on each vertical line; overlapping pits require separate review')
+        boundaries = {edge + offset for span in intervals for edge in span for offset in (Decimal(0), -width)}
+        maximum = max(maximum, *(sum(max(0, min(end, x + width) - max(start, x)) for start, end in intervals)
+                                 for x in boundaries))
+    limit = minimum / 2
+    least = min(Decimal(pit['remaining_mm']) for pit in evidence)
+    result = dict(pit_min_remaining_mm=least, pit_required_remaining_mm=limit, max_pit_extent_mm=maximum,
+                  pit_screen='Meets both screening limits' if least >= limit and maximum <= 50 else 'Pit exclusion criteria not met')
+    return result, evidence
+
 
 def calculate(method, inputs, scope=''):
     if method not in METHODS:
@@ -60,8 +112,8 @@ def calculate(method, inputs, scope=''):
     elif method == 'api653_shell':
         if scope not in {'whole', 'local'}:
             raise ValueError('Select whole course or local area')
-        if not v['D_m'] or not v['G'] or not v['Y_MPa'] or not v['T_MPa'] or not 0 < v['E'] <= 1:
-            raise ValueError('Positive diameter, specific gravity, strengths and joint efficiency are required; E cannot exceed 1')
+        if not 0 < v['D_m'] <= 61 or not v['G'] or not v['Y_MPa'] or not v['T_MPa'] or not 0 < v['E'] <= 1:
+            raise ValueError('Diameter must be above zero and at most 61 m. Supply positive gravity, strengths and joint efficiency up to 1.')
         if v['course'] < 1 or v['course'] != v['course'].to_integral_value():
             raise ValueError('Shell course must be a positive whole number')
         offset = Decimal('0.3') if scope == 'whole' else Decimal(0)
@@ -89,16 +141,56 @@ def calculate(method, inputs, scope=''):
         )
         reference = 'API 653 5th edition through July 2025, 4.3.1.5, 4.3.2.1 and 4.3.3.1'
         note = 'Height uses the stated evaluation datum. Local profiles, pit acceptance, reconstructed tanks and additional loads require separate checks.'
+    elif method == 'api653_pits':
+        if inputs.get('scattered') != 'yes':
+            raise ValueError('Confirm these are widely scattered shell pits and all relevant vertical lines were surveyed')
+        result, pits = screen_pits(inputs.get('pit_rows', ''), v['shell_min_mm'])
+        reference = 'API 653 5th edition through July 2025, 4.3.2.2'
+        note = 'Screening applies to the surveyed shell pits and the entered thickness basis.'
     else:
-        if v['governing_min_mm'] <= 0 or v['interval_years'] <= 0:
-            raise ValueError('Supply a positive interval and reviewed governing zone minimum')
+        if v['interval_years'] <= 0:
+            raise ValueError('Supply a positive reviewed operating interval')
         mrt = min(v['RTbc_mm'], v['RTip_mm']) - v['interval_years'] * (v['StPr'] + v['UPr'])
-        result = dict(projected_remaining_mm=mrt, margin_to_reviewed_minimum_mm=mrt - v['governing_min_mm'])
-        reference = 'API 653 5th edition through July 2025, 4.4.5.1'
-        note = 'Projection for the selected bottom zone. Confirm the applicable bottom, critical zone and annular requirements separately.'
-    return dict(status=STATUS, reference=reference, note=note, method=method, scope=scope,
-                inputs={k: str(x) for k, x in v.items()},
-                outputs={k: str(x) if x is not None else None for k, x in result.items()})
+        result = dict(projected_remaining_mm=mrt)
+        if method == 'api653_critical':
+            if v['lower_shell_min_mm'] < Decimal('2.5'):
+                raise ValueError('Enter the lower shell course minimum from 4.3.3.1')
+            minimum = max(Decimal('2.5'), min(Decimal(3), v['lower_shell_min_mm'] / 2))
+            reference = 'API 653 5th edition through July 2025, 4.4.5.1, 4.4.5.4 and 4.4.5.7'
+            note = 'Uses minimum readings for general critical-zone assessment without stress analysis. Isolated corrosion exceptions require a tank engineer.'
+        elif method == 'api653_annular':
+            if inputs.get('nonseismic') != 'yes':
+                raise ValueError('Seismic annular rings require evaluation to the as-built standard')
+            if v['G'] <= 0 or v['table_min_mm'] <= 0 or not inputs.get('table_evidence', '').strip():
+                raise ValueError('Supply positive gravity, the reviewed table minimum and its lookup evidence')
+            table = 'API 653 Table 4.5a' if v['G'] < 1 else 'API 650 Table 5.1a'
+            if inputs.get('annular_table') != table:
+                raise ValueError(f'Use {table} for the entered product specific gravity')
+            minimum = v['table_min_mm']
+            current_required = minimum + v['CA_mm']
+            result.update(annular_current_required_mm=current_required,
+                          annular_current_margin_mm=min(v['RTbc_mm'], v['RTip_mm']) - current_required)
+            reference = 'API 653 5th edition through July 2025, 4.4.6 and 4.4.5.7; ' + table
+            note = 'Uses the reviewed table lookup and allowance. Confirm uniform foundation support and applicable shell stress.'
+        else:
+            minimum = v['governing_min_mm']
+            if minimum <= 0:
+                raise ValueError('Supply the reviewed governing bottom minimum')
+            reference = 'API 653 5th edition through July 2025, 4.4.5.1'
+            note = 'Projection for the selected general bottom zone.'
+        result.update(governing_bottom_min_mm=minimum, margin_to_reviewed_minimum_mm=mrt - minimum)
+        if method in {'api653_critical', 'api653_annular'}:
+            result.update(toe_thickness_margin_mm=v['toe_mm'] - Decimal('2.5'),
+                          toe_projection_margin_mm=v['projection_mm'] - Decimal(10))
+    record = dict(status=STATUS, reference=reference, note=note, method=method, scope=scope,
+                  inputs={k: str(x) for k, x in v.items()},
+                  outputs={k: str(x) if x is not None else None for k, x in result.items()})
+    if method == 'api653_pits':
+        record['pit_observations'] = pits
+        record['inputs']['scattered'] = True
+    if method == 'api653_annular':
+        record['inputs'].update(table=table, table_evidence=inputs['table_evidence'].strip(), nonseismic=True)
+    return record
 
 
 def save(workflow, form):
@@ -107,7 +199,11 @@ def save(workflow, form):
         raise ValueError('Tank, component, reviewer, source evidence and applicability confirmation are required')
     revision = int(metadata.pop('revision'))
     try:
-        record = calculate(form.get('method'), form, form.get('scope', ''))
+        from evaluator.tank_ut import import_values
+        mapped, provenance = import_values(workflow.service, form)
+        record = calculate(mapped.get('method'), mapped, mapped.get('scope', ''))
+        if provenance is not None:
+            record['ut_provenance'] = provenance
     except DecimalException:
         raise ValueError('Tank inputs exceed the supported numeric range') from None
     record.update(metadata, id=str(uuid4()), input_revision=revision)

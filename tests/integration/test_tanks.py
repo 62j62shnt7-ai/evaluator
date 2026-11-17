@@ -87,3 +87,69 @@ def test_tank_workspace_saves_exports_and_undoes(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_pit_screen_uses_all_sliding_windows_and_both_limits():
+    basis = dict(shell_min_mm=8, scattered='yes')
+    good = calculate('api653_pits', dict(basis, pit_rows='A,190,215,4\nA,250,275,5\nB,250,280,4'))
+    assert good['outputs']['max_pit_extent_mm'] == '50'
+    assert good['outputs']['pit_screen'] == 'Meets both screening limits'
+    for readings in ['A,190,215,3.9', 'A,190,216,4\nA,250,275,5']:
+        bad = calculate('api653_pits', dict(basis, pit_rows=readings))
+        assert bad['outputs']['pit_screen'] == 'Pit exclusion criteria not met'
+    with pytest.raises(ValueError, match='overlapping'):
+        calculate('api653_pits', dict(basis, pit_rows='A,1,6,5\nA,5,7,5'))
+
+
+def test_critical_zone_and_annular_boundaries():
+    base = dict(RTbc_mm=6, RTip_mm=7, interval_years=4, StPr='.2', UPr='.15',
+                toe_mm='2.5', projection_mm=10)
+    critical = calculate('api653_critical', dict(base, lower_shell_min_mm=4))['outputs']
+    assert Decimal(critical['governing_bottom_min_mm']) == Decimal('2.5')
+    assert Decimal(critical['margin_to_reviewed_minimum_mm']) == Decimal('2.1')
+    assert Decimal(critical['toe_projection_margin_mm']) == 0
+    assert Decimal(calculate('api653_critical', dict(base, lower_shell_min_mm=10))['outputs']['governing_bottom_min_mm']) == 3
+    annular = dict(base, G='.9', table_min_mm='4.32', CA_mm='.5',
+                   annular_table='API 653 Table 4.5a', nonseismic='yes', table_evidence='Reviewed lookup')
+    result = calculate('api653_annular', annular)
+    assert Decimal(result['outputs']['margin_to_reviewed_minimum_mm']) == Decimal('.28')
+    assert Decimal(result['outputs']['annular_current_margin_mm']) == Decimal('1.18')
+    assert result['inputs']['table_evidence'] == 'Reviewed lookup'
+    with pytest.raises(ValueError, match='Table 5.1a'):
+        calculate('api653_annular', dict(annular, G=1))
+    assert 'Table 5.1a' in calculate('api653_annular', dict(annular, G=1, annular_table='API 650 Table 5.1a'))['reference']
+    with pytest.raises(ValueError, match='as-built'):
+        calculate('api653_annular', dict(annular, nonseismic='no'))
+
+
+def test_imported_ut_mapping_into_tank_history(tmp_path):
+    from openpyxl import Workbook
+    from evaluator.tanks import save
+
+    path = tmp_path / 'tank.xlsx'
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Tank UT'
+    for value in (10, 12, 12, 12, 14):
+        sheet.append([value])
+    sheet['B1'] = 8
+    sheet['B2'] = '=B1'
+    book.save(path)
+
+    service = ProjectService(tmp_path / 'project')
+    original = service.add_source(path)
+    form = dict(SHELL, method='api653_shell', scope='local', tank='TK-1', component='Course 1',
+                reviewer='Reviewer', reason='UT survey and profile checked', applicability='yes',
+                revision=str(service.workflow.revision()), ut_source=original.sha256, ut_sheet=sheet.title,
+                ut_primary='A1,A2,A3,A4,A5', ut_secondary='B1', ut_mm='yes',
+                ut_profile_reviewed='yes', ut_date='2026-11-17')
+    with pytest.raises(ValueError, match='literal'):
+        save(service.workflow, dict(form, ut_secondary='B2'))
+    assert history(service.workflow) == []
+    record = save(service.workflow, form)
+    assert Decimal(record['inputs']['measured_mm']) == 12
+    assert Decimal(record['inputs']['t2_mm']) == 8
+    assert record['ut_provenance']['groups']['t2_mm']['cells'] == {'B1': '8'}
+    assert record['ut_provenance']['source_sha256'] == original.sha256
+    assert history(service.workflow)[0] == record
+    assert path.read_bytes() == original.stored_path.read_bytes()
