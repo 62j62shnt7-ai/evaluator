@@ -31,6 +31,10 @@ def make_handler(service):
             self._reply('',303,'text/plain',(('Location','/?'+urlencode({'notice':message})),))
         def do_GET(self):
             path=self.path.split('?',1)[0]
+            if path == '/codes':
+                from evaluator.code_guide import page as code_guide
+                self._reply(code_guide())
+                return
             if path == '/tanks':
                 from evaluator.tank_ui import page as tank_page
                 self._reply(tank_page(service))
