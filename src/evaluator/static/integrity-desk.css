@@ -256,3 +256,7 @@
 #sample-calculator button.primary { margin-top: 12px; }
 .sample-result { margin-top: 18px; padding: 14px 18px; background: var(--mint); border-radius: 10px; }
 .sample-result dd { margin: 0 0 12px; }
+
+#sample-calculator fieldset { margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; }
+#sample-calculator legend { color: var(--muted); font-weight: 650; }
+#sample-calculator .sample-sources:empty { display: none; }

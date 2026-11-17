@@ -1,6 +1,13 @@
 """Editable examples for the code library's draft arithmetic."""
+import json
 from decimal import Decimal, DecimalException
 
+from evaluator.engineering.batch_rules import convert, pressure_at_thickness
+from evaluator.engineering.reference_rules import (
+    GAS_5L_FORMS, GAS_5L_SMYS_PSI, GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE,
+    GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, gas_temperature_factor,
+)
+from evaluator.engineering.references import dimensions, material_stresses
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
 from evaluator.workflow_ui import E, field, hidden, numeric
 
@@ -34,6 +41,93 @@ PRESETS = {
 }
 
 
+PIPE_RULES = ('B31_3_304_1_2', 'B31_4_403_2_1', 'B31_8_841_1_1')
+STRESS_CONTEXTS = {
+    PIPE_RULES[0]: ('ASME B31.3', '2024', 'pipe', 'S_B313_MPa'),
+    'VIII_UG27_HOOP': ('ASME VIII-1', '2025', 'plate', 'S_allow_MPa'),
+    'VIII_UG32_ELLIP': ('ASME VIII-1', '2025', 'plate', 'S_allow_MPa'),
+}
+
+
+def _reference_controls(rule, submitted):
+    values = submitted or {}
+    data = {'selection': {key: values.get(key, '') for key in (
+        'pipe_family', 'nps', 'schedule', 'material', 'temperature', 'product_form', 'basic_class',
+    )}}
+    controls = []
+
+    def select(name, label):
+        controls.append(f'<label>{label}<select name="{name}"><option value="">Manual entry</option></select></label>')
+
+    if rule in PIPE_RULES:
+        data['dimensions'] = [
+            dict(family=row['family'], nps=row['nps'], schedule=row['schedule'],
+                 od=str(convert(row['od_in'], 'in', 'mm')), wall=row['nominal_mm'],
+                 reference=f"{row['reference']}, PDF p. {row['pdf_page']}")
+            for row in dimensions() if not row['issues']
+        ]
+        select('pipe_family', 'Pipe dimension table')
+        select('nps', 'Nominal pipe size (NPS)')
+        select('schedule', 'Pipe schedule')
+    if rule in STRESS_CONTEXTS:
+        code, edition, product, target = STRESS_CONTEXTS[rule]
+        select('material', f'Material · {code} {edition} · {product}')
+        select('temperature', 'Exact design temperature from table')
+        data['stressTarget'] = target
+        data['stresses'] = [
+            dict(material=row['material'], temperature=row['temperature_F'],
+                 label=f"{row['temperature_C']} °C ({row['temperature_F']} °F)" if row.get('temperature_C')
+                 else f"{row['temperature_F']} °F", reference=row['reference'],
+                 stress=row.get('S_allow_MPa') or str(convert(row['S_allow_psi'], 'psi', 'MPa')))
+            for row in material_stresses()
+            if (row['code_family'], row['code_edition'], row['product_form']) == (code, edition, product)
+        ]
+    if rule == PIPE_RULES[2]:
+        select('material', 'API 5L grade · ASME B31.8 2025')
+        select('product_form', 'Steel pipe product form')
+        select('temperature', 'Design temperature from table')
+        select('basic_class', 'Location class · basic design factor')
+        data['gas'] = dict(
+            grades={f'API 5L {grade}': str(convert(psi, 'psi', 'MPa'))
+                    for grade, psi in GAS_5L_SMYS_PSI.items()},
+            forms=sorted(GAS_5L_FORMS),
+            temperatures={str(t): str(gas_temperature_factor(t)) for t in (250, 300, 350, 400, 450)},
+            classes=GAS_BASIC_CLASS_F,
+            smys_reference=GAS_SMYS_REFERENCE['reference'],
+            temperature_reference=GAS_TEMPERATURE_REFERENCE['reference'],
+            class_reference=GAS_CLASS_REFERENCE['reference'],
+        )
+    if not controls:
+        return ''
+    payload = json.dumps(data).replace('<', '\u003c')
+    return ('<fieldset><legend>Reference lookups</legend><div class="fields">'
+            + ''.join(controls) + '</div><p class="sample-sources" aria-live="polite"></p></fieldset>'
+            f'<script type="application/json" id="sample-reference-data">{payload}</script>'
+            '<script defer src="/assets/code-sample.js"></script>')
+
+
+def _pressure_result(rule, rules, inputs, wall):
+    if rule == 'API650_ONE_FOOT_PRODUCT':
+        return '<dt>MAWP</dt><dd>API 650 one-foot shell design returns thickness for the entered liquid height.</dd>'
+    if wall is None:
+        return '<dt>MAWP candidate</dt><dd>Enter measured thickness to calculate a pressure candidate.</dd>'
+    try:
+        deduction = Decimal(inputs.get('wall_deduction_mm') or '0')
+        if not deduction.is_finite() or deduction < 0:
+            raise ValueError('The wall deduction must be finite and nonnegative.')
+        net = wall - deduction
+        checks = [(pressure_at_thickness(net, key, inputs)[0], label, key) for label, key in rules]
+        pressure, label, key = min(checks)
+    except (ValueError, DecimalException) as exc:
+        return f'<dt>MAWP candidate withheld</dt><dd>{E(str(exc) or "Invalid pressure inputs.")}</dd>'
+    title = 'Pressure candidate (pipeline)' if rule in PIPE_RULES[1:] else 'MAWP candidate'
+    return (
+        f'<dt>{title} at entered wall</dt><dd><strong>{E(numeric(pressure))} MPa '
+        f'({E(numeric(convert(pressure, "MPa", "psi")))} psi)</strong><br>'
+        f'Net wall {E(numeric(net))} mm · {label} check · {E(REFERENCES[key])}</dd>'
+    )
+
+
 def _result(rule, inputs):
     measured = inputs.get('measured_mm', '')
     wall = Decimal(measured) if measured else None
@@ -55,7 +149,7 @@ def _result(rule, inputs):
                    f'<br><code>{E(result["formula"])}</code><br>{E(result["source_reference"])}</dd>')
     if wall is not None:
         markup += f'<dt>Measured wall minus largest calculation above</dt><dd>{E(numeric(wall - governing))} mm</dd>'
-    return markup + '</dl></div>'
+    return markup + _pressure_result(rule, rules, inputs, wall) + '</dl></div>'
 
 
 def panel(sample='', submitted=None):
@@ -68,6 +162,12 @@ def panel(sample='', submitted=None):
         controls.append(field(key, label, value, kind='number'))
     controls.append(field('measured_mm', 'Measured thickness (mm), optional',
                           (submitted or {}).get('measured_mm', '12'), kind='number', required=False))
+    if rule in PIPE_RULES:
+        controls.append(field('nominal_mm', 'Nominal wall (mm), reference only',
+                              (submitted or {}).get('nominal_mm', ''), kind='number', required=False))
+    if rule != 'API650_ONE_FOOT_PRODUCT':
+        controls.append(field('wall_deduction_mm', 'Wall deduction for pressure check (mm)',
+                              (submitted or {}).get('wall_deduction_mm', '0'), kind='number', required=False))
     output = ''
     if submitted is not None:
         try:
@@ -85,8 +185,9 @@ def panel(sample='', submitted=None):
         '<form class="sample-picker" action="/codes#sample-calculator" method="get">'
         f'<label>Example preset<select name="sample">{options}</select></label>'
         '<button>Load preset</button></form>'
-        f'<form action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
+        f'<form id="sample-inputs" action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
         f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>'
-        '<div class="fields">' + ''.join(controls) + '</div>'
+        + _reference_controls(rule, submitted)
+        + '<div class="fields">' + ''.join(controls) + '</div>'
         '<button class="primary">Calculate sample</button></form>' + output + '</section>'
     )
