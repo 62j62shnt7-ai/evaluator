@@ -242,3 +242,16 @@ def test_api570_code_page_uses_dated_ut_and_class_limit():
         rule, dict(values, service_class='', rate_basis=''))
     long = dict(values, older_date='2021-06-02', older_mm='12.4', rate_basis='long')
     assert 'Long-term corrosion rate</dt><dd>0.24 mm/year' in panel(rule, long)
+
+
+def test_new_pipe_help_and_advanced_wall_deduction_are_scoped():
+    pipe = panel('B31_3_304_1_2')
+    assert '<fieldset><legend>New pipe wall check</legend>' in pipe
+    assert 'aria-describedby="field-help-design_allowance_mm"' in pipe
+    assert 'aria-describedby="field-help-mill_tolerance_pct"' in pipe
+    assert '<details><summary>Advanced options</summary>' in pipe
+    assert 'id="field-help-wall_deduction_mm" role="tooltip"' in pipe
+    assert 'name="mill_tolerance_pct"' not in panel('B31_4_403_2_1')
+    api570 = panel()
+    assert 'name="design_allowance_mm"' not in api570 and 'name="mill_tolerance_pct"' not in api570
+    assert 'already deducts twice the estimated future corrosion loss' in api570

@@ -267,3 +267,23 @@
 .dimension-scroll { max-height: 490px; }
 
 #sample-calculator label[hidden], .tank-form label[hidden] { display: none; }
+
+#sample-calculator .has-field-help { position: relative; }
+#sample-calculator .field-help-icon { color: var(--muted); cursor: help; }
+#sample-calculator .field-help-tooltip {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+    top: 100%;
+    inset-inline-start: 0;
+    width: min(20rem, 100%);
+    padding: 8px 10px;
+    color: white;
+    background: #173a35;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+#sample-calculator .has-field-help:hover .field-help-tooltip,
+#sample-calculator .has-field-help:focus-within .field-help-tooltip { display: block; }

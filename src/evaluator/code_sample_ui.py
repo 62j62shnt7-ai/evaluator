@@ -582,6 +582,34 @@ def _result(rule, inputs, annex_tables=()):
     return markup + _pressure_result(rule, rules, inputs, wall) + '</dl></div>'
 
 
+
+def _wall_deduction_field(values, *, api570=False):
+    help_text = ('A separate, reviewed deduction from the measured wall for the pressure check. '
+                 'Leave blank if none applies.')
+    if api570:
+        help_text += ' The calculator already deducts twice the estimated future corrosion loss for continued-use MAWP.'
+    return field('wall_deduction_mm', 'Extra wall deduction for pressure check (mm)',
+                 values.get('wall_deduction_mm', ''), 'number', False, help_text=help_text)
+
+
+def _new_pipe_fields(rule, values):
+    fields = field('nominal_mm', 'Selected nominal wall (mm)', values.get('nominal_mm', ''), 'number', False)
+    fields += field(
+        'design_allowance_mm', 'Total design allowances (mm)', values.get('design_allowance_mm', ''),
+        'number', False,
+        help_text=('Enter the combined allowance for applicable corrosion, erosion, threading or grooving. '
+                   'The calculator adds it to pressure thickness. Enter 0 when none applies.'),
+    )
+    if rule == PIPE_RULES[0]:
+        fields += field(
+            'mill_tolerance_pct', 'Mill minus tolerance (%)', values.get('mill_tolerance_pct', ''),
+            'number', False,
+            help_text=('Enter the permitted wall undersize from the pipe specification, such as 12.5 for 12.5%. '
+                       'The calculator reduces nominal wall by this percentage before comparing it to required wall.'),
+        )
+    return f'<fieldset><legend>New pipe wall check</legend><div class="fields">{fields}</div></fieldset>'
+
+
 def panel(sample='', submitted=None):
     if sample in {'', 'ROW7', 'API570_DATED'}:
         return _api570_panel(submitted)
@@ -597,15 +625,10 @@ def panel(sample='', submitted=None):
     if rule in (*PIPE_RULES[:2], *VESSEL_FORMS):
         controls.append(field('measured_mm', 'Current measured thickness (mm)',
                               (submitted or {}).get('measured_mm', ''), kind='number', required=False))
-    if rule in PIPE_RULES:
+    new_pipe = _new_pipe_fields(rule, values) if rule in PIPE_RULES[:2] else ''
+    if rule == PIPE_RULES[2]:
         controls.append(field('nominal_mm', 'Selected nominal wall (mm)',
-                              (submitted or {}).get('nominal_mm', ''), kind='number', required=False))
-    if rule in PIPE_RULES[:2]:
-        controls.append(field('design_allowance_mm', 'Total design allowances (mm)',
-                              values.get('design_allowance_mm', ''), 'number', False))
-    if rule == PIPE_RULES[0]:
-        controls.append(field('mill_tolerance_pct', 'Mill minus tolerance (%)',
-                              values.get('mill_tolerance_pct', ''), 'number', False))
+                              values.get('nominal_mm', ''), kind='number', required=False))
     if rule == PIPE_RULES[2]:
         controls.extend([
             _select_control('gas_test_basis', 'Documented test basis', {
@@ -617,9 +640,11 @@ def panel(sample='', submitted=None):
     if rule == 'API650_ONE_FOOT_PRODUCT':
         controls.append(_select_control('course_position', 'Shell course position (required for diameter > 3.2 m and < 15 m)',
                                        {'lowest': 'Lowest course', 'upper': 'Upper course'}, values, required=False))
+    advanced = ''
     if rule in (*PIPE_RULES[:2], *VESSEL_FORMS, 'API570_PIPE'):
-        controls.append(field('wall_deduction_mm', 'Wall deduction for pressure check (mm)',
-                              (submitted or {}).get('wall_deduction_mm', ''), kind='number', required=False))
+        opened = ' open' if values.get('wall_deduction_mm') else ''
+        advanced = (f'<details{opened}><summary>Advanced options</summary><div class="fields">'
+                    + _wall_deduction_field(values, api570=rule == 'API570_PIPE') + '</div></details>')
     if rule == 'API570_PIPE':
         controls.append(_api570_controls(submitted))
     if rule in API510_FORMS:
@@ -631,13 +656,13 @@ def panel(sample='', submitted=None):
         ])
     forecast_fields = ''
     if rule in (*PIPE_RULES[:2], *VESSEL_FORMS):
-        forecast_fields = ('<details><summary>Optional wall projection using the construction equation</summary><div class="fields">'
+        forecast_fields = ('<fieldset><legend>Optional wall projection using the construction equation</legend><div class="fields">'
                            + ''.join(field(key, label, (submitted or {}).get(key, ''), kind='number', required=False)
                                      for key, label in (
                                          ('previous_mm', 'Previous measured thickness (mm)'),
                                          ('elapsed_years', 'Years between UT readings'),
                                          ('next_years', 'Years from current UT to next inspection'),
-                                     )) + '</div></details>')
+                                     )) + '</div></fieldset>')
     annex_tables, annex_error = (), ''
     if rule == 'API570_PIPE':
         try:
@@ -680,7 +705,7 @@ def panel(sample='', submitted=None):
         + ('<p>Prefilled coefficients and factors are editable sample assumptions. Confirm them for your case.</p>'
            if any(key in EDITABLE_FACTORS for key, _, _ in fields) else '')
         + _reference_controls(rule, submitted, annex_tables, annex_error)
-        + '<div class="fields">' + ''.join(controls) + '</div>' + forecast_fields
+        + '<div class="fields">' + ''.join(controls) + '</div>' + new_pipe + forecast_fields + advanced
         + '<button class="primary">Calculate sample</button></form>' + output + '</section>'
     )
 
@@ -751,7 +776,7 @@ def _api570_panel(submitted):
                               'date', required))
         readings.append(number(f'{key}_mm', f'{label} minimum UT (mm)', required=required))
     factors = ''.join(number(key, label, default=default) for key, label, default in API570_FACTORS)
-    factors += number('wall_deduction_mm', 'Other wall deduction for pressure (mm)', required=False)
+    advanced_open = ' open' if values.get('wall_deduction_mm') else ''
     return (
         '<section id="sample-calculator"><h2>Calculator</h2>' + _code_picker('API570_DATED')
         + '<h3>API 570 · Straight process piping</h3>'
@@ -760,16 +785,17 @@ def _api570_panel(submitted):
         '<form id="sample-inputs" action="/codes?code=api570#calculation-feedback" method="post" novalidate>'
         + hidden('sample', 'API570_DATED')
         + '<fieldset><legend>Pipe design</legend><div class="fields">' + design + '</div>'
-        + '<details><summary>Look up OD, allowable stress or structural minimum</summary>'
-        + _reference_controls('API570_DATED', submitted, tables, error) + '</details></fieldset>'
+        + '</fieldset>' + _reference_controls('API570_DATED', submitted, tables, error)
         + '<fieldset><legend>Ultrasonic thickness readings</legend><div class="fields">'
-        + ''.join(readings[2:]) + '</div><details' + (' open' if values.get('older_date') or values.get('older_mm') else '')
-        + '><summary>Initial reading for long-term rate</summary><div class="fields">'
-        + ''.join(readings[:2]) + '</div></details></fieldset>'
+        + ''.join(readings[2:]) + '</div><p>Initial reading for long-term rate (optional)</p><div class="fields">'
+        + ''.join(readings[:2]) + '</div></fieldset>'
         + '<fieldset><legend>API 570 inspection basis</legend><div class="fields">'
         + _api570_controls(submitted) + '</div></fieldset>'
-        + '<details><summary>B31.3 factors and other wall deduction</summary>'
+        + '<fieldset><legend>B31.3 coefficients and factors</legend>'
         + '<p>Confirm the prefilled E, W and Y values for your piping.</p><div class="fields">' + factors
+        + '</div></fieldset>'
+        + f'<details{advanced_open}><summary>Advanced options</summary><div class="fields">'
+        + _wall_deduction_field(values, api570=True)
         + '</div></details><button class="primary">Calculate</button></form>'
         + '<div id="calculation-feedback">' + output + '</div></section>'
     )

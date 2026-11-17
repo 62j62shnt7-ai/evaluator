@@ -14,8 +14,16 @@ def numeric(value):
 
 def hidden(name,value): return f'<input type="hidden" name="{E(name)}" value="{E(value)}">'
 def person(): return '<label>Reviewer<input name="reviewer" required autocomplete="name"></label><label>Evidence / reason<input name="reason" required></label>'
-def field(name,label,value='',kind='text',required=True):
-    return f'<label>{E(label)}<input type="{kind}" name="{E(name)}" value="{E(value)}" {"required" if required else ""} {"step=any" if kind=="number" else ""}></label>'
+def field(name,label,value='',kind='text',required=True, *, help_text=''):
+    caption = E(label)
+    help_markup = description = label_class = ''
+    if help_text:
+        help_id = f'field-help-{E(name)}'
+        caption = f'<span>{caption} <span class="field-help-icon" aria-hidden="true">ⓘ</span></span>'
+        help_markup = f'<small class="field-help-tooltip" id="{help_id}" role="tooltip">{E(help_text)}</small>'
+        description = f' aria-describedby="{help_id}"'
+        label_class = ' class="has-field-help"'
+    return f'<label{label_class}>{caption}<input type="{kind}" name="{E(name)}" value="{E(value)}" {"required" if required else ""} {"step=any" if kind=="number" else ""}{description}>{help_markup}</label>'
 def shell(title,content,notice=''):
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{E(title)} · UT Review</title><style>
     *{{box-sizing:border-box}}body{{margin:0;background:#f4f7f3;color:#172e29;font:15px/1.5 system-ui,sans-serif}}header{{background:#173a35;color:white;padding:20px max(24px,calc((100% - 1240px)/2));display:flex;gap:30px;align-items:center}}header a{{color:#d9edb4}}main{{max-width:1240px;padding:24px;margin:auto}}section,.card{{background:white;border:1px solid #d9e3db;border-radius:14px;padding:22px;margin:18px 0}}h1{{font-size:32px;margin:8px 0}}h2{{font-size:23px}}h3{{font-size:18px}}a{{color:#23695d}}button:disabled{{opacity:.45;cursor:not-allowed}}button,.button{{display:inline-block;background:#d9edb4;color:#173a35;border:1px solid #bdd198;border-radius:8px;padding:10px 14px;font-weight:650;text-decoration:none;cursor:pointer}}form{{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:14px 0}}label{{display:flex;flex-direction:column;gap:5px;min-width:160px;font-size:13px}}input,select{{font:inherit;border:1px solid #bdcdc3;border-radius:7px;padding:10px;background:white;max-width:100%}}label.check{{flex-direction:row;align-items:center;max-width:600px;min-width:0}}.muted,small{{color:#63756e}}.notice{{background:#e1efca;padding:14px;border-radius:8px}}.warn{{background:#fff0dc;padding:14px;border-left:4px solid #b96c34;border-radius:7px}}.bad{{color:#a33924}}.pills{{display:flex;gap:10px;flex-wrap:wrap}}.pill{{padding:5px 10px;background:#edf3e7;border-radius:30px}}.scroll{{overflow:auto;max-height:500px}}thead th{{position:sticky;top:0;z-index:1}}table{{border-collapse:collapse;width:100%;font-size:13px}}td,th{{padding:10px;border-bottom:1px solid #dde6df;text-align:left;vertical-align:top}}th{{font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#f0f5ed}}code{{font-size:11px;overflow-wrap:anywhere}}details{{padding:12px 0;border-bottom:1px solid #dfe7e0}}summary{{cursor:pointer;font-weight:650}}.inline{{display:inline-flex;margin:0}}.danger{{background:#ffe5dc;border-color:#e2b3a2}}.ruleinputs{{display:flex;gap:12px;flex-wrap:wrap}}.result{{font-size:23px;font-weight:700}}.rowtools{{display:flex;gap:10px;align-items:center;flex-wrap:wrap}}@media(max-width:650px){{main{{padding:12px}}section{{padding:14px}}label{{width:100%}}header{{flex-wrap:wrap;gap:12px}}}}
