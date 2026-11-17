@@ -265,3 +265,5 @@
 .dimension-filters label { flex: 1 1 150px; max-width: 250px; }
 .dimension-filters p { margin: 0 0 13px; }
 .dimension-scroll { max-height: 490px; }
+
+#sample-calculator label[hidden], .tank-form label[hidden] { display: none; }

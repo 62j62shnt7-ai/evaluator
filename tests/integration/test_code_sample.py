@@ -225,6 +225,8 @@ def test_api570_code_page_uses_dated_ut_and_class_limit():
     for slot in ('older', 'previous', 'current'):
         assert inputs[f'{slot}_date'] == inputs[f'{slot}_mm'] == ''
     assert 'elapsed_years' not in inputs and 'middle_mm' not in inputs
+    assert 'name="schedule"' not in blank
+    assert 'name="schedule"' in panel('B31_3_304_1_2')
 
     values = dict(sample_form('API570_PIPE'), previous_date='2024-06-01', current_date='2026-06-01',
                   current_mm='11.2', service_class='1', rate_basis='short')

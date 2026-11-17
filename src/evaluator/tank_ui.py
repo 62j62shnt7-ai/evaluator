@@ -96,7 +96,7 @@ def page(service, notice='', *, active_method=None):
             'profile_length_mm': 'Required profile length L (mm)',
             'local_average_margin_mm': 'Margin at local average t1 (mm)',
             'local_least_margin_mm': 'Margin at local least thickness t2 (mm)',
-            'net_mm': 'Net thickness after allowance (mm)', 'liquid_height_candidate_m': 'Liquid height candidate (m)',
+            'net_mm': 'Net thickness after allowance (mm)',
             'pit_min_remaining_mm': 'Least thickness below a pit (mm)',
             'pit_required_remaining_mm': 'Pit minimum limit (mm)',
             'max_pit_extent_mm': 'Largest sum in a 200 mm vertical window (mm)',
@@ -110,7 +110,11 @@ def page(service, notice='', *, active_method=None):
             'margin_to_reviewed_minimum_mm': 'Margin to reviewed bottom minimum (mm)',
         }
         for key, value in record['outputs'].items():
-            body += f'<dt>{E(labels[key])}</dt><dd>{E(value if value is not None else "Withheld: net thickness below minimum")}</dd>'
+            if value is None:
+                value = 'Withheld: net thickness below minimum'
+                if key == 'governing_height_candidate_m' and record['outputs']['liquid_height_candidate_m'] is not None:
+                    value = 'Withheld: reviewed height limit for other loads was not supplied'
+            body += f'<dt>{E(labels[key])}</dt><dd>{E(value)}</dd>'
         reference_values = record.get('reference_values', {})
         for reference in reference_values.values():
             body += f'<dt>Reference lookup</dt><dd>{E(reference["value"])} mm · {E(reference["reference"])}</dd>'
@@ -123,4 +127,5 @@ def page(service, notice='', *, active_method=None):
                 readings = ', '.join(f'{cell}: {value} mm' for cell, value in group['cells'].items())
                 body += f'<dt>{E(group["aggregation"].title())} of mapped cells</dt><dd>{E(readings)}</dd>'
         body += f'</dl><p>{E(record["reviewer"])} · {E(record["reason"])}</p></details>'
-    return shell('Tank assessments', body + '</section>', notice, active='/tanks')
+    return shell('Tank assessments', body + '</section><script defer src="/assets/code-sample.js"></script>',
+                 notice, active='/tanks')

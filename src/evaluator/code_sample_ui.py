@@ -169,7 +169,8 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
         ]
         select('pipe_family', 'Pipe dimension table')
         select('nps', 'Nominal pipe size (NPS)')
-        select('schedule', 'Pipe schedule')
+        if rule != 'API570_DATED':
+            select('schedule', 'Pipe schedule')
     stress_rule = PIPE_RULES[0] if rule in {'API570_PIPE', 'API570_DATED'} else API510_FORMS.get(rule, rule)
     if stress_rule in STRESS_CONTEXTS:
         code, edition, product, target = STRESS_CONTEXTS[stress_rule]

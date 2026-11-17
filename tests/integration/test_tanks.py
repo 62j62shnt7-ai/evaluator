@@ -84,7 +84,8 @@ def test_tank_workspace_saves_exports_and_undoes(tmp_path):
         assert request('POST', '/tanks', shell)[0] == 303
         status, page = request('GET', '/tanks')
         assert status == 200
-        assert b'DRAFT / NOT VALIDATED' in page and b'Liquid height candidate' in page
+        assert b'DRAFT / NOT VALIDATED' in page and b'Liquid-loading height candidate' in page
+        assert b'Withheld: reviewed height limit for other loads was not supplied' in page
         assert len(history(service.workflow)) == 2
         with ZipFile(service.workflow.export_revision()) as archive:
             snapshot = json.loads(archive.read('project_snapshot.json'))

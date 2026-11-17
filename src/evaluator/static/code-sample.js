@@ -1,13 +1,41 @@
 'use strict';
 
 const codePicker = document.querySelector('.sample-picker');
-codePicker.querySelectorAll('select').forEach(select => {
-    select.addEventListener('change', () => codePicker.requestSubmit());
-});
-document.getElementById('apply-calculation-code').hidden = true;
+if (codePicker) {
+    codePicker.querySelectorAll('select').forEach(select => {
+        select.addEventListener('change', () => codePicker.requestSubmit());
+    });
+    document.getElementById('apply-calculation-code').hidden = true;
+}
 
 const referenceElement = document.getElementById('sample-reference-data');
 if (referenceElement) bindReferences(JSON.parse(referenceElement.textContent));
+
+const calculator = document.getElementById('sample-inputs');
+function showWhen(form, targetName, sourceName, relevant) {
+    if (!form) return;
+    const target = form.elements.namedItem(targetName);
+    const source = form.elements.namedItem(sourceName);
+    if (!target || !source) return;
+    const label = target.closest('label');
+    const update = () => {
+        const visible = relevant(source.value);
+        label.hidden = !visible;
+        target.disabled = !visible;
+    };
+    source.addEventListener('input', update);
+    source.addEventListener('change', update);
+    update();
+}
+showWhen(calculator, 'reviewed_rate', 'rate_basis', value => value === 'reviewed');
+showWhen(calculator, 'course_position', 'D_m', value => Number(value) > 3.2 && Number(value) < 15);
+for (const tankForm of document.querySelectorAll('.tank-form')) {
+    showWhen(tankForm, 't2_mm', 'scope', value => value === 'local');
+    showWhen(tankForm, 'ut_secondary', 'scope', value => value === 'local');
+    showWhen(tankForm, 'ut_profile_reviewed', 'scope', value => value === 'local');
+    showWhen(tankForm, 'course_position', 'D_m', value => Number(value) > 3.2 && Number(value) < 15);
+}
+
 
 function bindReferences(referenceData) {
     const sampleForm = document.getElementById('sample-inputs');
@@ -46,10 +74,15 @@ function bindReferences(referenceData) {
         const familyRows = () => rows.filter(row => row.family === control('pipe_family').value);
         const sizeRows = () => familyRows().filter(row => row.nps === control('nps').value);
         const setSizes = selected => setOptions('nps', choices(familyRows().map(row => row.nps)), selected);
-        const setSchedules = selected => setOptions('schedule', choices(sizeRows().map(row => row.schedule)), selected);
+        const schedule = control('schedule');
+        const setSchedules = selected => {
+            if (schedule) setOptions('schedule', choices(sizeRows().map(row => row.schedule)), selected);
+        };
         const hasNominal = Boolean(control('nominal_mm'));
         const lookup = () => {
-            const row = sizeRows().find(item => item.schedule === control('schedule').value);
+            const candidates = sizeRows();
+            const row = schedule ? candidates.find(item => item.schedule === schedule.value)
+                : new Set(candidates.map(item => Number(item.od))).size === 1 ? candidates[0] : null;
             return row && {fields: hasNominal ? {D_outside_in: row.od, nominal_mm: row.wall}
                                             : {D_outside_in: row.od}, reference: row.reference};
         };
@@ -60,7 +93,7 @@ function bindReferences(referenceData) {
         setSchedules(referenceData.selection.schedule);
         control('pipe_family').addEventListener('change', () => { setSizes(); setSchedules(); apply(); });
         control('nps').addEventListener('change', () => { setSchedules(); apply(); });
-        control('schedule').addEventListener('change', apply);
+        schedule?.addEventListener('change', apply);
         groups.push(lookup);
     }
 
