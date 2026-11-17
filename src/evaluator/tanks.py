@@ -90,7 +90,7 @@ def calculate(method, inputs, scope=''):
     fields = METHODS[method][1]
     values = {}
     for key, label in fields.items():
-        if key in {'nominal_min_mm', 'governing_min_mm'} and inputs.get(key) in (None, ''):
+        if key in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm'} and inputs.get(key) in (None, ''):
             continue
         if key == 't2_mm' and scope != 'local':
             continue
@@ -166,12 +166,24 @@ def calculate(method, inputs, scope=''):
         elif method == 'api653_annular':
             if inputs.get('nonseismic') != 'yes':
                 raise ValueError('Seismic annular rings require evaluation to the as-built standard')
-            if v['G'] <= 0 or v['table_min_mm'] <= 0 or not inputs.get('table_evidence', '').strip():
-                raise ValueError('Supply positive gravity, the reviewed table minimum and its lookup evidence')
+            if v['G'] <= 0 or not inputs.get('table_evidence', '').strip():
+                raise ValueError('Supply positive gravity and evidence for the shell stress and plate basis')
             table = 'API 653 Table 4.5a' if v['G'] < 1 else 'API 650 Table 5.1a'
-            if inputs.get('annular_table') != table:
-                raise ValueError(f'Use {table} for the entered product specific gravity')
-            minimum = v['table_min_mm']
+            lookup = None
+            if inputs.get('annular_mode') == 'local_pdf':
+                from evaluator.engineering.annular_reference import annular_minimum
+                try:
+                    shell_mm = Decimal(str(inputs.get('shell_course_mm', '')))
+                    stress_mpa = Decimal(str(inputs.get('shell_stress_MPa', '')))
+                except DecimalException:
+                    raise ValueError('Enter the reviewed first-course thickness and stress') from None
+                minimum, lookup = annular_minimum(v['G'], shell_mm, stress_mpa)
+            else:
+                if inputs.get('annular_table') != table:
+                    raise ValueError(f'Use {table} for the entered product specific gravity')
+                minimum = v.get('table_min_mm', Decimal(0))
+                if minimum <= 0:
+                    raise ValueError('Supply the reviewed table minimum')
             current_required = minimum + v['CA_mm']
             result.update(annular_current_required_mm=current_required,
                           annular_current_margin_mm=min(v['RTbc_mm'], v['RTip_mm']) - current_required)
@@ -207,6 +219,8 @@ def calculate(method, inputs, scope=''):
         record['inputs']['scattered'] = True
     if method == 'api653_annular':
         record['inputs'].update(table=table, table_evidence=inputs['table_evidence'].strip(), nonseismic=True)
+        if lookup:
+            record['reference_values'] = {'annular_table_min_mm': lookup}
     return record
 
 

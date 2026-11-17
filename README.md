@@ -15,3 +15,13 @@ Month-only source dates retain month precision. Missing readings or inputs remai
 Run with `.venv/bin/python -m evaluator` or the desktop launcher. Open [the local app](http://127.0.0.1:8765/).
 
 The alternate calculators, vessel configuration screens, source-scenario controls and legacy HTTP workflows have been retired from the active app. Internal import/storage modules remain where the current workflow depends on them.
+
+### Local annular reference lookup
+
+For a Python installation, install the optional PDF reference reader with
+`python -m pip install ".[pdf-reference]"` from the repository folder. In Tank
+assessments, choose **Generate from verified local PDF** for the API 653 annular
+ring. The app looks for matching code PDFs in `UT_EVALUATOR_CODES`, then
+`UT_EVALUATOR_SOURCES/codes` if configured, or the checkout's `sources/codes`
+and Windows user's `Desktop/Codes`. A manual reviewed lookup is available in
+the portable app if the PDF reader is unavailable.

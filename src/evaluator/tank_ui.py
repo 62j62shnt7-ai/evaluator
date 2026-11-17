@@ -21,7 +21,7 @@ def page(service, notice=''):
                      '<option value="local">Local area</option></select></label>'
                      '<p>Use the same datum for both heights. For local assessment, enter t1 from the inspector-reviewed profile (at least five equally spaced readings over L) and the least thickness t2 excluding pits. This method excludes reconstructed tanks.</p>')
         mapped = set(MAPPINGS.get(method, ()))
-        body += ''.join(field(key, name, kind='number', required=key not in mapped and key not in {'nominal_min_mm', 'governing_min_mm'}) for key, name in fields.items())
+        body += ''.join(field(key, name, kind='number', required=key not in mapped and key not in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm'}) for key, name in fields.items())
         if mapped:
             choices = ''.join(f'<option value="{E(source["source_id"])}">{E(source["file_name"])} · {E(source["source_id"][:10])}</option>'
                               for source in service.sources())
@@ -53,7 +53,14 @@ def page(service, notice=''):
         if method == 'api653_critical':
             body += '<p>Use unaveraged minima in the zone extending 75 mm radially inward from the shell inside edge.</p>'
         if method == 'api653_annular':
-            body += ('<label>Annular lookup table<select name="annular_table" required>'
+            body += ('<label>Annular lookup method<select name="annular_mode">'
+                     '<option value="local_pdf">Generate from verified local PDF</option>'
+                     '<option value="manual">Enter reviewed table value</option></select></label>'
+                     '<p>For automatic lookup, enter the reviewed first-course thickness and stress. Gravity selects the SI table. The lookup uses the applicable table band without interpolation. '
+                     'Use the as-constructed thickness for Table 4.5a or confirm the applicable product or hydrotest basis for Table 5.1a.</p>')
+            body += field('shell_course_mm', 'Reviewed first-course thickness (mm)', kind='number', required=False)
+            body += field('shell_stress_MPa', 'Reviewed first-course stress (MPa)', kind='number', required=False)
+            body += ('<label>Manual lookup table<select name="annular_table">'
                      '<option value="">Choose…</option><option>API 653 Table 4.5a</option>'
                      '<option>API 650 Table 5.1a</option></select></label>'
                      '<label class="check"><input name="nonseismic" type="checkbox" value="yes" required>'
@@ -92,6 +99,9 @@ def page(service, notice=''):
         }
         for key, value in record['outputs'].items():
             body += f'<dt>{E(labels[key])}</dt><dd>{E(value if value is not None else "Withheld: net thickness below minimum")}</dd>'
+        reference_values = record.get('reference_values', {})
+        for reference in reference_values.values():
+            body += f'<dt>Reference lookup</dt><dd>{E(reference["value"])} mm · {E(reference["reference"])}</dd>'
         provenance = record.get('ut_provenance')
         if provenance:
             body += '</dl><h3>UT source</h3><dl>'
