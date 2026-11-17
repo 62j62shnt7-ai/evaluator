@@ -45,7 +45,7 @@ def test_retired_routes_and_current_csv_export():
         client.request('GET','/workspace/results.csv?result=saved');response=client.getresponse()
         assert response.status==200
         rows=list(csv.DictReader(io.StringIO(response.read().decode())))
-        assert rows[0]['Result']=='Safe'
+        assert rows[0]['Result']=='DRAFT / NOT VALIDATED · Safe'
         assert rows[0]['Pd psi']=='800'
         assert rows[0]['MAWP psi']=='1782.525'
         client.close()
