@@ -1,5 +1,6 @@
 """Traceable dimensions from the supplied API RP 574 Annex B tables."""
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -36,3 +37,14 @@ def material_stress(material, geometry, code, edition, temperature_F, product_fo
     except InvalidOperation:return None
     matches=[r for r in material_stresses() if r['material_token']==token and r['product_form']==product and r['code_family']==code and r['code_edition']==str(edition) and Decimal(r['temperature_F'])==temperature]
     return matches[0] if len(matches)==1 else None
+
+
+def code_pdf_path(filename):
+    folder = os.environ.get('UT_EVALUATOR_CODES')
+    if folder:
+        return Path(folder).expanduser() / filename
+    sources = os.environ.get('UT_EVALUATOR_SOURCES')
+    if sources:
+        return Path(sources).expanduser() / 'codes' / filename
+    checkout = Path(__file__).resolve().parents[3] / 'sources' / 'codes' / filename
+    return checkout if checkout.is_file() else Path.home() / 'Desktop' / 'Codes' / filename

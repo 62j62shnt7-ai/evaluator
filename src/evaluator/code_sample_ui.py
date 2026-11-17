@@ -9,6 +9,7 @@ from evaluator.engineering.reference_rules import (
     LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE, LIQUID_WELD_FACTORS, LIQUID_WELD_REFERENCE,
 )
 from evaluator.engineering.references import dimensions, material_stresses
+from evaluator.engineering.structural_reference import CLASSES, LOOKUP_FIELDS, NPS, structural_cell, structural_tables
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
 from evaluator.workflow_ui import E, field, hidden, numeric
 
@@ -122,7 +123,7 @@ def _code_picker(rule):
             '<script defer src="/assets/code-sample.js"></script>')
 
 
-def _reference_controls(rule, submitted):
+def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
     values = submitted or {}
     data = {'selection': {key: values.get(key, '') for key in (
         'pipe_family', 'nps', 'schedule', 'material', 'temperature', 'product_form', 'basic_class', 'liquid_weld',
@@ -182,11 +183,28 @@ def _reference_controls(rule, submitted):
     if not controls:
         return ''
     data['factorDefaults'] = {key: value for key, _, value in PRESETS[rule][1] if key in EDITABLE_FACTORS}
-    payload = json.dumps(data).replace('<', '\u003c')
+    annex = _structural_controls(annex_tables, annex_error) if rule == 'API570_PIPE' else ''
+    if annex_tables:
+        data['structural'] = dict(tables=annex_tables, sizes=NPS, classes=CLASSES)
+        data['selection'].update({key: values.get(key, '') for key in LOOKUP_FIELDS})
+    payload = json.dumps(data).replace('<', '\\u003c')
     return ('<fieldset><legend>Reference lookups</legend><div class="fields">'
-            + ''.join(controls) + '</div><p class="sample-sources" aria-live="polite"></p></fieldset>'
+            + ''.join(controls) + '</div><p class="sample-sources" aria-live="polite"></p></fieldset>' + annex +
             f'<script type="application/json" id="sample-reference-data">{payload}</script>')
 
+
+
+def _structural_controls(tables, error):
+    markup = ('<fieldset><legend>API RP 574 Annex D structural thickness</legend>'
+              '<p>Use the examples for straight spans only when Annex D material, temperature, span, '
+              'support and loading assumptions apply. Use a reviewed manual value for other cases.</p>')
+    if not tables:
+        return f'{markup}<p class="warn">{E(error)}</p></fieldset>'
+    labels = ('Annex D material', 'Annex D table temperature', 'Structural lookup NPS', 'Piping pressure class')
+    fields = ''.join(f'<label>{label}<select name="{key}"><option value="">Manual entry</option></select></label>'
+                     for key, label in zip(LOOKUP_FIELDS, labels))
+    return (f'{markup}<div class="fields">{fields}</div>'
+            '<p class="structural-source" aria-live="polite"></p></fieldset>')
 
 
 def _observed_rate(previous, current, elapsed):
@@ -260,7 +278,7 @@ def _pressure_result(rule, rules, inputs, wall):
 
 
 
-def _api570_result(inputs):
+def _api570_result(inputs, annex_tables):
     current = Decimal(inputs.get('measured_mm', ''))
     short_rate = _observed_rate(inputs.get('previous_mm', ''), current, inputs.get('elapsed_years', ''))
     long_rate = _observed_rate(inputs.get('initial_mm', ''), current, inputs.get('long_years', ''))
@@ -283,6 +301,9 @@ def _api570_result(inputs):
     deduction = Decimal(inputs.get('wall_deduction_mm') or '0')
     if not structural.is_finite() or structural <= 0 or not deduction.is_finite() or deduction < 0:
         raise ValueError('Enter a positive structural minimum and a nonnegative wall deduction.')
+    match = structural_cell(annex_tables, inputs)
+    structural_basis = (match[1] if match and Decimal(match[0]) == structural
+                        else 'Manual reviewed structural minimum')
     required = max(pressure_wall, structural)
     life = (current - required) / rate
     service_class = inputs.get('service_class')
@@ -292,7 +313,7 @@ def _api570_result(inputs):
     entries = [
         ('Short-term corrosion rate', short_rate, 'mm/year'), ('Long-term corrosion rate', long_rate, 'mm/year'),
         ('Selected corrosion rate', rate, 'mm/year'), ('Pressure thickness', pressure_wall, 'mm'),
-        ('Governing required thickness', required, 'mm'),
+        ('Structural minimum', structural, 'mm'), ('Governing required thickness', required, 'mm'),
     ]
     notes = []
     if life <= 0:
@@ -320,7 +341,8 @@ def _api570_result(inputs):
     rows = ''.join(f'<dt>{label}</dt><dd>{E(numeric(value))} {unit}</dd>' for label, value, unit in entries)
     messages = ''.join(f'<p class="warn">{E(note)}</p>' for note in notes)
     return (f'<div class="sample-result" role="status"><h3>Draft API 570 piping assessment</h3>'
-            f'<dl>{rows}</dl>{messages}<p>{E(API570_REFERENCE)}</p><p>{E(check["source_reference"])}</p></div>')
+            f'<dl>{rows}</dl>{messages}<p>Structural thickness basis: {E(structural_basis)}</p>'
+            f'<p>{E(API570_REFERENCE)}</p><p>{E(check["source_reference"])}</p></div>')
 
 
 def _api570_controls(submitted):
@@ -343,11 +365,11 @@ def _api570_controls(submitted):
     )
 
 
-def _result(rule, inputs):
+def _result(rule, inputs, annex_tables=()):
     if rule == 'CR_ST':
         return _inspection_result(inputs)
     if rule == 'API570_PIPE':
-        return _api570_result(inputs)
+        return _api570_result(inputs, annex_tables)
     measured = inputs.get('measured_mm', '')
     wall = Decimal(measured) if measured else None
     if wall is not None and (not wall.is_finite() or wall <= 0):
@@ -400,6 +422,12 @@ def panel(sample='', submitted=None):
                                          ('elapsed_years', 'Years between UT readings'),
                                          ('next_years', 'Years from current UT to next inspection'),
                                      )) + '</div></fieldset>')
+    annex_tables, annex_error = (), ''
+    if rule == 'API570_PIPE':
+        try:
+            annex_tables = structural_tables()
+        except ValueError as exc:
+            annex_error = str(exc)
     output = ''
     if submitted is not None:
         try:
@@ -414,7 +442,7 @@ def panel(sample='', submitted=None):
                         raise ValueError(f'Enter {_form_label(key, label)}.')
                     units = ('in', 'mm') if key == 'D_outside_mm' else ('psi', 'MPa')
                     inputs[key] = convert(raw, *units)
-            output = _result(rule, inputs)
+            output = _result(rule, inputs, annex_tables)
         except DecimalException:
             output = '<p class="warn" role="alert">Enter valid decimal inputs within the supported numeric range.</p>'
         except ValueError as exc:
@@ -431,7 +459,7 @@ def panel(sample='', submitted=None):
          else f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>')
         + ('<p>Prefilled coefficients and factors are editable sample assumptions. Confirm them for your case.</p>'
            if any(key in EDITABLE_FACTORS for key, _, _ in fields) else '')
-        + _reference_controls(rule, submitted)
+        + _reference_controls(rule, submitted, annex_tables, annex_error)
         + '<div class="fields">' + ''.join(controls) + '</div>' + forecast_fields
         + '<button class="primary">Calculate sample</button></form>' + output + '</section>'
     )

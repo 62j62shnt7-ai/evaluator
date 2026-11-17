@@ -86,3 +86,50 @@ def test_sample_forms_start_with_blank_manual_inputs_and_keep_submitted_values()
     refilled = panel('API570_PIPE', {'measured_mm': '11.2', 'service_class': '2'})
     assert 'name="measured_mm" value="11.2"' in refilled
     assert 'value="2" selected>Class 2' in refilled
+
+
+def test_api570_annex_d_local_tables_and_result_provenance():
+    import pytest
+
+    from evaluator.engineering.references import code_pdf_path
+    from evaluator.engineering.structural_reference import FILENAME, structural_cell, structural_tables
+
+    pytest.importorskip('pymupdf')
+    if not code_pdf_path(FILENAME).is_file():
+        pytest.skip('Original API RP 574 PDF unavailable')
+    tables = structural_tables()
+    assert [sum(map(len, table['cells'].values())) for table in tables] == [96] * 5 + [53]
+    assert [table['cells']['24']['2500'] for table in tables] == [
+        '37.72', '42.93', '32.26', '30.86', '42.55', '48.39',
+    ]
+
+    rule = 'API570_PIPE'
+    form = sample_form(rule)
+    form.update(service_class='1', rate_basis='short', next_years='4',
+                structural_material='Carbon steel', structural_temperature='400',
+                structural_nps='8', structural_class='600', structural_mm='5.46')
+    markup = panel(rule, form)
+    assert 'Structural minimum</dt><dd>5.46 mm' in markup
+    assert 'Governing required thickness</dt><dd>5.46 mm' in markup
+    assert 'Structural thickness basis: API RP 574 Annex D Table D.2b, PDF p. 148' in markup
+    assert 'Structural thickness basis: Manual reviewed structural minimum' in panel(
+        rule, dict(form, structural_mm='6'))
+    assert structural_cell(tables, dict(form, structural_temperature='401')) is None
+    assert structural_cell(tables, dict(form, structural_material='1¼Cr–½Mo',
+                                       structural_temperature='1100', structural_nps='2')) is None
+
+
+def test_api570_without_annex_d_keeps_manual_calculation_available(monkeypatch, tmp_path):
+    monkeypatch.setenv('UT_EVALUATOR_CODES', str(tmp_path))
+    rule = 'API570_PIPE'
+    form = sample_form(rule)
+    form.update(service_class='1', rate_basis='short')
+    markup = panel(rule, form)
+    assert 'Local API RP 574 PDF unavailable' in markup
+    assert 'name="structural_mm" value="3"' in markup
+    assert 'Structural thickness basis: Manual reviewed structural minimum' in markup
+
+    (tmp_path / 'RP_574_E5_EN_wA1.pdf').write_bytes(b'wrong PDF')
+    import pytest
+    pytest.importorskip('pymupdf')
+    assert 'Local API RP 574 PDF differs' in panel(rule)

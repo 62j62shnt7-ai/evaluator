@@ -122,6 +122,68 @@ function bindReferences(referenceData) {
             match('F_class', gas.classes[control('basic_class').value], gas.class_reference), 'F_class');
     }
 
+    if (referenceData.structural) {
+        const {tables, sizes, classes} = referenceData.structural;
+        const selection = referenceData.selection;
+        const material = 'structural_material';
+        const temperature = 'structural_temperature';
+        const size = 'structural_nps';
+        const pressureClass = 'structural_class';
+        const thickness = control('structural_mm');
+        const source = sampleForm.querySelector('.structural-source');
+        const table = () => tables.find(row => row.material === control(material).value &&
+                                              row.temperature === control(temperature).value);
+        const cell = () => table()?.cells[control(size).value]?.[control(pressureClass).value];
+        const temperatures = {
+            '400': '400 °F (205 °C)', '750': '750 °F (400 °C)',
+            '1000': '1000 °F (540 °C)', '1100': '1100 °F (595 °C)'
+        };
+        const setTemperatures = selected => setOptions(temperature, tables
+            .filter(row => row.material === control(material).value)
+            .map(row => [row.temperature, temperatures[row.temperature]]), selected);
+        const normalizedSize = nps => ({'1/2': '0.5', '3/4': '0.75', '1 1/2': '1.5'})[nps] ?? nps;
+
+        setOptions(material, choices(tables.map(row => row.material)), selection[material]);
+        setTemperatures(selection[temperature]);
+        setOptions(size, choices(sizes), selection[size]);
+        setOptions(pressureClass, classes.map(value => [value, 'Class ' + value]), selection[pressureClass]);
+
+        let autoValue = cell();
+        const showStructuralSource = () => {
+            const value = cell();
+            if (value && Number(thickness.value) === Number(value)) {
+                source.textContent = table().reference + ' · ' + value + ' mm';
+            } else if (thickness.value) {
+                source.textContent = 'Manual structural minimum';
+            } else if ([material, temperature, size, pressureClass].every(name => control(name).value)) {
+                source.textContent = 'No Annex D value for this combination. Enter a reviewed structural minimum.';
+            } else {
+                source.textContent = 'Select all four lookup inputs or enter a reviewed structural minimum.';
+            }
+        };
+
+        const apply = () => {
+            const value = cell();
+            if (value) {
+                thickness.value = value;
+            } else if (autoValue && Number(thickness.value) === Number(autoValue)) {
+                thickness.value = '';
+            }
+            autoValue = value;
+            showStructuralSource();
+        };
+        control(material).addEventListener('change', () => { setTemperatures(); apply(); });
+        for (const name of [temperature, size, pressureClass]) control(name).addEventListener('change', apply);
+        for (const name of ['pipe_family', 'nps']) {
+            control(name).addEventListener('change', () => {
+                control(size).value = normalizedSize(control('nps').value);
+                apply();
+            });
+        }
+        thickness.addEventListener('input', showStructuralSource);
+        showStructuralSource();
+    }
+
     sampleForm.addEventListener('input', showSources);
     showSources();
 }

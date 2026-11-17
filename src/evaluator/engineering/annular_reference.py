@@ -2,9 +2,8 @@
 from decimal import Decimal
 from functools import lru_cache
 from hashlib import sha256
-import os
-from pathlib import Path
 
+from evaluator.engineering.references import code_pdf_path
 from evaluator.engineering.reference_rules import TANK_NOMINAL_REFERENCE
 
 _SOURCES = {
@@ -15,17 +14,6 @@ _SOURCES = {
            TANK_NOMINAL_REFERENCE['source_sha256'],
            'API 650 Table 5.1a', (19, 25, 32, 40, 45), (190, 210, 220, 250)),
 }
-
-
-def _code_path(filename):
-    folder = os.environ.get('UT_EVALUATOR_CODES')
-    if folder:
-        return Path(folder).expanduser() / filename
-    sources = os.environ.get('UT_EVALUATOR_SOURCES')
-    if sources:
-        return Path(sources).expanduser() / 'codes' / filename
-    checkout = Path(__file__).resolve().parents[3] / 'sources' / 'codes' / filename
-    return checkout if checkout.is_file() else Path.home() / 'Desktop' / 'Codes' / filename
 
 
 @lru_cache(maxsize=2)
@@ -57,7 +45,7 @@ def annular_minimum(gravity, shell_mm, stress_mpa):
     if row is None or column is None:
         raise ValueError('First-course thickness or stress is outside the supported annular table')
     try:
-        pdf = _code_path(filename).read_bytes()
+        pdf = code_pdf_path(filename).read_bytes()
     except OSError:
         raise ValueError(f'Local code PDF unavailable: {filename}. Set UT_EVALUATOR_CODES or use a reviewed manual lookup.') from None
     if sha256(pdf).hexdigest() != digest:
