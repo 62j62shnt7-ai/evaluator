@@ -113,6 +113,34 @@ class BatchTests(unittest.TestCase):
         restored=self.service.batch.settings(self.comp['id'])['row_overrides']['b']
         self.assertNotIn('code_owner_confirmed',restored)
 
+    def test_imported_vessel_shell_requires_both_stress_directions(self):
+        shell = self.records[0]
+        shell.update(family='separator', geometry='shell', code_family='ASME VIII-1',
+                     code_edition='2025')
+        shell['fields'].update(D_inside_in=field('48', unit='in'),
+                               S_allow_psi=field('17000', unit='psi'),
+                               E_joint=field('0.85', unit=None))
+        with connection(self.service.repository.path) as db:
+            db.execute('UPDATE wf_profiles SET payload=? WHERE id=?', (json.dumps(shell), shell['id']))
+        cid = self.comp['id']
+        self.service.batch.apply_overrides(cid, self.flow.revision(), [], ['b'], dict(
+            code_asset_type='pressure_vessel', code_evidence='Synthetic vessel drawing V-1',
+            code_owner_confirmed='yes', structural_minimum_mm='2', reviewed='yes'), 'Design')
+
+        def row(**options):
+            config = dict(basis='recalculate', confirm_conflicts=True, **options)
+            return next(r for r in self.service.batch.preview(cid, 'Design', config)['rows']
+                        if r['current_id'] == 'b')
+
+        calculated = row()
+        self.assertEqual(calculated['rule'], 'VIII_SHELL')
+        self.assertEqual(calculated['routing']['candidate_rule_ids'], ['VIII_UG27_HOOP', 'VIII_UG27_LONG'])
+        self.assertIsNotNone(calculated['pressure_thickness_mm'])
+        self.assertIsNotNone(calculated['mawp_MPa'])
+        self.assertIn('longitudinal_check', calculated['outputs']['trace']['mawp_MPa'])
+        self.assertIsNone(row(rule='VIII_UG27_HOOP')['pressure_thickness_mm'])
+        self.assertIsNone(row(rule='VIII_UG27_LONG')['mawp_MPa'])
+
     def test_pressure_only_record_supports_labeled_source_life_without_becoming_governing_minimum(self):
         r=self.records[0];r['fields']['pressure_thickness_mm']=r['fields'].pop('required_thickness_mm')
         with connection(self.service.repository.path) as db:db.execute('UPDATE wf_profiles SET payload=? WHERE id=?',(json.dumps(r),r['id']))

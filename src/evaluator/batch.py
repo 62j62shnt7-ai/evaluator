@@ -209,7 +209,7 @@ class BatchService:
             if key in clean and clean[key] not in {'yes','no'}:raise ValueError('Invalid review decision')
         if any('code_owner_confirmed' in values and values['code_owner_confirmed'] not in {'yes','no'} for values in [clean,*per_row_values.values()]):raise ValueError('Invalid code applicability confirmation')
         all_values={**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}
-        if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
+        if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
         if all_values.get('rule') and all_values['rule'] not in RULES:raise ValueError('Unsupported rule')
         preview=self.preview(comparison_id,profile_sheet)
         if not set(group_ids)<={g['id'] for g in preview['groups']} or not (set(row_ids)|set(per_row_values))<={r['current_id'] for r in preview['rows'] if r['current_id']}:raise ValueError('Selected input scope changed; refresh the batch preview')
@@ -295,7 +295,7 @@ class BatchService:
             if 'code_evidence' in override:p['code_evidence']=override['code_evidence']
             if 'code_owner_confirmed' in override:p['code_owner_confirmed']=override['code_owner_confirmed']=='yes'
             if 'code_asset_type' in override:p['code_asset_type']=override['code_asset_type']
-            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry','code_evidence','code_asset_type'))
+            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry'))
             if context_changed:
                 for key in ('S_allow_psi','SMYS_psi'):
                     if key not in override:p.setdefault('fields',{})[key]=dict(value=None,kind='invalidated',basis='Material/code/temperature changed; property must be supplied for this context')
@@ -331,7 +331,7 @@ class BatchService:
                         'ASME B31.8':'gas_transmission','ASME VIII-1':'pressure_vessel'}.get(family,'unknown')
             route=route_code(CodeContext(
                 component_id=str(p.get('component') or (item.get('key') or [''])[0] or oid or ''),
-                asset_type=asset_type,geometry=str(p.get('geometry') or 'unknown'),
+                asset_type=asset_type,geometry={'shell':'cylindrical_shell'}.get(p.get('geometry'), p.get('geometry') or 'unknown'),
                 construction_code=family or None,construction_edition=p.get('code_edition'),
                 code_evidence=p.get('code_evidence'),owner_confirmed=bool(p.get('code_owner_confirmed'))))
             row['routing']=dict(status=route.status,code=family or None,edition=p.get('code_edition'),
@@ -371,20 +371,27 @@ class BatchService:
         source_life_basis=None
         if p:
             inputs,input_trace,input_issues=self._inputs(p,override,config);issues.extend(input_issues)
-            if not rule:
-                rule='VIII_SHELL' if p['geometry']=='shell' else 'B31_8_841_1_1' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.8' else 'B31_3_304_1_2' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.3' else 'B31_4_403_2_1' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.4' else None
-            geometry_unsupported=p['geometry'] in {'nozzle','elbow','tee','reducer','branch','unknown'}
-            if geometry_unsupported:issues.append('GEOMETRY_RULE_UNSUPPORTED')
-            if not config.get('confirm_rules'):rule=None;issues.append('DESIGN_SCOPE_NOT_CONFIRMED')
-            if route is None or not route.can_attempt_arithmetic or rule not in route.candidate_rule_ids:
-                if rule:issues.append('CODE_ROUTING_RULE_MISMATCH')
-                rule=None
-            elif geometry_unsupported:rule=None
-            elif p['geometry']=='head_unspecified' and rule not in {'VIII_UG32_ELLIP','VIII_UG32_TORI'}:rule=None;issues.append('HEAD_GEOMETRY_REQUIRED')
-            elif (p['family']=='separator') != bool(rule and rule.startswith('VIII')):rule=None;issues.append('RULE_FAMILY_MISMATCH')
-        if rule and p:
-            code_for_rule='ASME VIII-1' if rule.startswith('VIII_') else {'B31_3':'ASME B31.3','B31_4':'ASME B31.4','B31_8':'ASME B31.8'}.get(rule[:5])
-            if code_for_rule!=p.get('code_family'):rule=None;issues.append('RULE_CODE_MISMATCH')
+            candidates = route.candidate_rule_ids
+            if len(candidates) > 1:
+                # Shell capacity must include both stress directions.
+                allowed_rules = {'VIII_SHELL'}
+                default_rule = 'VIII_SHELL'
+            else:
+                allowed_rules = set(candidates)
+                default_rule = candidates[0] if candidates else None
+            if p['geometry'] in {'nozzle','elbow','tee','reducer','branch','unknown'}:
+                issues.append('GEOMETRY_RULE_UNSUPPORTED')
+            if blocked or not config.get('confirm_rules'):
+                rule = None
+                if not config.get('confirm_rules'):
+                    issues.append('DESIGN_SCOPE_NOT_CONFIRMED')
+            elif rule and rule not in allowed_rules:
+                issues.append('RULE_CODE_MISMATCH')
+                rule = None
+            else:
+                rule = rule or default_rule
+        else:
+            rule = None
         if p and not p.get('code_edition'):
             issues.append('CODE_EDITION_REQUIRED')
             if mode=='recalculate':rule=None
@@ -403,7 +410,8 @@ class BatchService:
                         if result['value'] is not None:values.append(Decimal(result['value']))
                         else:issues.extend(result['issues'])
                     except (ValueError,InvalidOperation,KeyError) as exc:issues.append('PRESSURE_INPUTS: '+str(exc))
-                if values:pressure=max(values)
+                if len(values) == (2 if rule == 'VIII_SHELL' else 1):
+                    pressure=max(values)
             if structural is None:issues.append('STRUCTURAL_MINIMUM_REQUIRED')
             elif pressure is not None:required=max(pressure,structural)
         elif required is None and pressure is not None:
