@@ -2,6 +2,7 @@
 from decimal import Decimal
 
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
+from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE
 from evaluator.engineering.references import dimension, material_stresses
 from evaluator.workflow_ui import E, shell
 
@@ -17,7 +18,7 @@ GUIDES = (
         'The method calculates the pressure wall component. Review required allowances separately. The inverse calculation is a component pressure candidate. System operating limits, transient pressure and corrosion disposition need separate checks.',
     ), ('B31_4_403_2_1',)),
     ('b318', 'ASME B31.8 · 2025', 'Straight gas pipeline', (
-        'Enter design pressure, outside diameter and SMYS, together with the applicable class, weld and temperature factors. Inspect any factor proposed from a recognized workbook formula before using it.',
+        'Enter design pressure, outside diameter and SMYS, together with the applicable class, weld and temperature factors. For B31.8-2025, the app can derive T from the steel-pipe temperature table and retrieve SMYS for selected API 5L grades and manufacturing types. Enter the applicable design and weld factors.',
         'The method calculates a design wall candidate. Qualifying pressure tests, operating history, other components and applicable restrictions are needed to establish system MAOP.',
     ), ('B31_8_841_1_1',)),
     ('vessel', 'ASME VIII-1 / II-D Metric · 2025', 'Vessel shell and heads', (
@@ -31,7 +32,7 @@ GUIDES = (
     ), ('CR_ST', 'REMAINING_LIFE', 'API570_T_REQUIRED')),
     ('api650', 'API 650 · 14th edition, 2025', 'Tank shell design', (
         'Open Tank assessments. The SI one-foot method uses tank diameter, product and hydrotest heights above the course bottom, specific gravity, separate product and hydrotest stresses, and corrosion allowance. The method is limited to diameters up to 61 m.',
-        'The app compares the product and hydrotest thicknesses with the reviewed nominal plate minimum. Supply that minimum and both stress values from the applicable design and material records. Other design loads require their own checks.',
+        'The app compares the product and hydrotest thicknesses with the reviewed nominal plate minimum. The app looks up the SI minimum by diameter and course position. Enter any higher project minimum and both stresses from applicable records. Other design loads require their own checks.',
     ), ('API650_ONE_FOOT_PRODUCT', 'API650_ONE_FOOT_HYDRO')),
     ('api653', 'API 653 · 5th edition through July 2025', 'In-service tanks', (
         'Map literal workbook cells to a course minimum, the reviewed local profile, or bottom-side and product-side minima. The saved assessment retains the worksheet, cells, inspection date and workbook hash. Manual entry is also available.',
@@ -134,4 +135,10 @@ def page():
         'Confirm table notes and the actual equipment inputs before use. Pipeline SMYS is a different property.</p>' + _lookup_table() + '</section>',
         '<section><h2>Coverage boundaries</h2><p>ASME B31G metal-loss assessment, system MAOP/MOP, and whole-tank approval are outside the current calculation paths. A production flowline needs its construction code assigned from records.</p></section>',
     ])
+    gas_values = ', '.join(f'{grade}: {value:,} psi' for grade, value in GAS_5L_SMYS_PSI.items())
+    parts.append('<section><h2>Gas pipeline reference inputs</h2>'
+                 f'<p>API 5L SMYS for listed manufacturing types: {E(gas_values)}.</p>'
+                 f'<p><small>{E(GAS_SMYS_REFERENCE["reference"])}</small></p>'
+                 '<p>Temperature factor uses the supplied table through 450 °F, including interpolation between entries.</p>'
+                 f'<p><small>{E(GAS_TEMPERATURE_REFERENCE["reference"])}</small></p></section>')
     return shell('Codes & Calculations', ''.join(parts))

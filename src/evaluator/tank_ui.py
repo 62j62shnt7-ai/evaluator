@@ -11,13 +11,17 @@ def page(service, notice=''):
         body += f'<section><h2>{E(label)}</h2><form method="post" action="/tanks">'
         body += hidden('revision', revision) + hidden('method', method)
         body += field('tank', 'Tank ID') + field('component', 'Course / area / bottom zone')
+        if method == 'api650':
+            body += ('<label>Course position<select name="course_position"><option value="">Choose if applicable</option>'
+                     '<option value="lowest">Lowest course</option><option value="upper">Upper course</option></select></label>'
+                     '<p>The app looks up the nominal plate minimum from diameter. Course position matters between 3.2 and 15 m.</p>')
         if method == 'api653_shell':
             body += ('<label>Evaluation scope<select name="scope" required>'
                      '<option value="">Choose…</option><option value="whole">Entire course</option>'
                      '<option value="local">Local area</option></select></label>'
                      '<p>Use the same datum for both heights. For local assessment, enter t1 from the inspector-reviewed profile (at least five equally spaced readings over L) and the least thickness t2 excluding pits. This method excludes reconstructed tanks.</p>')
         mapped = set(MAPPINGS.get(method, ()))
-        body += ''.join(field(key, name, kind='number', required=key not in mapped) for key, name in fields.items())
+        body += ''.join(field(key, name, kind='number', required=key not in mapped and key != 'nominal_min_mm') for key, name in fields.items())
         if mapped:
             choices = ''.join(f'<option value="{E(source["source_id"])}">{E(source["file_name"])} · {E(source["source_id"][:10])}</option>'
                               for source in service.sources())
@@ -60,6 +64,7 @@ def page(service, notice=''):
         body += f'<p>{STATUS} · {E(record["reference"])} · Input revision {record["input_revision"]}</p>'
         body += f'<p>{E(record["note"])}</p><dl>'
         labels = {
+            'code_nominal_min_mm': 'Nominal plate minimum from API 650 (mm)',
             'product_mm': 'Product thickness (mm)', 'hydrotest_mm': 'Hydrotest thickness (mm)',
             'governing_candidate_mm': 'Governing thickness candidate (mm)',
             'allowable_stress_MPa': 'Allowable stress (MPa)', 'minimum_mm': 'Minimum thickness (mm)',

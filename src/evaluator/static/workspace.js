@@ -16,7 +16,7 @@ function edit(r,key,value){return `<input class="engineering-input" type="number
 function rowSelect(r,key,value,items){return `<select data-engineering="${key}" data-row="${esc(r.current_id)}" aria-label="${key} for ${esc(r.location)}">${[...new Set([value||'',...items])].map(v=>`<option value="${esc(v)}" ${String(v)===String(value??'')?'selected':''}>${esc(v||'Choose…')}</option>`).join('')}</select>`;}
 function codeEditor(id){const r=workspace().rows.find(x=>x.current_id===id);if(!r)return;$('drawer').hidden=false;const codes=['ASME B31.3','ASME B31.4','ASME B31.8','ASME VIII-1','API 650'],assets=['process_piping','liquid_transmission','gas_transmission','production_flowline','pressure_vessel','storage_tank'];$('details').innerHTML=`<h2>Code basis · ${esc(r.location)}</h2><p>Set the construction basis for this component. Code routing only selects an existing draft method; it does not establish MAWP or engineering approval. Flowlines require an explicit service boundary.</p><form id="codeBasisForm" data-row="${esc(id)}"><label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option>${assets.map(v=>`<option value="${v}" ${r.code_asset_type===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><label>Construction code<select name="code_family" required><option value="">Choose…</option>${codes.map(v=>`<option ${r.code_family===v?'selected':''}>${v}</option>`).join('')}</select></label><label>Edition year<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(r.code_edition||'')}" placeholder="e.g. 2024" required></label><label class="wide">Code basis evidence<input name="code_evidence" value="${esc(r.code_evidence||'')}" placeholder="Document, line list, drawing or approved basis reference" required></label><label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" ${r.code_owner_confirmed?'checked':''} required>I confirmed this code’s applicability and boundary for this component.</label><label>Calculation geometry<select name="geometry" required><option value="">Choose…</option>${['straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','head_unspecified','unknown'].map(v=>`<option value="${v}" ${r.geometry===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><fieldset><legend>Code-specific calculation inputs</legend>
 <label>Material specification and grade<input name="material" value="${esc(r.material||'')}" placeholder="SA-516 Grade 70"></label>
-<label>Product form<select name="product_form"><option value="">Choose…</option><option value="plate" ${r.profile?.product_form==='plate'?'selected':''}>Plate</option></select></label>
+<label>Product form<select name="product_form"><option value="">Choose…</option><option value="plate" ${r.profile?.product_form==='plate'?'selected':''}>Plate</option>${['LFW','HFW','SMLS','SAWL','SAWH','COWL','COWH'].map(form=>`<option value="${form}" ${r.profile?.product_form===form?'selected':''}>${form}</option>`).join('')}</select></label>
 <p>Vessel stress lookup: SA-516 Grade 70 plate, VIII-1 2025. Enter an exact supported temperature (104, 149, 212, 257, 302, 392 or 482 °F), or supply a reviewed stress.</p>
 ${Object.entries({temperature_F:'Design metal temperature (°F)',D_inside_in:'Inside diameter (in)',P_psi:'Design pressure (psi)',E_joint:'Joint efficiency',structural_minimum_mm:'Structural minimum (mm)',E_quality:'Pipe quality factor',W_reduction:'Weld strength reduction factor',Y_coefficient:'Y coefficient',F_class:'Gas pipeline class factor',F_design:'Liquid pipeline design factor',E_weld:'Pipeline weld factor',T_temp:'Gas pipeline temperature factor',SMYS_psi:'Pipeline SMYS (psi)',interval_fraction:'Inspection interval fraction of remaining life',interval_cap_years:'Inspection interval cap (years)'}).map(([key,label])=>`<label>${label}<input type="number" step="any" name="${key}" value="${esc(r.input_trace?.overrides?.[key]??r.profile?.fields?.[key]?.value??'')}"></label>`).join('')}
 <label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi"></label>
@@ -74,12 +74,15 @@ function readiness(row) {
             if (pipeline) {
                 requireValue(code === 'ASME B31.8' ? 'F_class' : 'F_design', 'Applicable design factor');
                 requireValue('E_weld', 'Weld factor');
-                if (code === 'ASME B31.8') requireValue('T_temp', 'Temperature factor');
+                if (code === 'ASME B31.8' && row.input_trace?.normalized_design?.T_temp?.reference == null) {
+                    if (value('T_temp') == null && value('temperature_F') == null) missing.push('Design temperature or temperature factor');
+                    if (row.issues?.includes('B31_8_TEMPERATURE_REFERENCE_UNAVAILABLE')) missing.push('Reviewed temperature factor outside the lookup range');
+                }
             }
         }
         const strength = pipeline ? 'SMYS_psi' : 'S_allow_psi';
-        if (value(strength) == null || value(strength) === '') {
-            if (pipeline) missing.push('Specified minimum yield strength (SMYS)');
+        if ((value(strength) == null || value(strength) === '') && !(pipeline && row.input_trace?.normalized_design?.SMYS_MPa?.reference)) {
+            if (pipeline) missing.push(code === 'ASME B31.8' ? 'API 5L grade and pipe manufacturing type, or reviewed SMYS' : 'Specified minimum yield strength (SMYS)');
             else if (vessel) missing.push('Plate product form and design temperature, or reviewed allowable stress');
             else missing.push('Design temperature for stress lookup, or reviewed allowable stress');
         }
@@ -102,6 +105,9 @@ function readiness(row) {
                 D_outside_in:'OD (in)', nominal_thickness_mm:'Nominal wall (mm)'};
             return [labels[key], fields[key].value, fields[key].basis];
         });
+    const design = row.input_trace?.normalized_design || {};
+    if (design.SMYS_MPa?.reference) sourced.push(['SMYS (psi)', design.SMYS_MPa.value_psi, design.SMYS_MPa.reference]);
+    if (design.T_temp?.reference) sourced.push(['Temperature factor T', design.T_temp.value, design.T_temp.reference]);
     return {missing, notes, sourced};
 }
 

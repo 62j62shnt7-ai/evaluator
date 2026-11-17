@@ -259,13 +259,33 @@ class BatchService:
         for factor in ('E_joint','E_quality','W_reduction','Y_coefficient','F_class','F_design','E_weld','T_temp'):
             value=raw(factor)
             if value not in ('',None):inputs[factor]=str(value)
+        gas_2025 = profile.get('code_family') == 'ASME B31.8' and profile.get('code_edition') == '2025'
+        if gas_2025 and 'SMYS_MPa' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_SMYS_REFERENCE, gas_pipe_smys
+            smys = gas_pipe_smys(raw('material'), profile.get('product_form'))
+            if smys is not None:
+                inputs['SMYS_MPa'] = str(convert(smys, 'psi', 'MPa'))
+                trace['SMYS_MPa'] = dict(**GAS_SMYS_REFERENCE, value_psi=smys,
+                                        converted=inputs['SMYS_MPa'], unit='MPa',
+                                        material=raw('material'), product_form=profile['product_form'])
+        has_temperature = raw('temperature_F') not in ('', None)
+        if gas_2025 and has_temperature and 'T_temp' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_TEMPERATURE_REFERENCE, gas_temperature_factor
+            try:
+                factor = str(gas_temperature_factor(raw('temperature_F')))
+            except (ValueError, InvalidOperation):
+                issues.append('B31_8_TEMPERATURE_REFERENCE_UNAVAILABLE')
+            else:
+                inputs['T_temp'] = factor
+                trace['T_temp'] = dict(**GAS_TEMPERATURE_REFERENCE, value=factor,
+                                       temperature_F=str(raw('temperature_F')))
         proposal=profile.get('factor_candidates',{}).get('design_factor')
         if 'F_class' not in inputs and proposal and config.get('confirm_rules'):inputs['F_class']=str(proposal['value']);trace['F_class']=dict(source_proposal=proposal)
         if proposal and config.get('confirm_rules') and profile.get('code_family')=='ASME B31.8':
             # This proposal exists only for the recognized source expression
             # t=P*D/(2*SMYS*0.8). Its omitted E and T multipliers are unity.
             for factor in ('E_weld','T_temp'):
-                if factor not in inputs:
+                if factor not in inputs and not (factor == 'T_temp' and has_temperature):
                     inputs[factor]='1'
                     trace[factor]=dict(value='1',source_cell=proposal['cell'],source_formula=proposal['raw'],
                                        basis='unit multiplier in recognized workbook pressure expression')

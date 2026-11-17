@@ -12,7 +12,7 @@ METHODS = {
         'D_m': 'Tank diameter (m)', 'H_m': 'Product height above course bottom (m)',
         'hydro_H_m': 'Hydrotest height above course bottom (m)', 'G': 'Product specific gravity',
         'Sd_MPa': 'Product allowable stress (MPa)', 'St_MPa': 'Hydrotest allowable stress (MPa)',
-        'CA_mm': 'Corrosion allowance (mm)', 'nominal_min_mm': 'Applicable nominal plate minimum (mm)',
+        'CA_mm': 'Corrosion allowance (mm)', 'nominal_min_mm': 'Higher nominal plate minimum from project records (mm, optional)',
     }),
     'api653_shell': ('API 653 (through July 2025) · Shell thickness and liquid height', {
         'D_m': 'Tank diameter (m)', 'H_m': 'Liquid height above evaluation datum (m)',
@@ -90,6 +90,8 @@ def calculate(method, inputs, scope=''):
     fields = METHODS[method][1]
     values = {}
     for key, label in fields.items():
+        if key == 'nominal_min_mm' and inputs.get(key) in (None, ''):
+            continue
         if key == 't2_mm' and scope != 'local':
             continue
         try:
@@ -103,10 +105,13 @@ def calculate(method, inputs, scope=''):
     if method == 'api650':
         product = evaluate('API650_ONE_FOOT_PRODUCT', v)
         hydro = evaluate('API650_ONE_FOOT_HYDRO', dict(v, H_m=v['hydro_H_m']))
-        if v['nominal_min_mm'] <= 0:
-            raise ValueError('Supply the applicable nominal plate minimum')
+        from evaluator.engineering.reference_rules import tank_nominal_minimum
+        position = inputs.get('course_position', '')
+        nominal = tank_nominal_minimum(v['D_m'], position)
         result = dict(product_mm=product['value'], hydrotest_mm=hydro['value'],
-                      governing_candidate_mm=max(Decimal(product['value']), Decimal(hydro['value']), v['nominal_min_mm']))
+                      code_nominal_min_mm=nominal,
+                      governing_candidate_mm=max(Decimal(product['value']), Decimal(hydro['value']),
+                                                 nominal, v.get('nominal_min_mm', Decimal(0))))
         reference = 'API 650 14th edition (2025), 5.6.1 and 5.6.3'
         note = 'Shell-course thickness for the stated load cases. Other design loads and details require their own checks.'
     elif method == 'api653_shell':
@@ -185,6 +190,10 @@ def calculate(method, inputs, scope=''):
     record = dict(status=STATUS, reference=reference, note=note, method=method, scope=scope,
                   inputs={k: str(x) for k, x in v.items()},
                   outputs={k: str(x) if x is not None else None for k, x in result.items()})
+    if method == 'api650':
+        from evaluator.engineering.reference_rules import TANK_NOMINAL_REFERENCE
+        record['inputs']['course_position'] = position
+        record['reference_values'] = {'code_nominal_min_mm': dict(TANK_NOMINAL_REFERENCE, value=str(nominal))}
     if method == 'api653_pits':
         record['pit_observations'] = pits
         record['inputs']['scattered'] = True
