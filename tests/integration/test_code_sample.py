@@ -53,8 +53,8 @@ def test_api570_has_its_own_rates_class_interval_and_pressure_forecast():
     assert 'Estimated corrosion loss by next inspection</dt><dd>1.2 mm' in result
     assert 'API 570 MAWP corrosion deduction (2 × estimated loss)</dt><dd>2.4 mm' in result
     assert 'Wall used for next-inspection mawp candidate</dt><dd>8.3 mm' in result
-    assert 'Current MAWP candidate</dt><dd>2033.1093 psi' in result
-    assert 'Next-inspection MAWP candidate</dt><dd>1562.831 psi' in result
+    assert 'Current MAWP candidate</dt><dd>2033 psi' in result
+    assert 'Next-inspection MAWP candidate</dt><dd>1563 psi' in result
     assert 'at most 5 years' in panel(rule, dict(form, next_years='6'))
     below = panel(rule, dict(form, structural_mm='12'))
     assert 'Margin to required thickness</dt><dd>-0.8 mm' in below
@@ -155,13 +155,13 @@ def test_api510_vessel_double_loss_original_cap_and_inspection_limit():
     assert 'Continued-use MAWP candidate</dt><dd>200 psi' in result
     t = Decimal('8.8')
     pressure = t * 20000 / (Decimal('609.6') + Decimal('.6') * t) - 10
-    assert f'Continued-use MAWP candidate</dt><dd>{pressure:.4f} psi' in panel(
+    assert f'Continued-use MAWP candidate</dt><dd>{pressure:.0f} psi' in panel(
         rule, dict(form, original_psi='500'))
     assert 'non-RBI limit' in panel(rule, dict(form, next_years='11'))
     assert 'Continued-use MAWP withheld' in panel(rule, dict(form, t_required_mm='11.2'))
     thin_weld = panel(rule, dict(form, E_circumferential='.2'))
     longitudinal = 2 * t * 4000 / (Decimal('609.6') - Decimal('.4') * t) - 10
-    assert f'Continued-use MAWP candidate</dt><dd>{longitudinal:.4f} psi' in thin_weld
+    assert f'Continued-use MAWP candidate</dt><dd>{longitudinal:.0f} psi' in thin_weld
     for geometry in ('API510_VIII_UG32_ELLIP', 'API510_VIII_UG32_TORI'):
         selected = code_rule('api510', geometry)
         result = panel(selected, dict(form, D_inside_mm='1219.2', L_inside_crown_mm='1200'))

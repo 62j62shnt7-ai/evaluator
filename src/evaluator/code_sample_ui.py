@@ -281,8 +281,12 @@ def _optional_nonnegative(inputs, key):
     return amount
 
 
+def _display_value(label, value, unit):
+    return f'{value:.0f}' if unit == 'psi' and 'MAWP' in label else numeric(value)
+
+
 def _result_rows(entries):
-    return ''.join(f'<dt>{E(label)}</dt><dd>{E(numeric(value))} {E(unit)}</dd>'
+    return ''.join(f'<dt>{E(label)}</dt><dd>{E(_display_value(label, value, unit))} {E(unit)}</dd>'
                    for label, value, unit in entries)
 
 
@@ -736,7 +740,9 @@ def _row7_panel(submitted):
         return '<td>' + field(key, label, values.get(key, ''), kind, required) + '</td>'
 
     def result(label):
-        return f'<td class="worksheet-result">{E(numeric(results[label])) if results.get(label) is not None else "—"}</td>'
+        value = results.get(label)
+        shown = _display_value(label, value, 'psi' if label == 'Next-inspection MAWP candidate' else '') if value is not None else '—'
+        return f'<td class="worksheet-result">{E(shown)}</td>'
 
     headers = (
         ('Pd (psi)', 1), ('OD (in)', 1), ('S (psi)', 1), ('tstrc (mm) · API RP 574', 1),
@@ -781,7 +787,7 @@ def _row7_panel(submitted):
     summary = ''
     if mawp is not None:
         summary = ('<p class="sample-result" role="status"><strong>'
-                   f'MAWP at next inspection: {E(numeric(mawp))} psi</strong> · '
+                   f'MAWP at next inspection: {E(format(mawp, ".0f"))} psi</strong> · '
                    f'Interval: {E(numeric(results["Selected next inspection interval"]))} yr</p>')
     return (
         '<section id="sample-calculator"><h2>Piping worksheet calculator</h2>' + _code_picker('ROW7')

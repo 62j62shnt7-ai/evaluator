@@ -108,9 +108,9 @@ def test_worksheet_layout_applies_api570_instead_of_historical_row7_policy():
     assert 'Choose API 570 piping service class and governing corrosion-rate basis' in incomplete
     assert 'id="worksheet-feedback"' in incomplete and 'novalidate' in incomplete
     result = panel('ROW7', values)
-    assert 'MAWP at next inspection: 1966.6169 psi' in result
+    assert 'MAWP at next inspection: 1967 psi' in result
     cells = re.findall(r'class="worksheet-result">([^<]+)', result)
-    assert cells == ['4.3125', '4.3125', '0.0937', '0.0937', '74.5971', '5', '10.3633', '1966.6169']
+    assert cells == ['4.3125', '4.3125', '0.0937', '0.0937', '74.5971', '5', '10.3633', '1967']
     assert 'at most 5 years' in panel('ROW7', dict(values, next_years='10'))
     assert 'UT dates must increase' in panel('ROW7', dict(values, previous_date=values['current_date']))
     assert 'Enter both the UT date and reading' in panel('ROW7', dict(values, older_date='2016-01-01'))
