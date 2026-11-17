@@ -90,7 +90,7 @@ def calculate(method, inputs, scope=''):
     fields = METHODS[method][1]
     values = {}
     for key, label in fields.items():
-        if key == 'nominal_min_mm' and inputs.get(key) in (None, ''):
+        if key in {'nominal_min_mm', 'governing_min_mm'} and inputs.get(key) in (None, ''):
             continue
         if key == 't2_mm' and scope != 'local':
             continue
@@ -178,10 +178,15 @@ def calculate(method, inputs, scope=''):
             reference = 'API 653 5th edition through July 2025, 4.4.6 and 4.4.5.7; ' + table
             note = 'Uses the reviewed table lookup and allowance. Confirm uniform foundation support and applicable shell stress.'
         else:
-            minimum = v['governing_min_mm']
+            from evaluator.engineering.reference_rules import BOTTOM_DESIGN_MIN_MM, BOTTOM_DESIGN_REFERENCE
+            bottom_design = inputs.get('bottom_design', '')
+            tabulated = BOTTOM_DESIGN_MIN_MM.get(bottom_design)
+            minimum = max(v.get('governing_min_mm', Decimal(0)), Decimal(tabulated or 0))
             if minimum <= 0:
-                raise ValueError('Supply the reviewed governing bottom minimum')
+                raise ValueError('Select the verified bottom design or supply a reviewed governing minimum')
             reference = 'API 653 5th edition through July 2025, 4.4.5.1'
+            if tabulated:
+                reference += '; ' + BOTTOM_DESIGN_REFERENCE
             note = 'Projection for the selected general bottom zone.'
         result.update(governing_bottom_min_mm=minimum, margin_to_reviewed_minimum_mm=mrt - minimum)
         if method in {'api653_critical', 'api653_annular'}:
@@ -194,6 +199,9 @@ def calculate(method, inputs, scope=''):
         from evaluator.engineering.reference_rules import TANK_NOMINAL_REFERENCE
         record['inputs']['course_position'] = position
         record['reference_values'] = {'code_nominal_min_mm': dict(TANK_NOMINAL_REFERENCE, value=str(nominal))}
+    if method == 'api653_bottom' and tabulated:
+        record['inputs']['bottom_design'] = bottom_design
+        record['reference_values'] = {'bottom_design_min_mm': dict(reference=BOTTOM_DESIGN_REFERENCE, value=tabulated)}
     if method == 'api653_pits':
         record['pit_observations'] = pits
         record['inputs']['scattered'] = True

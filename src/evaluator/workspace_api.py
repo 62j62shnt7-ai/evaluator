@@ -19,6 +19,42 @@ def action(service, name, payload):
         source=service.add_source(Path(__file__).resolve().parents[2]/'sources'/'workbooks'/filename)
         service.inspect(source.sha256)
         result=workspace.auto_open(source.sha256,service.workflow.revision())
+    elif name == 'reference_preview':
+        from decimal import InvalidOperation
+        from evaluator.engineering.reference_rules import (
+            GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE,
+            gas_pipe_smys, gas_temperature_factor,
+        )
+        from evaluator.engineering.references import material_stress
+
+        values = payload.get('values', {})
+        code = values.get('code_family')
+        edition = values.get('code_edition')
+        material = values.get('material')
+        geometry = values.get('geometry')
+        product = values.get('product_form')
+        temperature = values.get('temperature_F')
+        entries = []
+        stress = material_stress(material, geometry, code, edition, temperature, product)
+        if stress and not values.get('S_allow_psi'):
+            value = stress.get('S_allow_MPa')
+            label = f"{value} MPa" if value else f"{stress['S_allow_psi']} psi"
+            entries.append(dict(label='Allowable stress S', value=label, reference=stress['reference']))
+        if code == 'ASME B31.8' and edition == '2025' and geometry == 'straight_pipe':
+            factor = GAS_BASIC_CLASS_F.get(values.get('gas_basic_class'))
+            if factor and not values.get('F_class'):
+                entries.append(dict(label='Basic design factor F', value=factor, **GAS_CLASS_REFERENCE))
+            smys = gas_pipe_smys(material, product)
+            if smys is not None and not values.get('SMYS_psi'):
+                entries.append(dict(label='SMYS', value=f'{smys:,} psi', **GAS_SMYS_REFERENCE))
+            if temperature and not values.get('T_temp'):
+                try:
+                    factor = gas_temperature_factor(temperature)
+                except (ValueError, InvalidOperation):
+                    pass
+                else:
+                    entries.append(dict(label='Temperature factor T', value=str(factor), **GAS_TEMPERATURE_REFERENCE))
+        return {'entries': entries}
     elif name=='apply':result=workspace.apply(cid,rev,payload.get('ids',[]),payload.get('values'),payload.get('template_id'),payload.get('dimension_key'),payload.get('scenario'),payload.get('clear',False),payload.get('fill_missing',False))
     elif name=='template':result=workspace.save_template(rev,payload.get('name',''),payload.get('values',{}))
     elif name=='evaluate':result=workspace.evaluate(cid,rev,payload.get('scenario'),payload.get('basis'))

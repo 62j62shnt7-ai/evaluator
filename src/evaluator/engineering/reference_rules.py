@@ -55,3 +55,12 @@ def gas_pipe_smys(material, product_form):
     if match and product_form in GAS_5L_FORMS:
         return GAS_5L_SMYS_PSI.get(match[1])
     return None
+
+GAS_BASIC_CLASS_F = {'1 Division 1': '0.80', '1 Division 2': '0.72', '2': '0.60', '3': '0.50', '4': '0.40'}
+GAS_CLASS_REFERENCE = {
+    'reference': 'ASME B31.8-2025 Table 841.1.6-1, basic design factor, PDF p. 69',
+    'source_sha256': GAS_TEMPERATURE_REFERENCE['source_sha256'],
+}
+BOTTOM_DESIGN_MIN_MM = {'no_leak_containment': '2.54', 'leak_detection_containment': '1.27',
+                        'qualified_reinforced_lining': '1.27'}
+BOTTOM_DESIGN_REFERENCE = 'API 653 5th edition through July 2025, Table 4.4a, PDF p. 40'

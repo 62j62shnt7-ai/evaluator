@@ -21,7 +21,7 @@ def page(service, notice=''):
                      '<option value="local">Local area</option></select></label>'
                      '<p>Use the same datum for both heights. For local assessment, enter t1 from the inspector-reviewed profile (at least five equally spaced readings over L) and the least thickness t2 excluding pits. This method excludes reconstructed tanks.</p>')
         mapped = set(MAPPINGS.get(method, ()))
-        body += ''.join(field(key, name, kind='number', required=key not in mapped and key != 'nominal_min_mm') for key, name in fields.items())
+        body += ''.join(field(key, name, kind='number', required=key not in mapped and key not in {'nominal_min_mm', 'governing_min_mm'}) for key, name in fields.items())
         if mapped:
             choices = ''.join(f'<option value="{E(source["source_id"])}">{E(source["file_name"])} · {E(source["source_id"][:10])}</option>'
                               for source in service.sources())
@@ -39,6 +39,12 @@ def page(service, notice=''):
                 labels = ('Bottom-side minimum reading cells', 'Product-side minimum reading cells')
             body += field('ut_primary', labels[0], required=False) + field('ut_secondary', labels[1], required=False)
             body += '<label class="check"><input name="ut_mm" type="checkbox" value="yes">Mapped readings are in millimetres.</label></details>'
+        if method == 'api653_bottom':
+            body += ('<label>API 653 Table 4.4a bottom design<select name="bottom_design">'
+                     '<option value="">Enter reviewed minimum manually</option>'
+                     '<option value="no_leak_containment">No leak detection and containment · 2.54 mm</option>'
+                     '<option value="leak_detection_containment">Leak detection and containment · 1.27 mm</option>'
+                     '<option value="qualified_reinforced_lining">API 652 reinforced lining over 1.27 mm · 1.27 mm</option></select></label>')
         if method == 'api653_pits':
             body += ('<label>Pit observations (one per line: vertical line ID, start mm, end mm, remaining thickness mm)'
                      '<textarea name="pit_rows" rows="5" required></textarea></label>'

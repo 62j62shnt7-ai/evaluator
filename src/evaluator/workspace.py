@@ -92,6 +92,8 @@ class Workspace:
         cid=cid or (comparisons[0]['id'] if comparisons else None)
         base={'revision':self.flow.revision()}
         if not partial:
+            from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI
+            base['gas_pipe_grades'] = list(GAS_5L_SMYS_PSI)
             base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. VIII-1 2025 lookup covers SA-516 Grade 70 plate at selected exact II-D Metric table points. Other contexts require a checked record; workbook properties remain proposals.'])
             from evaluator.project_cleanup import latest_backup
             base['cleanup_backup_available']=latest_backup(self.service) is not None

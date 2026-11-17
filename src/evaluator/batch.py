@@ -208,6 +208,10 @@ class BatchService:
         for key in ('reviewed','reconcile_conflict'):
             if key in clean and clean[key] not in {'yes','no'}:raise ValueError('Invalid review decision')
         if any('code_owner_confirmed' in values and values['code_owner_confirmed'] not in {'yes','no'} for values in [clean,*per_row_values.values()]):raise ValueError('Invalid code applicability confirmation')
+        from evaluator.engineering.reference_rules import GAS_BASIC_CLASS_F
+        for changes in (clean, *per_row_values.values()):
+            if changes.get('gas_basic_class') in GAS_BASIC_CLASS_F and 'F_class' not in changes:
+                changes['F_class'] = None
         all_values={**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}
         if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
         if all_values.get('rule') and all_values['rule'] not in RULES:raise ValueError('Unsupported rule')
@@ -279,6 +283,13 @@ class BatchService:
                 inputs['T_temp'] = factor
                 trace['T_temp'] = dict(**GAS_TEMPERATURE_REFERENCE, value=factor,
                                        temperature_F=str(raw('temperature_F')))
+        if gas_2025 and 'F_class' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE
+            location_class = overrides.get('gas_basic_class')
+            factor = GAS_BASIC_CLASS_F.get(location_class)
+            if factor is not None:
+                inputs['F_class'] = factor
+                trace['F_class'] = dict(**GAS_CLASS_REFERENCE, value=factor, location_class=location_class)
         proposal=profile.get('factor_candidates',{}).get('design_factor')
         if 'F_class' not in inputs and proposal and config.get('confirm_rules'):inputs['F_class']=str(proposal['value']);trace['F_class']=dict(source_proposal=proposal)
         if proposal and config.get('confirm_rules') and profile.get('code_family')=='ASME B31.8':

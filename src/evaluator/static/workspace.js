@@ -15,13 +15,75 @@ function visible(){const q=$('search').value.toLowerCase(),component=$('componen
 function edit(r,key,value){return `<input class="engineering-input" type="number" min="0" step="any" data-engineering="${key}" data-row="${esc(r.current_id)}" value="${esc(value??'')}" aria-label="${key} for ${esc(r.location)}">`;}
 function rowSelect(r,key,value,items){return `<select data-engineering="${key}" data-row="${esc(r.current_id)}" aria-label="${key} for ${esc(r.location)}">${[...new Set([value||'',...items])].map(v=>`<option value="${esc(v)}" ${String(v)===String(value??'')?'selected':''}>${esc(v||'Choose…')}</option>`).join('')}</select>`;}
 function codeEditor(id){const r=workspace().rows.find(x=>x.current_id===id);if(!r)return;$('drawer').hidden=false;const codes=['ASME B31.3','ASME B31.4','ASME B31.8','ASME VIII-1','API 650'],assets=['process_piping','liquid_transmission','gas_transmission','production_flowline','pressure_vessel','storage_tank'];$('details').innerHTML=`<h2>Code basis · ${esc(r.location)}</h2><p>Set the construction basis for this component. Code routing only selects an existing draft method; it does not establish MAWP or engineering approval. Flowlines require an explicit service boundary.</p><form id="codeBasisForm" data-row="${esc(id)}"><label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option>${assets.map(v=>`<option value="${v}" ${r.code_asset_type===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><label>Construction code<select name="code_family" required><option value="">Choose…</option>${codes.map(v=>`<option ${r.code_family===v?'selected':''}>${v}</option>`).join('')}</select></label><label>Edition year<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(r.code_edition||'')}" placeholder="e.g. 2024" required></label><label class="wide">Code basis evidence<input name="code_evidence" value="${esc(r.code_evidence||'')}" placeholder="Document, line list, drawing or approved basis reference" required></label><label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" ${r.code_owner_confirmed?'checked':''} required>I confirmed this code’s applicability and boundary for this component.</label><label>Calculation geometry<select name="geometry" required><option value="">Choose…</option>${['straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','head_unspecified','unknown'].map(v=>`<option value="${v}" ${r.geometry===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><fieldset><legend>Code-specific calculation inputs</legend>
+<div class="fields">
+<label>Reference material<select id="referenceMaterial"></select></label>
+<label>Reference temperature<select id="referenceTemperature"></select></label>
+</div><label>Basic B31.8 pipeline class (only where the basic factor applies)
+<select name="gas_basic_class"><option value="manual">Use manual factor</option>
+${['1 Division 1','1 Division 2','2','3','4'].map(value=>`<option value="${value}" ${r.input_trace?.overrides?.gas_basic_class===value?'selected':''}>Class ${value}</option>`).join('')}</select></label>
+<output id="referencePreview" aria-live="polite"></output>
 <label>Material specification and grade<input name="material" value="${esc(r.material||'')}" placeholder="SA-516 Grade 70"></label>
 <label>Product form<select name="product_form"><option value="">Choose…</option><option value="plate" ${r.profile?.product_form==='plate'?'selected':''}>Plate</option>${['LFW','HFW','SMLS','SAWL','SAWH','COWL','COWH'].map(form=>`<option value="${form}" ${r.profile?.product_form===form?'selected':''}>${form}</option>`).join('')}</select></label>
 <p>Vessel stress lookup: SA-516 Grade 70 plate, VIII-1 2025. Enter an exact supported temperature (104, 149, 212, 257, 302, 392 or 482 °F), or supply a reviewed stress.</p>
 ${Object.entries({temperature_F:'Design metal temperature (°F)',D_inside_in:'Inside diameter (in)',P_psi:'Design pressure (psi)',E_joint:'Joint efficiency',structural_minimum_mm:'Structural minimum (mm)',E_quality:'Pipe quality factor',W_reduction:'Weld strength reduction factor',Y_coefficient:'Y coefficient',F_class:'Gas pipeline class factor',F_design:'Liquid pipeline design factor',E_weld:'Pipeline weld factor',T_temp:'Gas pipeline temperature factor',SMYS_psi:'Pipeline SMYS (psi)',interval_fraction:'Inspection interval fraction of remaining life',interval_cap_years:'Inspection interval cap (years)'}).map(([key,label])=>`<label>${label}<input type="number" step="any" name="${key}" value="${esc(r.input_trace?.overrides?.[key]??r.profile?.fields?.[key]?.value??'')}"></label>`).join('')}
 <label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi"></label>
 <label>Manual allowable stress reference<input name="material_reference"></label>
-</fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;}
+</fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'));}
+function bindReferenceSelectors(form) {
+    const material = $('referenceMaterial');
+    const temperature = $('referenceTemperature');
+    const preview = $('referencePreview');
+    const field = key => form.elements.namedItem(key);
+    const get = key => field(key)?.value || '';
+    let generation = 0;
+
+    function availableRows() {
+        const geometry = get('geometry');
+        const product = get('code_family') === 'ASME VIII-1'
+            ? (['shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head'].includes(geometry)
+                ? get('product_form') : '')
+            : geometry === 'straight_pipe' ? 'pipe'
+            : ['elbow','tee','reducer','branch'].includes(geometry) ? 'fitting' : '';
+        return state.material_stresses.filter(row => row.code_family === get('code_family') &&
+            row.code_edition === get('code_edition') && row.product_form === product);
+    }
+
+    async function refresh() {
+        const current = ++generation;
+        const rows = availableRows();
+        const gas = get('code_family') === 'ASME B31.8' && get('code_edition') === '2025' &&
+            get('geometry') === 'straight_pipe';
+        const materials = [...new Set(rows.map(row => row.material))];
+        if (gas) materials.push(...state.gas_pipe_grades.map(grade => 'API 5L ' + grade));
+        options(material.id, materials.map(value => [value, value]), get('material'), 'Choose or enter manually');
+        const points = rows.filter(row => row.material === get('material')).map(row => [
+            row.temperature_F, row.temperature_C ? row.temperature_C + ' °C' : row.temperature_F + ' °F']);
+        if (gas) points.push(...[250,300,350,400,450].map(value => [String(value), value + ' °F']));
+        options(temperature.id, points, get('temperature_F'), 'Choose or enter manually');
+        preview.textContent = 'Checking reference values…';
+        try {
+            const response = await fetch('/api/workspace/reference_preview', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({values:Object.fromEntries(new FormData(form))}),
+            });
+            const result = await response.json();
+            if (!response.ok) throw Error(result.error || 'Reference lookup failed');
+            if (current !== generation) return;
+            preview.innerHTML = result.entries.map(entry =>
+                `<div><strong>${esc(entry.label)}: ${esc(entry.value)}</strong> <small>${esc(entry.reference)}</small></div>`).join('')
+                || 'No automatic value for this selection. Enter a reviewed value if required.';
+        } catch (error) {
+            if (current === generation) preview.textContent = error.message;
+        }
+    }
+    form.addEventListener('change', event => {
+        if (event.target === field('gas_basic_class') && get('gas_basic_class') !== 'manual') field('F_class').value = '';
+        if (event.target === material && material.value) field('material').value = material.value;
+        if (event.target === temperature && temperature.value) field('temperature_F').value = temperature.value;
+        refresh();
+    });
+    refresh();
+}
 function identityInputs(r){const i=r.match_identity||{},meta=[i.section||r.segment,i.joint?`Joint ${i.joint}`:'',i.band?`Band ${i.band}`:'',i.size?`NPS ${i.size}`:''].filter(Boolean).join(' · ');return `<div class="identity-summary"><strong>${esc(r.location||'Unassigned location')}</strong><small>${esc(meta||'Location details unavailable')}</small></div><div class="identity-actions"><details class="identity-editor"><summary>Edit match</summary><div class="identity-fields">${['section','joint','band','size'].map(k=>`<label class="identity-field">${esc(k)}<input data-identity="${k}" data-row="${esc(r.current_id)}" value="${esc(i[k]||'')}" aria-label="Matching ${k} for ${esc(r.location)}"></label>`).join('')}</div><button data-save-identity="${esc(r.current_id)}">Save match</button><small class="match-warning">${esc((r.match_flags||[]).join('; '))}</small></details><button class="detail-action" data-code="${esc(r.current_id)}">Code basis · ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')}</button><button class="detail-action" data-detail="${esc(r.id)}">Calculation details</button></div>`;}
 function componentInput(r){const current=r.match_identity?.component||'unknown';return `<select data-component="${esc(r.current_id)}" aria-label="Component type for ${esc(r.location)}">${['unknown','straight_pipe','elbow','tee','reducer','fitting'].map(v=>`<option value="${v}" ${v===current?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select>`;}
 function previousLabel(c){return `${c.identity.joint} / ${c.identity.band} / NPS ${c.identity.size||'?'} · ${c.date} · ${c.value} mm · ${c.cell}`;}
@@ -72,7 +134,7 @@ function readiness(row) {
                 requireValue('nominal_thickness_mm', 'Nominal wall thickness');
             }
             if (pipeline) {
-                requireValue(code === 'ASME B31.8' ? 'F_class' : 'F_design', 'Applicable design factor');
+                if (!row.input_trace?.normalized_design?.F_class?.reference) requireValue(code === 'ASME B31.8' ? 'F_class' : 'F_design', 'Applicable design factor');
                 requireValue('E_weld', 'Weld factor');
                 if (code === 'ASME B31.8' && row.input_trace?.normalized_design?.T_temp?.reference == null) {
                     if (value('T_temp') == null && value('temperature_F') == null) missing.push('Design temperature or temperature factor');
@@ -107,6 +169,7 @@ function readiness(row) {
         });
     const design = row.input_trace?.normalized_design || {};
     if (design.SMYS_MPa?.reference) sourced.push(['SMYS (psi)', design.SMYS_MPa.value_psi, design.SMYS_MPa.reference]);
+    if (design.F_class?.reference) sourced.push(['Basic design factor F', design.F_class.value, design.F_class.reference]);
     if (design.T_temp?.reference) sourced.push(['Temperature factor T', design.T_temp.value, design.T_temp.reference]);
     return {missing, notes, sourced};
 }
