@@ -59,6 +59,24 @@ PRESETS['API570_PIPE'] = ('API 570 · In-service straight process piping', PRESE
 ))
 
 
+EDITABLE_FACTORS = {
+    'E_quality', 'W_reduction', 'Y_coefficient', 'F_design', 'E_weld',
+    'F_class', 'T_temp', 'E_joint',
+}
+
+
+def _form_key(key):
+    if key == 'D_outside_mm':
+        return 'D_outside_in'
+    return key.removesuffix('_MPa') + '_psi' if key.endswith('_MPa') else key
+
+
+def _form_label(key, label):
+    if key == 'D_outside_mm':
+        return 'Outside diameter (in)'
+    return label.replace('(MPa)', '(psi)')
+
+
 PIPE_RULES = ('B31_3_304_1_2', 'B31_4_403_2_1', 'B31_8_841_1_1')
 API570_REFERENCE = 'API 570, 5th edition with Addendum 1, §§6.3.3, 7.1, 7.2 and 7.6; Table 1 (PDF p. 53)'
 STRESS_CONTEXTS = {
@@ -117,7 +135,7 @@ def _reference_controls(rule, submitted):
     if rule in (*PIPE_RULES, 'API570_PIPE'):
         data['dimensions'] = [
             dict(family=row['family'], nps=row['nps'], schedule=row['schedule'],
-                 od=str(convert(row['od_in'], 'in', 'mm')), wall=row['nominal_mm'],
+                 od=row['od_in'], wall=row['nominal_mm'],
                  reference=f"{row['reference']}, PDF p. {row['pdf_page']}")
             for row in dimensions() if not row['issues']
         ]
@@ -129,12 +147,12 @@ def _reference_controls(rule, submitted):
         code, edition, product, target = STRESS_CONTEXTS[stress_rule]
         select('material', f'Material · {code} {edition} · {product}')
         select('temperature', 'Exact design temperature from table')
-        data['stressTarget'] = target
+        data['stressTarget'] = _form_key(target)
         data['stresses'] = [
             dict(material=row['material'], temperature=row['temperature_F'],
                  label=f"{row['temperature_C']} °C ({row['temperature_F']} °F)" if row.get('temperature_C')
                  else f"{row['temperature_F']} °F", reference=row['reference'],
-                 stress=row.get('S_allow_MPa') or str(convert(row['S_allow_psi'], 'psi', 'MPa')))
+                 stress=row.get('S_allow_psi') or str(convert(row['S_allow_MPa'], 'MPa', 'psi')))
             for row in material_stresses()
             if (row['code_family'], row['code_edition'], row['product_form']) == (code, edition, product)
         ]
@@ -142,7 +160,7 @@ def _reference_controls(rule, submitted):
         select('liquid_weld', 'Pipe specification, grade and weld type · B31.4')
         select('material', 'Pipe grade for SMYS · confirm against material records')
         data['liquidStrength'] = {
-            grade: dict(value=str(convert(psi, 'psi', 'MPa')), reference=f'{LIQUID_PIPE_SMYS_REFERENCE}, line {line}')
+            grade: dict(value=str(psi), reference=f'{LIQUID_PIPE_SMYS_REFERENCE}, line {line}')
             for grade, (psi, line) in LIQUID_PIPE_SMYS.items()
         }
         data['liquidWeld'] = dict(values=LIQUID_WELD_FACTORS, reference=LIQUID_WELD_REFERENCE['reference'])
@@ -152,7 +170,7 @@ def _reference_controls(rule, submitted):
         select('temperature', 'Design temperature from table')
         select('basic_class', 'Location class · basic design factor')
         data['gas'] = dict(
-            grades={f'API 5L {grade}': str(convert(psi, 'psi', 'MPa'))
+            grades={f'API 5L {grade}': str(psi)
                     for grade, psi in GAS_5L_SMYS_PSI.items()},
             forms=sorted(GAS_5L_FORMS),
             temperatures={str(t): str(gas_temperature_factor(t)) for t in (250, 300, 350, 400, 450)},
@@ -163,6 +181,7 @@ def _reference_controls(rule, submitted):
         )
     if not controls:
         return ''
+    data['factorDefaults'] = {key: value for key, _, value in PRESETS[rule][1] if key in EDITABLE_FACTORS}
     payload = json.dumps(data).replace('<', '\u003c')
     return ('<fieldset><legend>Reference lookups</legend><div class="fields">'
             + ''.join(controls) + '</div><p class="sample-sources" aria-live="polite"></p></fieldset>'
@@ -202,8 +221,7 @@ def _forecast(rules, inputs, wall, deduction):
     return (f'<dt>Observed corrosion rate</dt><dd>{E(numeric(rate))} mm/year</dd>'
             f'<dt>Projected wall at next inspection</dt><dd>{E(numeric(projected))} mm '
             f'({E(numeric(net))} mm after deduction)</dd>'
-            f'<dt>{title}</dt><dd><strong>{E(numeric(pressure))} MPa '
-            f'({E(numeric(convert(pressure, "MPa", "psi")))} psi)</strong> · {label} check</dd>')
+            f'<dt>{title}</dt><dd><strong>{E(numeric(convert(pressure, "MPa", "psi")))} psi</strong> · {label} check</dd>')
 
 
 def _inspection_result(inputs):
@@ -235,8 +253,7 @@ def _pressure_result(rule, rules, inputs, wall):
         return f'<dt>MAWP candidate withheld</dt><dd>{E(str(exc) or "Invalid pressure inputs.")}</dd>'
     title = 'Pressure candidate (pipeline)' if rule in PIPE_RULES[1:] else 'MAWP candidate'
     return (
-        f'<dt>{title} at entered wall</dt><dd><strong>{E(numeric(pressure))} MPa '
-        f'({E(numeric(convert(pressure, "MPa", "psi")))} psi)</strong><br>'
+        f'<dt>{title} at entered wall</dt><dd><strong>{E(numeric(convert(pressure, "MPa", "psi")))} psi</strong><br>'
         f'Net wall {E(numeric(net))} mm · {label} check · {E(REFERENCES[key])}</dd>'
         + _forecast(rules, inputs, wall, deduction)
     )
@@ -298,7 +315,8 @@ def _api570_result(inputs):
             except (ValueError, DecimalException) as exc:
                 notes.append(f'{label} withheld: {exc}')
             else:
-                entries.append((label, pressure, 'MPa'))
+                entries.append((f'Wall used for {label.lower()}', wall - deduction, 'mm'))
+                entries.append((label, convert(pressure, 'MPa', 'psi'), 'psi'))
     rows = ''.join(f'<dt>{label}</dt><dd>{E(numeric(value))} {unit}</dd>' for label, value, unit in entries)
     messages = ''.join(f'<p class="warn">{E(note)}</p>' for note in notes)
     return (f'<div class="sample-result" role="status"><h3>Draft API 570 piping assessment</h3>'
@@ -356,8 +374,12 @@ def _result(rule, inputs):
 def panel(sample='', submitted=None):
     rule = sample if sample in PRESETS else next(iter(PRESETS))
     values = submitted or {}
-    controls = [field(key, label, values.get(key, ''), kind='number')
-                for key, label, _ in PRESETS[rule][1]]
+    fields = PRESETS[rule][1]
+    controls = [
+        field(_form_key(key), _form_label(key, label),
+              values.get(_form_key(key), default if key in EDITABLE_FACTORS else ''), kind='number')
+        for key, label, default in fields
+    ]
     if rule not in {'CR_ST', 'API570_PIPE'}:
         controls.append(field('measured_mm', 'Current measured thickness (mm)',
                               (submitted or {}).get('measured_mm', ''), kind='number', required=False))
@@ -383,7 +405,16 @@ def panel(sample='', submitted=None):
         try:
             if sample not in PRESETS:
                 raise ValueError('Choose a supported calculation preset.')
-            output = _result(rule, submitted)
+            inputs = dict(submitted)
+            for key, label, _ in fields:
+                form_key = _form_key(key)
+                if form_key != key:
+                    raw = submitted.get(form_key, '')
+                    if not raw:
+                        raise ValueError(f'Enter {_form_label(key, label)}.')
+                    units = ('in', 'mm') if key == 'D_outside_mm' else ('psi', 'MPa')
+                    inputs[key] = convert(raw, *units)
+            output = _result(rule, inputs)
         except DecimalException:
             output = '<p class="warn" role="alert">Enter valid decimal inputs within the supported numeric range.</p>'
         except ValueError as exc:
@@ -398,6 +429,8 @@ def panel(sample='', submitted=None):
         + (f'<p>Non-RBI Class 1–3 straight process piping. Use comparable UT readings from the same CML. '
          f'Pressure calculations use {E(REFERENCES[PIPE_RULES[0]])}.</p>' if rule == 'API570_PIPE'
          else f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>')
+        + ('<p>Prefilled coefficients and factors are editable sample assumptions. Confirm them for your case.</p>'
+           if any(key in EDITABLE_FACTORS for key, _, _ in fields) else '')
         + _reference_controls(rule, submitted)
         + '<div class="fields">' + ''.join(controls) + '</div>' + forecast_fields
         + '<button class="primary">Calculate sample</button></form>' + output + '</section>'

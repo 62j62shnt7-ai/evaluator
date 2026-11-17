@@ -35,7 +35,9 @@ function bindReferences(referenceData) {
     }
 
     function populateGroup(match, targets) {
-        for (const name of targets) control(name).value = match?.fields[name] ?? '';
+        for (const name of targets) {
+            control(name).value = match?.fields[name] ?? referenceData.factorDefaults?.[name] ?? '';
+        }
         showSources();
     }
 
@@ -47,9 +49,9 @@ function bindReferences(referenceData) {
         const setSchedules = selected => setOptions('schedule', choices(sizeRows().map(row => row.schedule)), selected);
         const lookup = () => {
             const row = sizeRows().find(item => item.schedule === control('schedule').value);
-            return row && {fields: {D_outside_mm: row.od, nominal_mm: row.wall}, reference: row.reference};
+            return row && {fields: {D_outside_in: row.od, nominal_mm: row.wall}, reference: row.reference};
         };
-        const apply = () => populateGroup(lookup(), ['D_outside_mm', 'nominal_mm']);
+        const apply = () => populateGroup(lookup(), ['D_outside_in', 'nominal_mm']);
         setOptions('pipe_family', [['ferritic', 'Ferritic / carbon steel'], ['stainless', 'Stainless steel']],
                    referenceData.selection.pipe_family);
         setSizes(referenceData.selection.nps);
@@ -81,10 +83,10 @@ function bindReferences(referenceData) {
         const grades = referenceData.liquidStrength;
         const lookup = () => {
             const row = grades[control('material').value];
-            return row && {fields: {SMYS_MPa: row.value}, reference: row.reference};
+            return row && {fields: {SMYS_psi: row.value}, reference: row.reference};
         };
         setOptions('material', choices(Object.keys(grades)), referenceData.selection.material);
-        control('material').addEventListener('change', () => populateGroup(lookup(), ['SMYS_MPa']));
+        control('material').addEventListener('change', () => populateGroup(lookup(), ['SMYS_psi']));
         groups.push(lookup);
     }
 
@@ -111,8 +113,8 @@ function bindReferences(referenceData) {
         const match = (target, value, reference) => value && {fields: {[target]: value}, reference};
         setOptions('product_form', choices(gas.forms), referenceData.selection.product_form);
         const updateGrade = bind('material', choices(Object.keys(gas.grades)), () =>
-            match('SMYS_MPa', control('product_form').value && gas.grades[control('material').value],
-                  gas.smys_reference), 'SMYS_MPa');
+            match('SMYS_psi', control('product_form').value && gas.grades[control('material').value],
+                  gas.smys_reference), 'SMYS_psi');
         control('product_form').addEventListener('change', updateGrade);
         bind('temperature', Object.keys(gas.temperatures).map(value => [value, value + ' °F']), () =>
             match('T_temp', gas.temperatures[control('temperature').value], gas.temperature_reference), 'T_temp');
