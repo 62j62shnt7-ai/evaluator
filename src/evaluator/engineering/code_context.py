@@ -39,6 +39,13 @@ _OUTPUT_BY_CODE: Final[dict[str, str]] = {
     'API 650': 'TANK_SHELL_THICKNESS_CANDIDATE',
 }
 
+_SUPPORTED_EDITIONS: Final[dict[str, frozenset[str]]] = {
+    'ASME B31.3': frozenset({'2024'}),
+    'ASME B31.4': frozenset({'2025'}),
+    'ASME B31.8': frozenset({'2025'}),
+    'ASME VIII-1': frozenset({'2025'}),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class CodeContext:
@@ -105,6 +112,12 @@ def route_code(context: CodeContext) -> RoutingResult:
     if not context.owner_confirmed or not context.code_evidence or not context.code_evidence.strip():
         return RoutingResult('NEEDS_CODE_CONFIRMATION', component, (), None,
                              ('Owner-confirmed applicability and traceable code-basis evidence are required.',))
+    if not edition.isdigit() or len(edition) != 4:
+        return RoutingResult('NEEDS_CODE_CONFIRMATION', component, (), None,
+                             ('Construction edition must be an exact four-digit year.',))
+    if edition not in _SUPPORTED_EDITIONS.get(code, frozenset()):
+        return RoutingResult('NOT_ASSESSED', component, (), None,
+                             (f'No reviewed arithmetic reference is available for {code} {edition}.',))
     if not context.geometry or not context.geometry.strip():
         return RoutingResult('NOT_ASSESSED', component, (), None,
                              ('Component geometry is unknown.',))

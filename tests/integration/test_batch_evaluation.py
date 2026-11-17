@@ -62,9 +62,9 @@ class BatchTests(unittest.TestCase):
             self.assertAlmostEqual(float(saved['apparent_rate_mm_year']),float(expected),places=12)
             self.assertEqual(saved['current_thickness_mm'],'6.8')
             self.assertEqual(saved['profile']['code_edition'],'2020')
-            self.assertIsNotNone(saved['mawp_MPa'])
-            self.assertAlmostEqual(float(saved['mawp_MPa']),1500*.006894757293,places=10)
-            self.assertEqual(saved['mawp_MPa'],saved['forecast_mawp_MPa'])
+            self.assertIsNone(saved['mawp_MPa'])
+            self.assertIsNone(saved['forecast_mawp_MPa'])
+            self.assertEqual(saved['routing']['status'],'NOT_ASSESSED')
             self.assertEqual(saved['input_trace']['design_inputs']['E_weld'],'1')
             self.assertEqual(saved['input_trace']['design_inputs']['T_temp'],'1')
             page=batch_page(service,comparison['id'],profile_sheet='Evalation 4-2026')
@@ -75,7 +75,7 @@ class BatchTests(unittest.TestCase):
             service.batch.apply_overrides(comparison['id'],flow.revision(),[],[saved['current_id']],dict(E_weld='.9',T_temp='.95'),'Evalation 4-2026')
             adjusted=service.batch.evaluate(comparison['id'],flow.revision(),options)
             changed=next(item for item in adjusted['rows'] if item['current_cell']=='N15')
-            self.assertAlmostEqual(float(changed['mawp_MPa']),1500*.006894757293*.9*.95,places=10)
+            self.assertIsNone(changed['mawp_MPa'])
 
 
 
@@ -91,6 +91,25 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(len(result['rows']),3)
         self.assertTrue(any(r['current_id'] is None for r in result['rows']))
         self.assertEqual(result['status'],'DRAFT / NOT VALIDATED')
+
+    def test_code_routing_is_fail_closed_and_revisioned(self):
+        options=dict(profile_sheet='Design',confirm_records=True,confirm_history=True,confirm_rules=True,basis='recalculate')
+        preview=self.service.batch.preview(self.comp['id'],'Design',options)
+        row=next(item for item in preview['rows'] if item['current_id']=='b')
+        self.assertEqual(row['routing']['status'],'NEEDS_CODE_CONFIRMATION')
+        self.assertIsNone(row['pressure_thickness_mm'])
+        self.assertIsNone(row['mawp_MPa'])
+        revision=self.flow.revision()
+        self.service.batch.apply_overrides(self.comp['id'],revision,[],['b'],dict(
+            code_family='ASME B31.8',code_edition='2025',code_asset_type='gas_transmission',
+            code_evidence='Reviewed transmission line list LL-1 rev 2',code_owner_confirmed='yes',reviewed='yes'),'Design')
+        reviewed=self.service.batch.preview(self.comp['id'],'Design',options)
+        row=next(item for item in reviewed['rows'] if item['current_id']=='b')
+        self.assertEqual(row['routing']['status'],'ROUTE_SELECTED')
+        self.assertEqual(row['routing']['candidate_rule_ids'],['B31_8_841_1_1'])
+        self.flow.undo(self.flow.revision(),'reviewer','Undo code basis decision')
+        restored=self.service.batch.settings(self.comp['id'])['row_overrides']['b']
+        self.assertNotIn('code_owner_confirmed',restored)
 
     def test_pressure_only_record_supports_labeled_source_life_without_becoming_governing_minimum(self):
         r=self.records[0];r['fields']['pressure_thickness_mm']=r['fields'].pop('required_thickness_mm')

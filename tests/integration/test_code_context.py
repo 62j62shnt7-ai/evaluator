@@ -51,6 +51,11 @@ class CodeRoutingTests(unittest.TestCase):
         r = route_code(context(construction_edition=None))
         self.assertEqual(r.status, 'NEEDS_CODE_CONFIRMATION')
 
+    def test_unreviewed_edition_has_no_arithmetic_route(self):
+        r = route_code(context(construction_edition='2020'))
+        self.assertEqual(r.status, 'NOT_ASSESSED')
+        self.assertFalse(r.can_attempt_arithmetic)
+
     def test_unknown_asset_type_is_not_auto_assigned(self):
         r = route_code(context(asset_type='unknown'))
         self.assertEqual(r.status, 'NOT_ASSESSED')

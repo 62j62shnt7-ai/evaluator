@@ -110,13 +110,18 @@ class Workspace:
             row['segment']=over.get('segment') or p.get('segment') or p.get('section') or row['location'].split(' / ')[0]
             row['component']=p.get('component') or ' / '.join(row['location'].split(' / ')[1:3])
             row['material']=over.get('material',_value(p,'material'));row['schedule']=_value(p,'schedule');row['nps']=_value(p,'nps')
+            row['S_allow_psi']=over.get('S_allow_psi',_value(p,'S_allow_psi'))
             row['nominal_thickness_mm']=_value(p,'nominal_thickness_mm')
-            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=p.get('code_family');row['code_edition']=p.get('code_edition')
+            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=over.get('code_family') or p.get('code_family');row['code_edition']=over.get('code_edition') or p.get('code_edition')
+            row['code_evidence']=over.get('code_evidence',p.get('code_evidence',p.get('code_basis','')))
+            row['code_owner_confirmed']=over.get('code_owner_confirmed')=='yes' or bool(p.get('code_owner_confirmed'))
+            row['code_asset_type']=over.get('code_asset_type',p.get('code_asset_type',''))
+            row['routing']=row.get('routing') or {'status':'NEEDS_CODE_CONFIRMATION','issues':['Owner-confirmed code basis is required.']}
             od=_value(p,'D_outside_in')
             if not row['nps'] and od:
                 matches={d['nps'] for d in dimensions() if abs(Decimal(d['od_in'])-Decimal(str(od)))<Decimal('.001')}
                 if len(matches)==1:row['nps']=matches.pop();row['size_basis']='API 574 OD correspondence; schedule requires source evidence or confirmation'
-            row['status']='Below minimum' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'Review' if row['issues'] else (row.get('row7') or {}).get('result','Calculated')
+            row['status']='DRAFT / NOT VALIDATED · BELOW MINIMUM REVIEW' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'NEEDS REVIEW' if row['issues'] else 'DRAFT / NOT VALIDATED · '+str((row.get('row7') or {}).get('result','Calculated'))
             row['attention']=bool(row['issues']) or not row['reviewed']
         readings={r['observation_id']:r for r in self.flow._selection(*comp['current_selection'])}
         previous=self.flow._selection(*comp['baseline'])
@@ -135,7 +140,7 @@ class Workspace:
             elif row['previous_id']:
                 prior=next((r for r in previous if r['observation_id']==row['previous_id']),None)
                 if prior and self.flow._key(prior)!=self.flow._key(readings[row['current_id']]):row['match_flags'].append('Manually selected previous reading has different identity fields; review the assignment')
-            if row['match_flags']:row['attention']=True
+            if row['match_flags'] or row['routing'].get('status')!='ROUTE_SELECTED':row['attention']=True
         def natural(row):return [int(t) if t.isdigit() else t.casefold() for t in re.split(r'(\d+)',row['location'])]
         rows.sort(key=natural)
         catalog={}
@@ -147,7 +152,7 @@ class Workspace:
         campaigns=single_sheet_campaigns(self.service,*comp['current_selection'][:2])
         if comp.get('baseline_per_location'):campaigns.append(dict(campaign=comp['baseline'][2],label=comp['baseline_label'],count=len(self.flow._selection(*comp['baseline'])),date_rank=''))
         if partial:return dict(revision=base['revision'],workspace=dict(rows=rows))
-        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,previous_choices_by_section=previous_by_section,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum(r['status']=='Below minimum' for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
+        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,previous_choices_by_section=previous_by_section,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum('BELOW_OR_AT_REQUIRED_THICKNESS' in r['issues'] for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
 
     def apply(self, cid, revision, ids, values=None, template_id=None, dimension_key=None, sheet=None, clear=False, fill_missing=False):
         values=dict(values or {})
@@ -180,7 +185,7 @@ class Workspace:
                     if any(Decimal(str(values.get('adopted_rate_mm_year',existing.get(oid,{}).get('adopted_rate_mm_year','0'))))<=0 for oid in ids):raise ValueError('An increasing-reading override requires an explicit positive adopted rate for every selected row')
                 if not set(values)<=NUMERIC_OVERRIDES|TEXT_OVERRIDES:raise ValueError('Unknown engineering field')
                 # A manual material/temperature/code change cannot inherit a stress silently.
-                if set(values)&{'material','temperature_F','code_family','code_edition'}:
+                if set(values)&{'material','temperature_F','code_family','code_edition','code_evidence','code_asset_type'}:
                     values.setdefault('review_note','Changed material/code/temperature; confirm property applicability')
                 if fill_missing:
                     current={r['current_id']:r for r in self.state(cid,sheet)['workspace']['rows']}

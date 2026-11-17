@@ -21,6 +21,8 @@ PROFILE_FIELDS={'material','P_psi','temperature_F','S_allow_psi','SMYS_psi','D_o
 PROFILE_TEXT={'component','geometry','code_family','code_edition','segment'}
 NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm'})
 TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase'}
+TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
+TEXT_OVERRIDES.update({'code_asset_type'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
 
 
@@ -205,6 +207,7 @@ class BatchService:
             if k in NUMERIC_OVERRIDES and _num(v) is None:raise ValueError(k+' must be finite and nonnegative')
         for key in ('reviewed','reconcile_conflict'):
             if key in clean and clean[key] not in {'yes','no'}:raise ValueError('Invalid review decision')
+        if any('code_owner_confirmed' in values and values['code_owner_confirmed'] not in {'yes','no'} for values in [clean,*per_row_values.values()]):raise ValueError('Invalid code applicability confirmation')
         all_values={**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}
         if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
         if all_values.get('rule') and all_values['rule'] not in RULES:raise ValueError('Unsupported rule')
@@ -274,17 +277,6 @@ class BatchService:
         override=dict(config.get('group_overrides',{}).get(gid,{}));override.update(config.get('row_overrides',{}).get(oid,{}))
         if config.get('basis')=='row7' and p is not None:
             override.setdefault('S_allow_psi',_value(p,'S_allow_psi'))
-        if config.get('basis')=='row7' and current and hasattr(self,'service'):
-            from evaluator.importing.ut_defaults import defaults
-            cache=getattr(self,'_ut_source_defaults',{})
-            key=(current['source_id'],current['sheet_name'])
-            if key not in cache:cache[key]=self.service.imported_sheet(*key) or {}
-            self._ut_source_defaults=cache
-            source_defaults=defaults(cache[key],current['cell'],_location(current)[-1])
-            identity=self.flow.match_identity(current)
-            if identity['component']!='unknown':
-                source_defaults.update(geometry=identity['component'],material='A106 B' if identity['component']=='straight_pipe' else 'A234 WPB')
-            override=dict(source_defaults,**override)
         config=dict(config)
         if config.get('workspace_review'):config.update(confirm_records=False,confirm_history=False,confirm_rules=False)
         if override.get('reviewed')=='yes':
@@ -302,7 +294,10 @@ class BatchService:
                     p.setdefault('fields',{})[key]=dict(value=override[key],kind='reference_derived' if reference else 'manual_override',unit=(p.get('fields',{}).get(key) or {}).get('unit'),source_record=(source_profile.get('fields',{}).get(key)),basis=reference or 'Explicit batch configuration')
             for key in PROFILE_TEXT:
                 if key in override:p[key]=override[key]
-            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry'))
+            if 'code_evidence' in override:p['code_evidence']=override['code_evidence']
+            if 'code_owner_confirmed' in override:p['code_owner_confirmed']=override['code_owner_confirmed']=='yes'
+            if 'code_asset_type' in override:p['code_asset_type']=override['code_asset_type']
+            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry','code_evidence','code_asset_type'))
             if context_changed:
                 for key in ('S_allow_psi','SMYS_psi'):
                     if key not in override:p.setdefault('fields',{})[key]=dict(value=None,kind='invalidated',basis='Material/code/temperature changed; property must be supplied for this context')
@@ -330,6 +325,21 @@ class BatchService:
                 issues.append('PROFILE_CURRENT_CONFLICT')
                 if not config.get('confirm_conflicts'):blocked=True
             if p.get('inspection_date')!=current['inspection_date']:issues.append('PROFILE_EVENT_SCOPE_CONFIRMATION')
+        route=None
+        if p:
+            from evaluator.engineering.code_context import CodeContext,route_code
+            family=p.get('code_family') or ''
+            asset_type=p.get('code_asset_type') or {'ASME B31.3':'process_piping','ASME B31.4':'liquid_transmission',
+                        'ASME B31.8':'gas_transmission','ASME VIII-1':'pressure_vessel'}.get(family,'unknown')
+            route=route_code(CodeContext(
+                component_id=str(p.get('component') or (item.get('key') or [''])[0] or oid or ''),
+                asset_type=asset_type,geometry=str(p.get('geometry') or 'unknown'),
+                construction_code=family or None,construction_edition=p.get('code_edition'),
+                code_evidence=p.get('code_evidence'),owner_confirmed=bool(p.get('code_owner_confirmed'))))
+            row['routing']=dict(status=route.status,code=family or None,edition=p.get('code_edition'),
+                                geometry=p.get('geometry'),issues=list(route.issues),
+                                candidate_rule_ids=list(route.candidate_rule_ids))
+            if route.status!='ROUTE_SELECTED':issues.append('CODE_ROUTING_'+route.status)
         # Historical rates are independent of engineering-record readiness.
         source_year_days=(p or {}).get('year_days')
         year_days=override.get('year_days') or config.get('year_days') or source_year_days or '365.2425'
@@ -368,6 +378,9 @@ class BatchService:
             geometry_unsupported=p['geometry'] in {'nozzle','elbow','tee','reducer','branch','unknown'}
             if geometry_unsupported:issues.append('GEOMETRY_RULE_UNSUPPORTED')
             if not config.get('confirm_rules'):rule=None;issues.append('DESIGN_SCOPE_NOT_CONFIRMED')
+            if route is None or not route.can_attempt_arithmetic or rule not in route.candidate_rule_ids:
+                if rule:issues.append('CODE_ROUTING_RULE_MISMATCH')
+                rule=None
             elif geometry_unsupported:rule=None
             elif p['geometry']=='head_unspecified' and rule not in {'VIII_UG32_ELLIP','VIII_UG32_TORI'}:rule=None;issues.append('HEAD_GEOMETRY_REQUIRED')
             elif (p['family']=='separator') != bool(rule and rule.startswith('VIII')):rule=None;issues.append('RULE_FAMILY_MISMATCH')
@@ -441,6 +454,11 @@ class BatchService:
                    input_trace=dict(history=dict(formula='(previous thickness - current thickness) / elapsed years',source_reference='API 570 fifth edition 7.1.2',previous_date=old['inspection_date'] if old else None,current_date=current['inspection_date'] if current else None,elapsed_basis='calendar months / 12' if old and current and len(old.get('inspection_date') or '')==len(current.get('inspection_date') or '')==7 else 'elapsed days / year_days'),profile_fields=(p or {}).get('fields',{}),normalized_design=input_trace,design_inputs=inputs,overrides=override,basis=mode,interval_policy=dict(fraction=fraction,cap_years=cap),forecast_policy=forecast_policy,year_days=year_days,source_rate_selected=False,rate_basis='manual override' if 'adopted_rate_mm_year' in override else 'calculated historical CR'))
         values=outputs(row['current_thickness_mm'] if current and current.get('review_status')!='excluded' else None,life_required,adopted,row['inspection_date'],year_days,fraction,cap,
                        'VIII_UG27_HOOP' if rule=='VIII_SHELL' else rule,inputs,allowance,forecast,factor,selected_interval,scheduled_date,next_inspection_years,manual_interval_override,manual_selected_interval)
+        if route is None or not route.can_attempt_arithmetic or not rule:
+            values['mawp_MPa']=None
+            values['forecast_mawp_MPa']=None
+            for key in ('mawp_MPa','forecast_mawp_MPa'):
+                values.setdefault('issues',{}).setdefault(key,[]).append('CODE_ROUTING_REQUIRED')
         if rule=='VIII_SHELL':
             other=outputs(row['current_thickness_mm'],life_required,adopted,row['inspection_date'],year_days,fraction,cap,'VIII_UG27_LONG',inputs,allowance,forecast,factor,selected_interval,scheduled_date,next_inspection_years,manual_interval_override,manual_selected_interval)
             for key in ('mawp_MPa','forecast_mawp_MPa'):
@@ -469,7 +487,31 @@ class BatchService:
         row.update({key: None for key in output_keys})
         row.update(maximum_interval_years=None, selected_interval_years=None, rule='ROW7',
                    required_basis='Row 7: MAX(pressure thickness, structural minimum)', row7=None)
-        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi') or {'A106 B':'20000','A234 WPB':'20000','API 5L X52':'22000'}.get(str(raw('material') or '').upper().replace('ASTM ', '').replace('GRADE ', '').replace('GR ', '').replace(' ', '')), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+        if not p:
+            row['issues'].append('CODE_ROUTING_NOT_ASSESSED')
+            return self._withheld_row7(row, output_keys)
+        from evaluator.engineering.code_context import CodeContext,route_code
+        family=p.get('code_family') or ''
+        asset_type=p.get('code_asset_type') or {'ASME B31.3':'process_piping','ASME B31.4':'liquid_transmission',
+                    'ASME B31.8':'gas_transmission','ASME VIII-1':'pressure_vessel'}.get(family,'unknown')
+        routed=route_code(CodeContext(component_id=str(p.get('component') or row.get('location') or row['id']),
+            asset_type=asset_type,geometry=str(p.get('geometry') or 'unknown'),construction_code=family or None,
+            construction_edition=p.get('code_edition'),code_evidence=p.get('code_evidence'),
+            owner_confirmed=bool(p.get('code_owner_confirmed'))))
+        row['routing']=dict(status=routed.status,code=family or None,edition=p.get('code_edition'),
+            geometry=p.get('geometry'),issues=list(routed.issues),candidate_rule_ids=list(routed.candidate_rule_ids))
+        if not routed.can_attempt_arithmetic or routed.candidate_rule_ids!=('B31_3_304_1_2',):
+            status=routed.status
+            if routed.can_attempt_arithmetic:
+                status='NOT_ASSESSED'
+                row['routing']['status']='NOT_ASSESSED'
+                row['routing']['issues'].append('Row 7 arithmetic is only routed for the reviewed B31.3 straight-pipe candidate.')
+            row['issues'].append('CODE_ROUTING_'+status)
+            return self._withheld_row7(row,output_keys)
+        if override.get('reviewed')!='yes':
+            row['issues'].append('PROFILE_SCOPE_NOT_CONFIRMED')
+            return self._withheld_row7(row,output_keys)
+        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
                       nominal_mm=raw('nominal_thickness_mm'), structural_mm=raw('structural_minimum_mm'),
                       selected_cr=raw('adopted_rate_mm_year'), previous_mm=row['previous_thickness_mm'],
                       current_mm=row['current_thickness_mm'], previous_date=row['previous_inspection_date'],
@@ -504,6 +546,14 @@ class BatchService:
         row['outputs'] = {key: row[key] for key in output_keys}
         row['outputs'].update(trace={'row7':row['row7'], 'forecast_mawp_MPa':{'net_thickness_mm':str(row['row7']['mawp_thickness_mm'])} if row['row7'] else {}}, issues={key:list(row['issues']) for key in output_keys})
         row['output_readiness'] = {key:dict(state='evaluated' if row[key] is not None else 'withheld',issues=list(row['issues'])) for key in output_keys}
+        return row
+
+    @staticmethod
+    def _withheld_row7(row, output_keys):
+        row['evaluation_status']='NEEDS_REVIEW'
+        row['outputs']={key:None for key in output_keys}
+        row['outputs'].update(trace={'row7':None},issues={key:list(row['issues']) for key in output_keys})
+        row['output_readiness']={key:dict(state='withheld',issues=list(row['issues'])) for key in output_keys}
         return row
 
     def evaluate(self,comparison_id,expected_revision,options,preview_token=None):
