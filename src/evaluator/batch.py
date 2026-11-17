@@ -275,8 +275,6 @@ class BatchService:
         current,old,pair,p=item['current'],item['previous'],item['pair'],item['profile']
         gid=self._group(p);oid=current['observation_id'] if current else None
         override=dict(config.get('group_overrides',{}).get(gid,{}));override.update(config.get('row_overrides',{}).get(oid,{}))
-        if config.get('basis')=='row7' and p is not None:
-            override.setdefault('S_allow_psi',_value(p,'S_allow_psi'))
         config=dict(config)
         if config.get('workspace_review'):config.update(confirm_records=False,confirm_history=False,confirm_rules=False)
         if override.get('reviewed')=='yes':
@@ -487,6 +485,14 @@ class BatchService:
         row.update({key: None for key in output_keys})
         row.update(maximum_interval_years=None, selected_interval_years=None, rule='ROW7',
                    required_basis='Row 7: MAX(pressure thickness, structural minimum)', row7=None)
+        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+                      nominal_mm=raw('nominal_thickness_mm'), structural_mm=raw('structural_minimum_mm'),
+                      selected_cr=raw('adopted_rate_mm_year'), previous_mm=row['previous_thickness_mm'],
+                      current_mm=row['current_thickness_mm'], previous_date=row['previous_inspection_date'],
+                      current_date=row['inspection_date'])
+        row['input_trace'] = dict(basis='row7', inputs=inputs, overrides=override,
+                                 history=dict(previous_cell=row['previous_cell'],current_cell=row['current_cell'],
+                                              previous_date=row['previous_inspection_date'],current_date=row['inspection_date']))
         if not p:
             row['issues'].append('CODE_ROUTING_NOT_ASSESSED')
             return self._withheld_row7(row, output_keys)
@@ -511,25 +517,15 @@ class BatchService:
         if override.get('reviewed')!='yes':
             row['issues'].append('PROFILE_SCOPE_NOT_CONFIRMED')
             return self._withheld_row7(row,output_keys)
-        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
-                      nominal_mm=raw('nominal_thickness_mm'), structural_mm=raw('structural_minimum_mm'),
-                      selected_cr=raw('adopted_rate_mm_year'), previous_mm=row['previous_thickness_mm'],
-                      current_mm=row['current_thickness_mm'], previous_date=row['previous_inspection_date'],
-                      current_date=row['inspection_date'])
-        row['input_trace'] = dict(basis='row7', inputs=inputs, overrides=override,
-                                 history=dict(previous_cell=row['previous_cell'],current_cell=row['current_cell'],
-                                              previous_date=row['previous_inspection_date'],current_date=row['inspection_date']))
         try:
             if not item['current'] or not item['previous'] or item['pair']['kind'] not in {'matched','lifecycle_mismatch'}:
                 raise ValueError('A unique previous/current reading pair is required')
             if any(r.get('raw_unit') != 'mm' or r.get('review_status') == 'excluded' for r in (item['current'], item['previous'])):
                 raise ValueError('Both readings must be included measurements in mm')
-            missing = [key for key,value in inputs.items() if value in (None,'') and key not in {'selected_cr','s_allow_psi'}]
+            missing = [key for key,value in inputs.items() if value in (None,'') and key != 'selected_cr']
             if missing:
                 raise ValueError('Missing inputs: ' + ', '.join(missing))
             result = calculate(inputs)
-            if row['profile'] is not None:
-                row['profile'].setdefault('fields', {})['S_allow_psi'] = dict(value=str(result['s_psi']),kind='manual_override' if raw('S_allow_psi') not in (None,'') else 'fixed_material_lookup',basis='Batch input' if raw('S_allow_psi') not in (None,'') else 'User-selected fixed material S for row 7 workflow')
             row.update(row7=result, elapsed_days=result['elapsed_days'],
                        pressure_thickness_mm=str(result['pressure_mm']), required_thickness_mm=str(result['required_mm']),
                        apparent_rate_mm_year=str(result['calculated_cr']), adopted_rate_mm_year=str(result['cr_used']),
