@@ -28,7 +28,7 @@ def page(service, notice='', *, active_method=None):
                      '<option value="local">Local area</option></select></label>'
                      '<p>Use the same datum for both heights. For local assessment, enter t1 from the inspector-reviewed profile (at least five equally spaced readings over L) and the least thickness t2 excluding pits. This method excludes reconstructed tanks.</p>')
         mapped = set(MAPPINGS.get(method, ()))
-        body += ''.join(field(key, name, kind='number', required=key not in mapped and key not in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm'}) for key, name in fields.items())
+        body += ''.join(field(key, name, kind='number', required=key not in mapped and key not in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm', 't2_mm', 'other_load_H_m'}) for key, name in fields.items())
         if mapped:
             choices = ''.join(f'<option value="{E(source["source_id"])}">{E(source["file_name"])} · {E(source["source_id"][:10])}</option>'
                               for source in service.sources())
@@ -87,6 +87,8 @@ def page(service, notice='', *, active_method=None):
         body += f'<p>{STATUS} · {E(record["reference"])} · Input revision {record["input_revision"]}</p>'
         body += f'<p>{E(record["note"])}</p><dl>'
         labels = {
+            'liquid_height_candidate_m': 'Liquid-loading height candidate (m)',
+            'governing_height_candidate_m': 'Height candidate including reviewed other loads (m)',
             'code_nominal_min_mm': 'Nominal plate minimum from API 650 (mm)',
             'product_mm': 'Product thickness (mm)', 'hydrotest_mm': 'Hydrotest thickness (mm)',
             'governing_candidate_mm': 'Governing thickness candidate (mm)',

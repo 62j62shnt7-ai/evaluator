@@ -162,3 +162,13 @@ def test_imported_ut_mapping_into_tank_history(tmp_path):
     assert record['ut_provenance']['source_sha256'] == original.sha256
     assert history(service.workflow)[0] == record
     assert path.read_bytes() == original.stored_path.read_bytes()
+
+
+def test_shell_height_combines_reviewed_other_loads_without_overwriting_liquid_limit():
+    base = calculate('api653_shell', SHELL, 'whole')['outputs']
+    assert base['governing_height_candidate_m'] is None
+    result = calculate('api653_shell', dict(SHELL, other_load_H_m='10'), 'whole')
+    assert Decimal(result['outputs']['liquid_height_candidate_m']) == 12
+    assert Decimal(result['outputs']['governing_height_candidate_m']) == 10
+    assert result['inputs']['other_load_H_m'] == '10'
+    assert '4.3.3.5' in result['reference']

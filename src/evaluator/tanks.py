@@ -21,6 +21,7 @@ METHODS = {
         'E': 'Applicable joint efficiency', 'measured_mm': 'Reviewed controlling thickness / local average t1 (mm)',
         't2_mm': 'Local area only: least thickness excluding pits, t2 (mm)',
         'CA_mm': 'Future corrosion allowance (mm)', 'design_H_m': 'Original maximum design height above same datum (m)',
+        'other_load_H_m': 'Reviewed height limit for other loads above same datum (m, optional)',
     }),
     'api653_bottom': ('API 653 (through July 2025) · Bottom thickness projection', {
         'RTbc_mm': 'Minimum remaining thickness from bottom-side corrosion (mm)',
@@ -90,7 +91,7 @@ def calculate(method, inputs, scope=''):
     fields = METHODS[method][1]
     values = {}
     for key, label in fields.items():
-        if key in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm'} and inputs.get(key) in (None, ''):
+        if key in {'nominal_min_mm', 'governing_min_mm', 'table_min_mm', 'other_load_H_m'} and inputs.get(key) in (None, ''):
             continue
         if key == 't2_mm' and scope != 'local':
             continue
@@ -144,8 +145,15 @@ def calculate(method, inputs, scope=''):
         result['liquid_height_candidate_m'] = (
             min(v['design_H_m'], available / coefficient + offset) if available >= floor else None
         )
-        reference = 'API 653 5th edition through July 2025, 4.3.1.5, 4.3.2.1 and 4.3.3.1'
-        note = 'Height uses the stated evaluation datum. Local profiles, pit acceptance, reconstructed tanks and additional loads require separate checks.'
+        liquid_limit = result['liquid_height_candidate_m']
+        other_limit = v.get('other_load_H_m')
+        result['governing_height_candidate_m'] = (
+            min(liquid_limit, other_limit) if liquid_limit is not None and other_limit is not None else None
+        )
+        reference = 'API 653 5th edition through July 2025, 4.3.1.5, 4.3.2.1, 4.3.3.1 and 4.3.3.5'
+        note = ('Height uses the stated evaluation datum. The governing height combines liquid loading with '
+                'the entered reviewed limit for other loads. Supply that limit only after the applicable '
+                'original-construction load checks. Local profiles, pits and reconstructed tanks need separate review.')
     elif method == 'api653_pits':
         if inputs.get('scattered') != 'yes':
             raise ValueError('Confirm these are widely scattered shell pits and all relevant vertical lines were surveyed')

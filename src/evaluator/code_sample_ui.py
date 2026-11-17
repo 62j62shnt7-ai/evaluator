@@ -11,6 +11,7 @@ from evaluator.engineering.reference_rules import (
 from evaluator.engineering.references import dimensions, material_stresses
 from evaluator.engineering.structural_reference import CLASSES, LOOKUP_FIELDS, NPS, structural_cell, structural_tables
 from evaluator.engineering.draft import FORMULAS, REFERENCES, evaluate
+from evaluator.tanks import calculate as calculate_tank
 from evaluator.workflow_ui import E, field, hidden, numeric
 
 
@@ -39,13 +40,16 @@ PRESETS = {
     'VIII_UG32_TORI': ('VIII-1 · Standard torispherical head', (
         ('P_MPa', 'Design pressure (MPa)', '1.0342'), ('L_inside_crown_mm', 'Inside crown radius (mm)', '1200'),
         ('S_allow_MPa', 'Allowable stress S (MPa)', '138'), ('E_joint', 'Joint efficiency E', '0.85'))),
-    'CR_ST': ('API 510 · Vessel corrosion rate and remaining life', (
+    'CR_ST': ('API 510 · Vessel inspection and continued-use MAWP', (
         ('t_previous_mm', 'Previous measured wall (mm)', '11.8'),
         ('t_current_mm', 'Current measured wall (mm)', '11.2'),
         ('elapsed_years', 'Years between UT readings', '2'),
-        ('t_required_mm', 'Reviewed required wall (mm)', '5'))),
+        ('t_required_mm', 'Reviewed governing required wall (mm)', '5'),
+        ('original_psi', 'Original vessel MAWP (psi)', ''),
+        ('next_years', 'Years to next internal or on-stream inspection', ''))),
     'API650_ONE_FOOT_PRODUCT': ('API 650 · One-foot shell design', (
-        ('D_m', 'Tank diameter (m)', '30'), ('H_m', 'Liquid height above course bottom (m)', '12'),
+        ('D_m', 'Tank diameter (m)', '30'), ('H_m', 'Product height above course bottom (m)', '12'),
+        ('hydro_H_m', 'Hydrotest height above course bottom (m)', ''),
         ('G', 'Product specific gravity', '0.85'), ('Sd_MPa', 'Product design stress (MPa)', '160'),
         ('CA_mm', 'Corrosion allowance (mm)', '2'), ('St_MPa', 'Hydrotest stress (MPa)', '171'))),
 }
@@ -62,7 +66,7 @@ PRESETS['API570_PIPE'] = ('API 570 · In-service straight process piping', PRESE
 
 EDITABLE_FACTORS = {
     'E_quality', 'W_reduction', 'Y_coefficient', 'F_design', 'E_weld',
-    'F_class', 'T_temp', 'E_joint',
+    'F_class', 'T_temp', 'E_joint', 'E_circumferential',
 }
 
 
@@ -101,21 +105,39 @@ VESSEL_FORMS = {'VIII_UG27_HOOP': 'Cylindrical shell', 'VIII_UG32_ELLIP': '2:1 e
                 'VIII_UG32_TORI': 'Standard torispherical head'}
 
 
+API510_FORMS = {'CR_ST' if i == 0 else f'API510_{rule}': rule
+                for i, rule in enumerate(VESSEL_FORMS)}
+_api510_fields = PRESETS['CR_ST'][1]
+for sample, geometry in API510_FORMS.items():
+    geometry_fields = PRESETS[geometry][1][1:]
+    if geometry == 'VIII_UG27_HOOP':
+        geometry_fields = geometry_fields[:-1] + (
+            ('E_joint', 'Longitudinal joint efficiency (hoop check)', '0.85'),
+            ('E_circumferential', 'Circumferential joint efficiency (longitudinal check)', '0.85'),
+        )
+    PRESETS[sample] = ('API 510 · ' + VESSEL_FORMS[geometry], _api510_fields + geometry_fields)
+
+
+
 def code_rule(code, geometry):
     if code == 'viii' and geometry in VESSEL_FORMS:
+        return geometry
+    if code == 'api510' and geometry in API510_FORMS:
         return geometry
     return CODES.get(code, ('', ''))[1]
 
 
 def _code_picker(rule):
-    selected = 'viii' if rule in VESSEL_FORMS else next(
+    selected = 'api510' if rule in API510_FORMS else 'viii' if rule in VESSEL_FORMS else next(
         code for code, (_, candidate) in CODES.items() if candidate == rule)
     options = ''.join(f'<option value="{code}"{" selected" if code == selected else ""}>{label}</option>'
                       for code, (label, _) in CODES.items())
     geometry = ''
-    if selected == 'viii':
+    if selected in {'viii', 'api510'}:
+        geometries = (VESSEL_FORMS if selected == 'viii' else
+                      {key: VESSEL_FORMS[value] for key, value in API510_FORMS.items()})
         forms = ''.join(f'<option value="{key}"{" selected" if key == rule else ""}>{label}</option>'
-                        for key, label in VESSEL_FORMS.items())
+                        for key, label in geometries.items())
         geometry = f'<label>Vessel geometry<select name="geometry">{forms}</select></label>'
     return ('<form class="sample-picker" action="/codes#sample-calculator" method="get">'
             f'<label>Calculation code<select name="code">{options}</select></label>{geometry}'
@@ -143,7 +165,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
         select('pipe_family', 'Pipe dimension table')
         select('nps', 'Nominal pipe size (NPS)')
         select('schedule', 'Pipe schedule')
-    stress_rule = PIPE_RULES[0] if rule == 'API570_PIPE' else rule
+    stress_rule = PIPE_RULES[0] if rule == 'API570_PIPE' else API510_FORMS.get(rule, rule)
     if stress_rule in STRESS_CONTEXTS:
         code, edition, product, target = STRESS_CONTEXTS[stress_rule]
         select('material', f'Material · {code} {edition} · {product}')
@@ -219,7 +241,7 @@ def _forecast(rules, inputs, wall, deduction):
     previous, elapsed, interval = (inputs.get(key) for key in ('previous_mm', 'elapsed_years', 'next_years'))
     if not any((previous, elapsed, interval)):
         return ''
-    title = 'Next-inspection pressure candidate' if rules[0][1] in PIPE_RULES[1:] else 'Next-inspection MAWP candidate'
+    title = 'Next-inspection pressure candidate' if rules[0][1] in (*PIPE_RULES[1:], *VESSEL_FORMS) else 'Next-inspection MAWP candidate'
     try:
         if not all((previous, elapsed, interval)):
             raise ValueError('Enter previous UT, years between readings and years until the next inspection.')
@@ -242,22 +264,77 @@ def _forecast(rules, inputs, wall, deduction):
             f'<dt>{title}</dt><dd><strong>{E(numeric(convert(pressure, "MPa", "psi")))} psi</strong> · {label} check</dd>')
 
 
-def _inspection_result(inputs):
-    required = Decimal(inputs.get('t_required_mm') or '0')
-    if not required.is_finite() or required <= 0:
-        raise ValueError('Reviewed required wall must be positive and finite.')
-    rate = _observed_rate(*(inputs.get(key, '') for key in ('t_previous_mm', 't_current_mm', 'elapsed_years')))
-    life = evaluate('REMAINING_LIFE', dict(t_current_mm=inputs['t_current_mm'],
-                    t_required_mm=required, approved_governing_CR_mm_per_year=rate))
-    life_text = numeric(life['value']) + ' years' if life['value'] else ', '.join(life['issues'])
-    return ('<div class="sample-result" role="status"><h3>Draft inspection history</h3><dl>'
-            f'<dt>Observed corrosion rate</dt><dd>{E(numeric(rate))} mm/year</dd>'
-            f'<dt>Remaining life using the observed rate</dt><dd>{E(life_text)}</dd></dl></div>')
+def _positive(value, label):
+    amount = Decimal(value or '0')
+    if not amount.is_finite() or amount <= 0:
+        raise ValueError(f'{label} must be positive and finite.')
+    return amount
+
+
+def _optional_nonnegative(inputs, key):
+    amount = Decimal(inputs.get(key) or '0')
+    if not amount.is_finite() or amount < 0:
+        raise ValueError(f'{key.replace("_", " ")} must be finite and nonnegative.')
+    return amount
+
+
+def _result_rows(entries):
+    return ''.join(f'<dt>{E(label)}</dt><dd>{E(numeric(value))} {E(unit)}</dd>'
+                   for label, value, unit in entries)
+
+
+def _inspection_result(geometry, inputs):
+    current = _positive(inputs.get('t_current_mm'), 'Current wall')
+    required = _positive(inputs.get('t_required_mm'), 'Reviewed required wall')
+    original = _positive(inputs.get('original_psi'), 'Original vessel MAWP')
+    years = _positive(inputs.get('next_years'), 'Planned inspection interval')
+    observed = _observed_rate(inputs.get('t_previous_mm'), current, inputs.get('elapsed_years'))
+    rate = _positive(inputs.get('reviewed_rate') or str(observed), 'Governing corrosion rate')
+    head = _optional_nonnegative(inputs, 'static_head_psi')
+    loss = rate * years
+    net = current - 2 * loss
+    life = (current - required) / rate
+    entries = [('Observed short-term corrosion rate', observed, 'mm/yr'),
+               ('Governing corrosion rate', rate, 'mm/yr')]
+    note = ''
+    if life <= 0:
+        note = 'Current wall is at or below the reviewed required wall.'
+    else:
+        cap = min(life / 2, Decimal(10))
+        if life < 4 and inputs.get('short_life_option') == 'yes':
+            cap = min(life, Decimal(2))
+        entries.extend([('Remaining life', life, 'yr'), ('Maximum non-RBI interval', cap, 'yr')])
+        if years > cap:
+            raise ValueError(f'The planned interval exceeds the {numeric(cap)} yr non-RBI limit.')
+        entries.extend([('Estimated loss to next inspection', loss, 'mm'),
+                        ('Projected wall at next inspection', current - loss, 'mm'),
+                        ('API 510 wall used for MAWP', net, 'mm')])
+        if net <= 0:
+            note = 'The doubled corrosion deduction leaves no positive wall for MAWP.'
+        else:
+            pressure = pressure_at_thickness(net, geometry, inputs)[0]
+            if geometry == 'VIII_UG27_HOOP':
+                longitudinal = dict(inputs, E_joint=inputs.get('E_circumferential'))
+                pressure = min(pressure, pressure_at_thickness(net, 'VIII_UG27_LONG', longitudinal)[0])
+            at_top = convert(pressure, 'MPa', 'psi') - head
+            if at_top <= 0:
+                note = 'The component pressure candidate does not exceed the entered static head.'
+            else:
+                entries.extend([('Component pressure candidate at vessel top', at_top, 'psi'),
+                                ('Original vessel MAWP cap', original, 'psi'),
+                                ('Continued-use MAWP candidate', min(at_top, original), 'psi')])
+    warning = f'<p class="warn">{E(note)} Continued-use MAWP withheld.</p>' if note else ''
+    if not note and net < required:
+        warning = '<p class="warn">The MAWP calculation wall is below the reviewed required wall. Review governing load limits.</p>'
+    return ('<div class="sample-result" role="status"><h3>Draft API 510 vessel assessment</h3>'
+            f'<dl>{_result_rows(entries)}</dl>{warning}'
+            '<p>API 510 11th edition §§6.5.1.1, 7.2.1 and 7.3.1–7.3.4 (PDF pp. 44, 51–52). '
+            'The selected component uses measured wall minus twice the estimated loss. '
+            'The vessel rating also depends on the remaining components and applicable load checks.</p>'
+            f'<p>Construction method: {E(REFERENCES[geometry])}.</p></div>')
 
 
 def _pressure_result(rule, rules, inputs, wall):
-    if rule == 'API650_ONE_FOOT_PRODUCT':
-        return '<dt>MAWP</dt><dd>API 650 one-foot shell design returns thickness for the entered liquid height.</dd>'
     if wall is None:
         return '<dt>MAWP candidate</dt><dd>Enter measured thickness to calculate a pressure candidate.</dd>'
     try:
@@ -279,10 +356,14 @@ def _pressure_result(rule, rules, inputs, wall):
 
 
 def _api570_result(inputs, annex_tables):
-    current = Decimal(inputs.get('measured_mm', ''))
-    short_rate = _observed_rate(inputs.get('previous_mm', ''), current, inputs.get('elapsed_years', ''))
-    long_rate = _observed_rate(inputs.get('initial_mm', ''), current, inputs.get('long_years', ''))
-    if Decimal(inputs['long_years']) <= Decimal(inputs['elapsed_years']):
+    current = _positive(inputs.get('measured_mm'), 'Current wall')
+    baseline = inputs.get('initial_mm'), inputs.get('long_years')
+    previous = inputs.get('previous_mm'), inputs.get('elapsed_years')
+    short_rate = _observed_rate(previous[0], current, previous[1]) if all(previous) else None
+    long_rate = _observed_rate(baseline[0], current, baseline[1]) if all(baseline) else None
+    if (any(previous) and short_rate is None) or (any(baseline) and long_rate is None):
+        raise ValueError('Supply both the thickness and elapsed years for each UT baseline entered.')
+    if short_rate is not None and long_rate is not None and Decimal(baseline[1]) <= Decimal(previous[1]):
         raise ValueError('The initial reading must be older than the previous reading.')
     basis = inputs.get('rate_basis')
     if basis not in {'short', 'long', 'reviewed'}:
@@ -290,7 +371,7 @@ def _api570_result(inputs, annex_tables):
     rate = {'short': short_rate, 'long': long_rate}.get(basis)
     if basis == 'reviewed':
         rate = Decimal(inputs.get('reviewed_rate') or '0')
-    if not rate.is_finite() or rate <= 0:
+    if rate is None or not rate.is_finite() or rate <= 0:
         raise ValueError('Select a positive observed rate or enter a positive reviewed rate.')
     pipe_rule = PIPE_RULES[0]
     check = evaluate(pipe_rule, inputs)
@@ -343,7 +424,7 @@ def _api570_result(inputs, annex_tables):
             else:
                 entries.append((f'Wall used for {label.lower()}', wall - deduction, 'mm'))
                 entries.append((label, convert(pressure, 'MPa', 'psi'), 'psi'))
-    rows = ''.join(f'<dt>{label}</dt><dd>{E(numeric(value))} {unit}</dd>' for label, value, unit in entries)
+    rows = _result_rows((label, value, unit) for label, value, unit in entries if value is not None)
     messages = ''.join(f'<p class="warn">{E(note)}</p>' for note in notes)
     return (f'<div class="sample-result" role="status"><h3>Draft API 570 piping assessment</h3>'
             f'<dl>{rows}</dl>{messages}<p>Structural thickness basis: {E(structural_basis)}</p>'
@@ -355,29 +436,105 @@ def _api570_result(inputs, annex_tables):
 
 def _api570_controls(submitted):
     values = submitted or {}
-    def select(name, label, options):
-        selected = values.get(name, '')
-        options = ''.join(f'<option value="{key}"{" selected" if key == selected else ""}>{text}</option>'
-                          for key, text in options)
-        return f'<label>{label}<select name="{name}" required><option value="">Choose…</option>{options}</select></label>'
-
     return (
-        select('service_class', 'API 570 piping service class', [(str(i), f'Class {i}') for i in (1, 2, 3)])
-        + select('rate_basis', 'Governing corrosion-rate basis',
-                 [('short', 'Short-term UT'), ('long', 'Long-term UT'), ('reviewed', 'Reviewed manual rate')])
+        _select_control('service_class', 'API 570 piping service class',
+                        {str(i): f'Class {i}' for i in (1, 2, 3)}, values)
+        + _select_control('rate_basis', 'Governing corrosion-rate basis',
+                          {'short': 'Short-term UT', 'long': 'Long-term UT', 'reviewed': 'Reviewed manual rate'}, values)
         + field('reviewed_rate', 'Reviewed manual rate (mm/year)', values.get('reviewed_rate', ''), 'number', False)
         + field('next_years', 'Next inspection interval (years), blank uses maximum', values.get('next_years', ''), 'number', False)
-        + '<label><input type="checkbox" name="short_life_option" value="yes"'
-        + (' checked' if values.get('short_life_option') == 'yes' else '')
-        + '> Use reviewed short-life interval provision when remaining life is under four years</label>'
+        + _short_life_control(values)
     )
 
 
+def _short_life_control(values):
+    checked = ' checked' if values.get('short_life_option') == 'yes' else ''
+    return ('<label><input type="checkbox" name="short_life_option" value="yes"'
+            f'{checked}> Use reviewed short-life provision when remaining life is under four years</label>')
+
+
+def _select_control(name, label, options, values, *, required=True):
+    selected = values.get(name, '')
+    choices = ''.join(f'<option value="{E(key)}"{" selected" if key == selected else ""}>{E(text)}</option>'
+                      for key, text in options.items())
+    required_attr = ' required' if required else ''
+    return f'<label>{E(label)}<select name="{E(name)}"{required_attr}><option value="">Choose…</option>{choices}</select></label>'
+
+
+GAS_TEST_FACTORS = {'furnace': Decimal('0.60'), 'mill': Decimal('0.85'), 'retest': Decimal('0.85')}
+
+
+def _gas_pressure_result(inputs, pressure_wall):
+    basis = inputs.get('gas_test_basis')
+    if basis not in GAS_TEST_FACTORS:
+        raise ValueError('Select the applicable mill test or qualified retest basis.')
+    test_pressure = _positive(inputs.get('gas_test_psi'), 'Documented test pressure')
+    cap = test_pressure * GAS_TEST_FACTORS[basis]
+    design = convert(inputs['P_MPa'], 'MPa', 'psi')
+    rows = [('Pressure design thickness', pressure_wall, 'mm'),
+            ('§841.1.3 test pressure ceiling', cap, 'psi')]
+    nominal = inputs.get('nominal_mm')
+    if nominal:
+        formula_pressure = pressure_at_thickness(_positive(nominal, 'Nominal wall'), PIPE_RULES[2], inputs)[0]
+        formula_psi = convert(formula_pressure, 'MPa', 'psi')
+        limit = min(formula_psi, cap)
+        rows.extend([('§841.1.1 pressure at nominal wall', formula_psi, 'psi'),
+                     ('Governing design pressure candidate', limit, 'psi')])
+    else:
+        limit = cap
+    warning = '<p class="warn">Entered design pressure exceeds the governing available pressure limit.</p>' if design > limit else ''
+    return ('<div class="sample-result" role="status"><h3>Draft B31.8 design pressure check</h3>'
+            f'<dl>{_result_rows(rows)}</dl>{warning}'
+            '<p>ASME B31.8-2025 §§841.1.1 and 841.1.3 (PDF pp. 66, 68). '
+            'Supply nominal wall to compare the pipe formula with the test ceiling. '
+            'The retest basis requires eligibility review under §841.1.3(b).</p></div>')
+
+
+def _pipe_nominal_result(rule, inputs, pressure_wall):
+    if inputs.get('design_allowance_mm') in (None, ''):
+        return '<dt>Nominal wall check</dt><dd>Enter the design allowance total, including zero if applicable.</dd>'
+    allowance = _optional_nonnegative(inputs, 'design_allowance_mm')
+    required = pressure_wall + allowance
+    nominal = inputs.get('nominal_mm')
+    available = _positive(nominal, 'Nominal wall') if nominal else None
+    reference = 'B31.4 §403.2.1'
+    required_nominal = required
+    if rule == PIPE_RULES[0]:
+        if inputs.get('mill_tolerance_pct') in (None, ''):
+            return '<dt>Nominal wall check</dt><dd>Enter the applicable mill minus tolerance, including zero if applicable.</dd>'
+        tolerance = _optional_nonnegative(inputs, 'mill_tolerance_pct') / 100
+        if tolerance >= 1:
+            raise ValueError('Mill minus tolerance must be less than 100%.')
+        required_nominal /= 1 - tolerance
+        if available is not None:
+            available *= 1 - tolerance
+        reference = 'B31.3 §304.1.1'
+    rows = [('Required design wall including allowances', required, 'mm'),
+            ('Minimum nominal wall for design check', required_nominal, 'mm')]
+    if available is not None:
+        rows.extend([('Available wall for design check', available, 'mm'),
+                     ('Wall margin', available - required, 'mm')])
+    return _result_rows(rows) + f'<dt>Nominal wall basis</dt><dd>{E(reference)}</dd>'
+
+
+def _tank_shell_result(inputs):
+    record = calculate_tank('api650', inputs)
+    outputs = record['outputs']
+    labels = {'product_mm': 'Product design wall', 'hydrotest_mm': 'Hydrotest wall',
+              'code_nominal_min_mm': 'Code nominal plate minimum',
+              'governing_candidate_mm': 'Governing shell thickness candidate'}
+    rows = _result_rows((label, outputs[key], 'mm') for key, label in labels.items())
+    return ('<div class="sample-result" role="status"><h3>Draft API 650 shell design</h3>'
+            f'<dl>{rows}</dl><p>{E(record["reference"])}</p><p>{E(record["note"])}</p></div>')
+
+
 def _result(rule, inputs, annex_tables=()):
-    if rule == 'CR_ST':
-        return _inspection_result(inputs)
+    if rule in API510_FORMS:
+        return _inspection_result(API510_FORMS[rule], inputs)
     if rule == 'API570_PIPE':
         return _api570_result(inputs, annex_tables)
+    if rule == 'API650_ONE_FOOT_PRODUCT':
+        return _tank_shell_result(inputs)
     measured = inputs.get('measured_mm', '')
     wall = Decimal(measured) if measured else None
     if wall is not None and (not wall.is_finite() or wall <= 0):
@@ -385,19 +542,22 @@ def _result(rule, inputs, annex_tables=()):
 
     rules = {
         'VIII_UG27_HOOP': (('Hoop', rule), ('Longitudinal', 'VIII_UG27_LONG')),
-        'API650_ONE_FOOT_PRODUCT': (('Product', rule), ('Hydrotest', 'API650_ONE_FOOT_HYDRO')),
     }.get(rule, (('Pressure', rule),))
     results = [(label, evaluate(key, inputs)) for label, key in rules]
     for _, result in results:
         if result['value'] is None:
             raise ValueError(' '.join(result['issues']))
     governing = max(Decimal(result['value']) for _, result in results)
+    if rule == PIPE_RULES[2]:
+        return _gas_pressure_result(inputs, governing)
     markup = '<div class="sample-result" role="status"><h3>Draft calculated thickness</h3><dl>'
     for label, result in results:
         markup += (f'<dt>{label} thickness</dt><dd><strong>{E(numeric(result["value"]))} mm</strong>'
                    f'<br><code>{E(result["formula"])}</code><br>{E(result["source_reference"])}</dd>')
     if wall is not None:
         markup += f'<dt>Measured wall minus largest calculation above</dt><dd>{E(numeric(wall - governing))} mm</dd>'
+    if rule in PIPE_RULES[:2]:
+        markup += _pipe_nominal_result(rule, inputs, governing)
     return markup + _pressure_result(rule, rules, inputs, wall) + '</dl></div>'
 
 
@@ -407,29 +567,54 @@ def panel(sample='', submitted=None):
     fields = PRESETS[rule][1]
     controls = [
         field(_form_key(key), _form_label(key, label),
-              values.get(_form_key(key), default if key in EDITABLE_FACTORS else ''), kind='number')
+              values.get(_form_key(key), default if key in EDITABLE_FACTORS else ''), kind='number',
+              required=rule != 'API570_PIPE' or key not in {'initial_mm', 'long_years', 'previous_mm', 'elapsed_years'})
         for key, label, default in fields
     ]
-    if rule not in {'CR_ST', 'API570_PIPE'}:
+    if rule in (*PIPE_RULES[:2], *VESSEL_FORMS):
         controls.append(field('measured_mm', 'Current measured thickness (mm)',
                               (submitted or {}).get('measured_mm', ''), kind='number', required=False))
-    if rule in (*PIPE_RULES, 'API570_PIPE'):
-        controls.append(field('nominal_mm', 'Nominal wall (mm), reference only',
+    if rule in PIPE_RULES:
+        controls.append(field('nominal_mm', 'Selected nominal wall (mm)',
                               (submitted or {}).get('nominal_mm', ''), kind='number', required=False))
-    if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST'}:
+    if rule in PIPE_RULES[:2]:
+        controls.append(field('design_allowance_mm', 'Total design allowances (mm)',
+                              values.get('design_allowance_mm', ''), 'number', False))
+    if rule == PIPE_RULES[0]:
+        controls.append(field('mill_tolerance_pct', 'Mill minus tolerance (%)',
+                              values.get('mill_tolerance_pct', ''), 'number', False))
+    if rule == PIPE_RULES[2]:
+        controls.extend([
+            _select_control('gas_test_basis', 'Documented test basis', {
+                'mill': 'Mill test · other pipe', 'furnace': 'Mill test · furnace butt-welded',
+                'retest': 'Qualified retest · other pipe',
+            }, values),
+            field('gas_test_psi', 'Documented test pressure (psi)', values.get('gas_test_psi', ''), 'number'),
+        ])
+    if rule == 'API650_ONE_FOOT_PRODUCT':
+        controls.append(_select_control('course_position', 'Shell course position (required for diameter > 3.2 m and < 15 m)',
+                                       {'lowest': 'Lowest course', 'upper': 'Upper course'}, values, required=False))
+    if rule in (*PIPE_RULES[:2], *VESSEL_FORMS, 'API570_PIPE'):
         controls.append(field('wall_deduction_mm', 'Wall deduction for pressure check (mm)',
                               (submitted or {}).get('wall_deduction_mm', ''), kind='number', required=False))
     if rule == 'API570_PIPE':
         controls.append(_api570_controls(submitted))
+    if rule in API510_FORMS:
+        controls.extend([
+            field('reviewed_rate', 'Reviewed governing rate override (mm/yr)', values.get('reviewed_rate', ''), 'number', False),
+            field('static_head_psi', 'Static head from vessel top to component (psi, blank = 0)',
+                  values.get('static_head_psi', ''), 'number', False),
+            _short_life_control(values),
+        ])
     forecast_fields = ''
-    if rule not in {'API650_ONE_FOOT_PRODUCT', 'CR_ST', 'API570_PIPE'}:
-        forecast_fields = ('<fieldset><legend>Next inspection (optional)</legend><div class="fields">'
+    if rule in (*PIPE_RULES[:2], *VESSEL_FORMS):
+        forecast_fields = ('<details><summary>Optional wall projection using the construction equation</summary><div class="fields">'
                            + ''.join(field(key, label, (submitted or {}).get(key, ''), kind='number', required=False)
                                      for key, label in (
                                          ('previous_mm', 'Previous measured thickness (mm)'),
                                          ('elapsed_years', 'Years between UT readings'),
                                          ('next_years', 'Years from current UT to next inspection'),
-                                     )) + '</div></fieldset>')
+                                     )) + '</div></details>')
     annex_tables, annex_error = (), ''
     if rule == 'API570_PIPE':
         try:
@@ -464,7 +649,11 @@ def panel(sample='', submitted=None):
         + f'<form id="sample-inputs" action="/codes#sample-calculator" method="post">{hidden("sample", rule)}'
         + (f'<p>Non-RBI Class 1–3 straight process piping. Use comparable UT readings from the same CML. '
          f'Pressure calculations use {E(REFERENCES[PIPE_RULES[0]])}.</p>' if rule == 'API570_PIPE'
-         else f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>')
+         else '<p>Non-RBI internal/on-stream inspection. Use corroded-condition geometry and a reviewed required wall. '
+              'The previous and current readings supply the short-term rate unless you enter a reviewed governing rate.</p>'
+         if rule in API510_FORMS else f'<p><code>{E(FORMULAS[rule])}</code><br>{E(REFERENCES[rule])}</p>')
+        + ('<p>For continued-use vessel MAWP, use the API 510 calculator. This construction sample uses the '
+           'entered geometry and checks internal pressure only.</p>' if rule in VESSEL_FORMS else '')
         + ('<p>Prefilled coefficients and factors are editable sample assumptions. Confirm them for your case.</p>'
            if any(key in EDITABLE_FACTORS for key, _, _ in fields) else '')
         + _reference_controls(rule, submitted, annex_tables, annex_error)

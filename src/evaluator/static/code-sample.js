@@ -47,11 +47,13 @@ function bindReferences(referenceData) {
         const sizeRows = () => familyRows().filter(row => row.nps === control('nps').value);
         const setSizes = selected => setOptions('nps', choices(familyRows().map(row => row.nps)), selected);
         const setSchedules = selected => setOptions('schedule', choices(sizeRows().map(row => row.schedule)), selected);
+        const hasNominal = Boolean(control('nominal_mm'));
         const lookup = () => {
             const row = sizeRows().find(item => item.schedule === control('schedule').value);
-            return row && {fields: {D_outside_in: row.od, nominal_mm: row.wall}, reference: row.reference};
+            return row && {fields: hasNominal ? {D_outside_in: row.od, nominal_mm: row.wall}
+                                            : {D_outside_in: row.od}, reference: row.reference};
         };
-        const apply = () => populateGroup(lookup(), ['D_outside_in', 'nominal_mm']);
+        const apply = () => populateGroup(lookup(), hasNominal ? ['D_outside_in', 'nominal_mm'] : ['D_outside_in']);
         setOptions('pipe_family', [['ferritic', 'Ferritic / carbon steel'], ['stainless', 'Stainless steel']],
                    referenceData.selection.pipe_family);
         setSizes(referenceData.selection.nps);
