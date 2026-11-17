@@ -322,7 +322,8 @@ def test_uploaded_workbook_family_is_detected_from_structure_not_staging_name(tm
     assert Workspace(s).state(opened['comparison_id'])['workspace']['counts']['locations']==37
 
 
-def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(tmp_path):
+@pytest.fixture
+def dated_evaluation(tmp_path):
     from datetime import date
     from openpyxl import Workbook
 
@@ -347,7 +348,12 @@ def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(tmp_path):
     service.inspect(source.sha256)
     workspace = Workspace(service)
     opened = workspace.auto_open(source.sha256, service.workflow.revision())
-    rows = workspace.state(opened['comparison_id'])['workspace']['rows']
+    return service, workspace, opened['comparison_id']
+
+
+def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(dated_evaluation):
+    _, workspace, cid = dated_evaluation
+    rows = workspace.state(cid)['workspace']['rows']
     assert {row['current_cell']: row['geometry'] for row in rows} == {
         'M5': 'straight_pipe', 'M6': 'elbow', 'M7': 'tee', 'M8': 'reducer',
     }
@@ -360,6 +366,35 @@ def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(tmp_path):
     assert row['code_family'] == 'ASME B31.3'
     assert row['code_edition'] is None
     assert row['routing']['status'] == 'NEEDS_CODE_CONFIRMATION'
+
+
+def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_evaluation):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    rows = workspace.state(cid)['workspace']['rows']
+    inputs = {row['current_id']: (row['geometry'], row['material']) for row in rows}
+    values = dict(code_family='ASME B31.3', code_edition='2024', code_asset_type='process_piping',
+                  code_evidence='Test line list', code_owner_confirmed='yes')
+    payload = dict(comparison_id=cid, revision=service.workflow.revision(), scope='sheet',
+                   ids=[rows[0]['current_id']], values=dict(values, geometry='straight_pipe'))
+    assert action(service, 'apply_code_basis', payload)['message'] == 'Code basis saved for 4 locations.'
+    updated = workspace.state(cid)['workspace']['rows']
+    for row in updated:
+        assert (row['geometry'], row['material']) == inputs[row['current_id']]
+        assert row['code_family'] == 'ASME B31.3'
+        assert row['code_edition'] == '2024'
+        assert row['code_owner_confirmed']
+    assert sum(row['routing']['status'] == 'ROUTE_SELECTED' for row in updated) == 1
+    with pytest.raises(ValueError, match='Project changed'):
+        action(service, 'apply_code_basis', payload)
+    target = rows[0]['current_id']
+    action(service, 'apply_code_basis', dict(payload, revision=service.workflow.revision(),
+           scope='selected', values=dict(values, code_edition='2022')))
+    checked = workspace.state(cid)['workspace']['rows']
+    assert {row['current_id']: row['code_edition'] for row in checked} == {
+        oid: '2022' if oid == target else '2024' for oid in inputs
+    }
 
 
 def test_later_context_edit_cannot_reuse_a_previously_looked_up_stress(project):

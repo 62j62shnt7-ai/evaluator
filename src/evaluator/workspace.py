@@ -91,7 +91,9 @@ class Workspace:
         cid=cid or (comparisons[0]['id'] if comparisons else None)
         base={'revision':self.flow.revision()}
         if not partial:
+            from evaluator.engineering.code_context import CODES_BY_ASSET
             from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, LIQUID_PIPE_SMYS
+            base['codes_by_asset'] = {asset: sorted(codes) for asset, codes in CODES_BY_ASSET.items()}
             base['gas_pipe_grades'] = list(GAS_5L_SMYS_PSI)
             base['liquid_pipe_grades'] = list(LIQUID_PIPE_SMYS)
             base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. VIII-1 2025 lookup covers SA-516 Grade 70 plate at selected exact II-D Metric table points. Other contexts require a checked record; workbook properties remain proposals.'])
@@ -213,6 +215,28 @@ class Workspace:
         with self.flow.change('Save reusable configuration',inputs=False,expected=revision,actor=local_actor(),reason='Reusable batch inputs') as db:
             db.execute('INSERT INTO wf_templates VALUES(?,?)',(record['id'],json.dumps(record)))
         return record
+
+    def apply_code_basis(self, cid, revision, scope, ids, values):
+        from evaluator.engineering.code_context import CODES_BY_ASSET
+
+        basis = {key: str(values.get(key) or '').strip() for key in (
+            'code_asset_type', 'code_family', 'code_edition', 'code_evidence', 'code_owner_confirmed',
+        )}
+        if basis['code_family'] not in CODES_BY_ASSET.get(basis['code_asset_type'], ()):
+            raise ValueError('Choose a construction code that matches the asset and service boundary.')
+        if not re.fullmatch(r'[0-9]{4}', basis['code_edition']) or not basis['code_evidence']:
+            raise ValueError('Enter the edition year and the source document for this code basis.')
+        if basis['code_owner_confirmed'] != 'yes':
+            raise ValueError('Confirm the code basis for all locations in the selected scope.')
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; refresh before applying changes')
+        if scope == 'sheet':
+            preview = self.service.batch.preview(cid)
+            ids = list(dict.fromkeys(row['current_id'] for row in preview['rows'] if row['current_id']))
+        elif scope != 'selected':
+            raise ValueError('Choose the current sheet or selected locations.')
+        self.apply(cid, revision, ids, basis)
+        return dict(message=f"Code basis saved for {len(ids)} locations.")
 
     def policy(self,cid,revision,basis,sheet=None):
         if basis not in {'provided','recalculate','row7','assigned'}:raise ValueError('Unsupported calculation basis')

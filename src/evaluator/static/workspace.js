@@ -45,6 +45,49 @@ ${Object.entries({D_outside_in:'Outside diameter (in)',nominal_thickness_mm:'Nom
 <label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi" value="${esc(r.input_trace?.overrides?.S_allow_psi??'')}"></label>
 <label>Manual material property reference<input name="material_reference" value="${esc(r.input_trace?.overrides?.material_reference??'')}"></label>
 </fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'));}
+function batchCodeEditor() {
+    const w = workspace();
+    if (!w) return;
+    const rows = w.rows.filter(row => row.current_id);
+    const common = key => rows.length && rows.every(row => row[key] === rows[0][key]) ? rows[0][key] || '' : '';
+    $('drawer').hidden = false;
+    $('details').innerHTML = `<h2>Set code basis</h2>
+        <p>Apply one construction basis to ${esc(w.comparison.current_selection[1])}. Review component inputs separately.</p>
+        <form id="batchCodeBasisForm">
+            <label>Apply to<select name="scope">
+                <option value="sheet">Entire current sheet · ${rows.length} locations</option>
+                <option value="selected" ${selected.size ? '' : 'disabled'}>Selected locations · ${selected.size}</option>
+            </select></label>
+            <label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option></select></label>
+            <label>Construction code<select name="code_family" required><option value="">Choose…</option></select></label>
+            <label>Edition year<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(common('code_edition'))}" required></label>
+            <label>Code basis evidence<input name="code_evidence" placeholder="Document, line list, drawing or approved basis reference" value="${esc(rows.every(row => row.code_owner_confirmed) ? common('code_evidence') : '')}" required></label>
+            <label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" required>
+                I confirm this code and service boundary apply to all locations in this scope.
+            </label>
+            <button class="primary">Apply code basis</button>
+        </form>`;
+    const form = $('batchCodeBasisForm');
+    const choices = state.codes_by_asset;
+    const asset = form.elements.code_asset_type;
+    const code = form.elements.code_family;
+    asset.id = 'batchCodeAsset';
+    code.id = 'batchCodeFamily';
+    options(asset.id, Object.keys(choices).map(value => [value, value.replaceAll('_', ' ')]), common('code_asset_type'));
+    function updateCodes(value) {
+        const allowed = choices[asset.value] || [...new Set(Object.values(choices).flat())];
+        options(code.id, allowed.map(label => [label, label]), allowed.length === 1 ? allowed[0] : value);
+    }
+    updateCodes(common('code_family'));
+    asset.onchange = () => updateCodes(code.value);
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const {scope, ...values} = Object.fromEntries(new FormData(form));
+        if (await action('apply_code_basis', {scope, ids:[...selected], values})) $('drawer').hidden = true;
+    });
+}
+$('editBatchCode').onclick = batchCodeEditor;
+
 function bindReferenceSelectors(form) {
     const material = $('referenceMaterial');
     const temperature = $('referenceTemperature');
