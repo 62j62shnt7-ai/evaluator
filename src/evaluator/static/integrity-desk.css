@@ -265,3 +265,13 @@
 .dimension-filters label { flex: 1 1 150px; max-width: 250px; }
 .dimension-filters p { margin: 0 0 13px; }
 .dimension-scroll { max-height: 490px; }
+
+#sample-calculator .worksheet-scroll { margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; }
+#sample-calculator .worksheet-grid { min-width: 1580px; }
+#sample-calculator .worksheet-grid th,
+#sample-calculator .worksheet-grid td { padding: 8px; border: 1px solid var(--line); vertical-align: top; }
+#sample-calculator .worksheet-grid th { position: static; white-space: nowrap; }
+#sample-calculator .worksheet-grid label { min-width: 0; margin: 0 0 6px; }
+#sample-calculator .worksheet-grid input { box-sizing: border-box; min-width: 76px; width: 100%; }
+#sample-calculator .worksheet-grid input[type="date"] { min-width: 126px; }
+#sample-calculator .worksheet-result { background: var(--mint); white-space: nowrap; font-variant-numeric: tabular-nums; }
