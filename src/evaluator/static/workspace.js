@@ -4,6 +4,14 @@ const num=v=>v===null||v===undefined||v===''?'—':Number(v).toLocaleString(unde
 let state,cid=new URLSearchParams(location.search).get('comparison'),selected=new Set(),screen='import';
 const workspace=()=>state?.workspace;
 function message(text,error=false){$('message').textContent=text;$('message').hidden=!text;$('message').classList.toggle('error',error);}
+async function actionResponse(response) {
+    if (!response.headers.get('Content-Type')?.includes('application/json')) {
+        throw Error(`The app returned an unexpected response (HTTP ${response.status}). Reload the page and try again.`);
+    }
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error || `Request failed (HTTP ${response.status}).`);
+    return data;
+}
 function options(id,items,value,placeholder='Choose…'){const el=$(id);el.innerHTML=`<option value="">${esc(placeholder)}</option>`+items.map(([v,label])=>`<option value="${esc(v)}">${esc(label)}</option>`).join('');el.value=value||'';}
 function navigate(next) {
     screen = next;
@@ -21,7 +29,7 @@ function navigate(next) {
 }
 async function load(){const response=await fetch('/api/workspace'+(cid?'?'+new URLSearchParams({comparison:cid}):''));state=await response.json();if(!response.ok)throw Error(state.error);if(workspace()){cid=workspace().comparison.id;history.replaceState(null,'','/?'+new URLSearchParams({comparison:cid}));const valid=new Set(workspace().rows.map(r=>r.current_id));selected=new Set([...selected].filter(id=>valid.has(id)));}render();}
 async function refreshRows(ids){if(!ids?.length)return;const response=await fetch('/api/workspace?'+new URLSearchParams({comparison:cid,ids:ids.join(',')}));const data=await response.json();if(!response.ok)throw Error(data.error||'Could not refresh changed readings');state.revision=data.revision;state.workspace.results.forEach(r=>r.stale=true);const changed=new Map(data.workspace.rows.map(r=>[r.current_id,r]));state.workspace.rows=state.workspace.rows.map(r=>changed.get(r.current_id)||r);let redraw=false;for(const row of changed.values()){const current=$('locations').querySelector(`[data-row-id="${CSS.escape(row.current_id)}"]`),isVisible=visible().some(r=>r.current_id===row.current_id);if(current&&isVisible)current.outerHTML=rowHtml(row);else if(current||isVisible)redraw=true;}if(redraw)table();else renderReadiness();requestAnimationFrame(syncTableScroll);results();$('revision').textContent='Revision '+state.revision;}
-async function action(name,payload={}){$('busy').hidden=false;try{const response=await fetch('/api/workspace/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({comparison_id:cid,revision:state.revision,...payload})});const data=await response.json();if(!response.ok)throw Error(data.error||'Action failed');if(name==='apply'&&workspace()&&!data.reset_workspace){await refreshRows(data.refresh_ids||payload.ids);message('Saved.');return data;}if(data.reset_workspace){cid=null;selected.clear();$('batchForm').reset();$('drawer').hidden=true;history.replaceState(null,'','/');}if(data.comparison_id){cid=data.comparison_id;selected.clear();}await load();navigate(data.reset_workspace?'import':name==='evaluate'?'results':workspace()?'workspace':'import');message(data.message||'Saved.');return data;}catch(e){message(e.message,true);}finally{$('busy').hidden=true;}}
+async function action(name,payload={}){$('busy').hidden=false;try{const response=await fetch('/api/workspace/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({comparison_id:cid,revision:state.revision,...payload})});const data=await actionResponse(response);if(name==='apply'&&workspace()&&!data.reset_workspace){await refreshRows(data.refresh_ids||payload.ids);message('Saved.');return data;}if(data.reset_workspace){cid=null;selected.clear();$('batchForm').reset();$('drawer').hidden=true;history.replaceState(null,'','/');}if(data.comparison_id){cid=data.comparison_id;selected.clear();}await load();navigate(data.reset_workspace?'import':name==='evaluate'?'results':workspace()?'workspace':'import');message(data.message||'Saved.');return data;}catch(e){message(e.message,true);}finally{$('busy').hidden=true;}}
 function sheets(){const source=state.sources.find(s=>s.source_id===$('source').value);options('sheet',(source?.sheets||[]).map(s=>[s,s]),workspace()?.comparison.current_selection[1]);}
 function render(){const w=workspace();renderWorkbooks();$('revision').textContent='Revision '+state.revision;options('source',state.sources.map(s=>[s.source_id,s.file_name]),w?.comparison.current_selection[0]||$('source').value);sheets();options('comparison',state.comparisons.map(c=>[c.id,c.asset+' · '+c.sheet]),cid);dimensions();for(const button of document.querySelectorAll('[data-screen]'))button.disabled=button.dataset.screen!=='import'&&!w;if(!w)return;$('asset').textContent=w.comparison.asset;$('scope').textContent=w.comparison.current_selection[1];const campaigns=w.campaigns.map(c=>[c.campaign,(c.label||c.campaign)+' · '+c.count+' readings']);options('previousCampaign',campaigns,w.comparison.baseline[2]);options('currentCampaign',campaigns,w.comparison.current_selection[2]);$('campaignDateFields').innerHTML=w.campaigns.filter(c=>!c.campaign.startsWith('auto:')).map(c=>`<label>${esc(c.campaign)} exact date<input type="date" data-campaign-date="${esc(c.campaign)}"></label>`).join('');options('sectionFilter',[...new Set(w.rows.map(r=>r.segment))].map(v=>[v,v]),$('sectionFilter').value,'All sections');table();results();}
 function visible(){const q=$('search').value.toLowerCase(),component=$('componentFilter').value;return (workspace()?.rows||[]).filter(r=>{const type=r.match_identity?.component||r.geometry||'unknown';const fits=!component||(component==='straight_pipe'?type==='straight_pipe':type!=='straight_pipe'&&type!=='unknown');return fits&&(!$('sectionFilter').value||r.segment===$('sectionFilter').value)&&[r.location,r.segment,r.material].join(' ').toLowerCase().includes(q);});}
@@ -68,7 +76,7 @@ function batchCodeEditor() {
             <label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option></select></label>
             <label>Construction code<select name="code_family" required><option value="">Choose…</option></select></label>
             <label>Edition year (optional)<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(common('code_edition'))}"></label>
-            <label>Code basis evidence<input name="code_evidence" placeholder="Document, line list, drawing or approved basis reference" value="${esc(rows.every(row => row.code_owner_confirmed) ? common('code_evidence') : '')}" required></label>
+            <label>Code basis evidence<input name="code_evidence" placeholder="Document, line list, drawing or approved basis reference" value="${esc(common('code_evidence'))}" required></label>
             <label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" required>
                 I confirm this code and service boundary apply to all locations in this scope.
             </label>
@@ -87,15 +95,17 @@ function batchCodeEditor() {
         showEditionDefault(form);
     }
     updateCodes(common('code_family'));
+    function codeChanged() {
+        form.elements.code_edition.value = '';
+        form.elements.code_evidence.value = code.value === common('code_family') ? common('code_evidence') : '';
+        showEditionDefault(form);
+    }
     asset.onchange = () => {
         const previous = code.value;
         updateCodes(previous);
-        if (code.value !== previous) form.elements.code_edition.value = '';
+        if (code.value !== previous) codeChanged();
     };
-    code.onchange = () => {
-        form.elements.code_edition.value = '';
-        showEditionDefault(form);
-    };
+    code.onchange = codeChanged;
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const {scope, ...values} = Object.fromEntries(new FormData(form));

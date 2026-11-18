@@ -369,6 +369,10 @@ def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(dated_evaluation):
 
 
 def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_evaluation):
+    from http.client import HTTPConnection
+    from http.server import ThreadingHTTPServer
+    from threading import Thread
+    from evaluator.webapp import make_handler
     from evaluator.workspace_api import action
 
     service, workspace, cid = dated_evaluation
@@ -378,7 +382,20 @@ def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_eval
                   code_evidence='Test line list', code_owner_confirmed='yes')
     payload = dict(comparison_id=cid, revision=service.workflow.revision(), scope='sheet',
                    ids=[rows[0]['current_id']], values=dict(values, geometry='straight_pipe'))
-    assert action(service, 'apply_code_basis', payload)['message'] == 'Code basis saved for 4 locations.'
+    with ThreadingHTTPServer(('127.0.0.1', 0), make_handler(service)) as server:
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = HTTPConnection('127.0.0.1', server.server_port)
+        try:
+            client.request('POST', '/api/workspace/apply_code_basis', json.dumps(payload),
+                           {'Content-Type':'application/json'})
+            response = client.getresponse()
+            assert response.status == 200
+            assert json.loads(response.read())['message'] == 'Code basis saved for 4 locations.'
+        finally:
+            client.close()
+            server.shutdown()
+            thread.join()
     updated = workspace.state(cid)['workspace']['rows']
     for row in updated:
         assert (row['geometry'], row['material']) == inputs[row['current_id']]

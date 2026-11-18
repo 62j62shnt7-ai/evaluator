@@ -161,8 +161,8 @@ def make_handler(service):
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return
                 if path.startswith('/api/workspace/'):
-                    if path.rsplit('/',1)[-1] not in {'reference_preview','import','apply','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
-                        self._reply('Not found',404,'text/plain');return
+                    if path.rsplit('/',1)[-1] not in {'reference_preview','import','apply','apply_code_basis','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
+                        self._reply(json.dumps({'error':'Workspace action not found.'}),404,'application/json');return
                     from evaluator.workspace_api import action
                     length=int(self.headers.get('Content-Length','0'))
                     if length<=0 or length>2_000_000:raise ValueError('Invalid workspace request size')
