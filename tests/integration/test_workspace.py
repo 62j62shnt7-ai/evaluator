@@ -438,6 +438,32 @@ def test_batch_workbook_pipe_review_saves_source_values_and_calculates(dated_eva
     assert batch['summary']['mawp_evaluated'] == 1
 
 
+def test_fitting_checks_require_documented_limits_and_keep_mawp_blank(dated_evaluation):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    basis = dict(code_family='ASME B31.3', code_asset_type='process_piping',
+                 code_evidence='Test line list', code_owner_confirmed='yes')
+    workspace.apply_code_basis(cid, service.workflow.revision(), 'sheet', [], basis)
+    rows = workspace.state(cid)['workspace']['rows']
+    fittings = [row for row in rows if row['geometry'] != 'straight_pipe']
+    assert all(row['routing']['status'] == 'FITTING_REVIEW_REQUIRED' for row in fittings)
+    review = dict(fitting_pressure_psi=250, fitting_minimum_mm=5,
+                  fitting_interval_years=2, adopted_rate_mm_year=0.4,
+                  fitting_reference='Synthetic assessment')
+    entries = {row['current_id']: review for row in fittings}
+    action(service, 'review_fittings', dict(comparison_id=cid, revision=service.workflow.revision(),
+           confirmed=True, entries=entries))
+    batch = workspace.evaluate(cid, service.workflow.revision(), basis='assigned')
+    results = [row for row in batch['rows'] if row['current_id'] in entries]
+    assert len(results) == 3
+    for row in results:
+        assert row['mawp_MPa'] is None
+        assert row['fitting_check']['current_meets_minimum'] is True
+        assert row['fitting_check']['projected_meets_minimum'] is False
+        assert Decimal(row['fitting_check']['credited_wall_mm']) == Decimal('4.8')
+
+
 def test_later_context_edit_cannot_reuse_a_previously_looked_up_stress(project):
     s,w,cid,_=project
     target=next(r for r in w.state(cid)['workspace']['rows'] if r['current_cell']=='K158')

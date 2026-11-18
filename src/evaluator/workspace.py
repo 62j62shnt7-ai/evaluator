@@ -300,6 +300,31 @@ class Workspace:
         self.service.batch.apply_overrides(cid, revision, [], [], {}, per_row_values=changes)
         return dict(message=f'Workbook inputs confirmed for {len(changes)} straight-pipe locations.')
 
+    def review_fittings(self, cid, revision, entries):
+        from evaluator.batch import _num
+
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; reopen fitting review.')
+        rows = {row['current_id']: row for row in self.state(cid)['workspace']['rows']
+                if row['routing']['status'] in {'FITTING_REVIEW_REQUIRED','FITTING_CHECK_AVAILABLE'}}
+        if not isinstance(entries, dict) or not entries or not entries.keys() <= rows.keys():
+            raise ValueError('Select fittings on the confirmed B31.3-2024 sheet.')
+        changes = {}
+        for oid, entry in entries.items():
+            row = rows[oid]
+            if not isinstance(entry, dict):
+                raise ValueError('Each fitting needs its own assessment inputs.')
+            values = {key: _num(entry.get(key), True) for key in
+                      ('fitting_pressure_psi','fitting_minimum_mm','fitting_interval_years')}
+            reference = str(entry.get('fitting_reference') or '').strip()
+            rate = _num(entry.get('adopted_rate_mm_year'))
+            if not row['previous_id'] or None in values.values() or not reference or rate is None:
+                raise ValueError(f"{row['location']}: provide paired UT, documented pressure, minimum wall, reference, interval and adopted rate.")
+            changes[oid] = dict(values, reviewed='yes', fitting_reference=reference,
+                                fitting_geometry=row['geometry'], adopted_rate_mm_year=rate)
+        self.service.batch.apply_overrides(cid, revision, [], [], {}, per_row_values=changes)
+        return dict(message=f'Documented fitting inputs saved for {len(changes)} locations.')
+
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.
         basis = basis or self.service.batch.settings(cid).get('basis', 'assigned')

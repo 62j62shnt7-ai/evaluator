@@ -23,6 +23,8 @@ NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_ou
 TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase','product_form'}
 TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
 TEXT_OVERRIDES.update({'code_asset_type', 'gas_basic_class', 'pipe_method'})
+NUMERIC_OVERRIDES.update({'fitting_pressure_psi','fitting_minimum_mm','fitting_interval_years'})
+TEXT_OVERRIDES.update({'fitting_reference','fitting_geometry'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
 
 
@@ -363,6 +365,11 @@ class BatchService:
         if config.get('basis') == 'assigned':
             is_straight_process_pipe = (p or {}).get('code_family') == 'ASME B31.3' and (p or {}).get('geometry') == 'straight_pipe'
             config['basis'] = 'row7' if is_straight_process_pipe and override.get('pipe_method') != 'code' else 'recalculate'
+        if config.get('basis') == 'recalculate' and p:
+            from evaluator.engineering.fitting_review import CLAUSES
+            if (p.get('geometry') in CLAUSES and p.get('code_family') == 'ASME B31.3'
+                    and p.get('code_edition') == '2024' and p.get('code_owner_confirmed')):
+                return self._fitting_check(row, item, override)
         if config.get('basis') == 'row7':
             return self._row7(row, item, override)
         if not current:issues.append('CURRENT_MISSING');blocked=True
@@ -540,6 +547,49 @@ class BatchService:
         done=sum(row[k] is not None for k in ('remaining_life_years','inspection_interval_years','due_date','mawp_MPa','forecast_mawp_MPa'))
         row['evaluation_status']='NEEDS_REVIEW' if blocked else 'EVALUATED' if done==5 else 'PARTIAL' if done else 'MISSING_INPUTS'
         row['issues']=list(dict.fromkeys(issues))
+        return row
+
+    def _fitting_check(self, row, item, override):
+        from evaluator.engineering.code_context import CODES_BY_ASSET
+        from evaluator.engineering.fitting_review import CLAUSES, assess_fitting
+
+        profile = row['profile']
+        geometry = profile['geometry']
+        row.update({key: None for key in ('thickness_margin_mm','remaining_life_years',
+                   'inspection_interval_years','maximum_inspection_interval_years','due_date',
+                   'mawp_MPa','forecast_mawp_MPa')})
+        row['input_trace'] = dict(basis='documented_fitting_pressure', overrides=override)
+        row['rule'] = 'Documented fitting pressure check'
+        row['routing'] = dict(status='FITTING_REVIEW_REQUIRED', code='ASME B31.3', edition='2024',
+                              geometry=geometry, issues=[], candidate_rule_ids=[])
+        try:
+            if ('ASME B31.3' not in CODES_BY_ASSET.get(profile.get('code_asset_type'), ())
+                    or not profile.get('code_evidence')):
+                raise ValueError('Confirm the construction code and service boundary.')
+            if (override.get('reviewed') != 'yes' or override.get('fitting_geometry') != geometry
+                    or not override.get('fitting_reference')):
+                raise ValueError('Enter the fitting’s documented pressure, minimum wall and assessment reference.')
+            if (not item['current'] or not item['previous'] or item['pair']['kind'] not in {'matched','lifecycle_mismatch'}
+                    or any(reading['raw_unit'] != 'mm' or reading.get('review_status') == 'excluded'
+                           for reading in (item['current'],item['previous']))):
+                raise ValueError('A comparable previous and current UT pair in mm is required.')
+            assessment = assess_fitting(
+                row['previous_thickness_mm'], row['current_thickness_mm'],
+                row['previous_inspection_date'], row['inspection_date'],
+                override['fitting_minimum_mm'], override['fitting_pressure_psi'],
+                override['fitting_interval_years'], override.get('adopted_rate_mm_year', '0'),
+            )
+        except (ValueError, TypeError, KeyError, InvalidOperation) as exc:
+            row['issues'].append(str(exc))
+            return self._withheld_row7(row, ('remaining_life_years','mawp_MPa','forecast_mawp_MPa'))
+        assessment.update(reference=override['fitting_reference'], construction_reference=CLAUSES[geometry])
+        row.update(fitting_check=assessment, required_thickness_mm=assessment['minimum_mm'],
+                   apparent_rate_mm_year=assessment['observed_rate'], adopted_rate_mm_year=assessment['used_rate'],
+                   remaining_life_years=assessment['remaining_life_years'], evaluation_status='EVALUATED')
+        row['routing']['status'] = 'FITTING_CHECK_AVAILABLE'
+        row['outputs'] = dict(fitting_check=assessment, remaining_life_years=row['remaining_life_years'])
+        if not assessment['projected_meets_minimum']:
+            row['issues'].append('FITTING_WALL_BELOW_OR_AT_REQUIRED_AT_PROJECTED_DATE')
         return row
 
     def _row7(self, row, item, override):

@@ -151,6 +151,58 @@ $('reviewWorkbookPipes').onclick = () => {
     };
 };
 
+$('reviewFittings').onclick = () => {
+    const rows = (workspace()?.rows || []).filter(row => row.code_family === 'ASME B31.3' &&
+        ['elbow','tee','reducer'].includes(row.geometry));
+    if (!rows.length) return message('No B31.3 elbows, tees or reducers on this sheet.', true);
+    const input = (key, label, value, type = 'number') =>
+        `<input name="${key}" aria-label="${label}" type="${type}" value="${esc(value)}"
+            ${type === 'number' ? 'min="0" step="any"' : ''}>`;
+    $('drawer').hidden = false;
+    $('details').innerHTML = `<h2>Review fittings in batch</h2>
+        <p>Enter the pressure and applicable minimum wall from each fitting’s documented assessment. Use a minimum that covers the pressure and structural limits for the inspected locations. The app checks those limits against measured and projected wall thickness.</p>
+        <form id="fittingReviewForm"><div class="table-scroll"><table>
+            <thead><tr><th>Location</th><th>Pressure (psi)</th><th>Minimum wall (mm)</th><th>Interval (yr)</th><th>Adopted CR (mm/yr)</th><th>Assessment reference</th></tr></thead>
+            <tbody>${rows.map(row => {
+                const o = row.input_trace?.overrides || {};
+                const label = `${row.location} · ${row.geometry}`;
+                let reason = '';
+                if (!row.previous_id) reason = 'Match previous UT';
+                else if (!['FITTING_REVIEW_REQUIRED','FITTING_CHECK_AVAILABLE'].includes(row.routing?.status)) reason = 'Confirm B31.3-2024 sheet basis';
+                if (reason) return `<tr><td>${esc(label)}</td><td colspan="5">${esc(reason)}</td></tr>`;
+                return `<tr data-fitting-id="${esc(row.current_id)}"><td>${esc(label)}<br>
+                    <label><input type="checkbox" name="include">Include</label></td>
+                    <td>${input('fitting_pressure_psi','Documented pressure',o.fitting_pressure_psi)}</td>
+                    <td>${input('fitting_minimum_mm','Documented minimum wall',o.fitting_minimum_mm)}</td>
+                    <td>${input('fitting_interval_years','Projection interval',o.fitting_interval_years)}</td>
+                    <td>${input('adopted_rate_mm_year','Adopted corrosion rate',o.adopted_rate_mm_year ?? row.profile?.fields?.adopted_rate_mm_year?.value)}</td>
+                    <td>${input('fitting_reference','Fitting assessment reference',o.fitting_reference,'text')}</td></tr>`;
+            }).join('')}</tbody></table></div>
+            <label class="check"><input type="checkbox" name="confirmed" required>
+                I confirmed the fitting assessments, UT coverage, rates and intervals for the included locations.</label>
+            <button class="primary">Confirm fittings and calculate</button>
+        </form>`;
+    const form = $('fittingReviewForm');
+    form.oninput = event => {
+        const tr = event.target.closest('[data-fitting-id]');
+        if (tr && event.target.name !== 'include') tr.querySelector('[name="include"]').checked = true;
+    };
+    form.onsubmit = async event => {
+        event.preventDefault();
+        const entries = {};
+        for (const tr of form.querySelectorAll('[data-fitting-id]')) {
+            if (!tr.querySelector('[name="include"]').checked) continue;
+            entries[tr.dataset.fittingId] = Object.fromEntries([...tr.querySelectorAll('input:not([name="include"])')]
+                .map(control => [control.name, control.value]));
+        }
+        const saved = await action('review_fittings', {entries, confirmed:form.elements.confirmed.checked});
+        if (saved) {
+            $('drawer').hidden = true;
+            await action('evaluate', {basis:'assigned'});
+        }
+    };
+};
+
 function bindReferenceSelectors(form, row) {
     const material = $('referenceMaterial');
     const temperature = $('referenceTemperature');
@@ -316,9 +368,13 @@ function readiness(row) {
     const assigned = Boolean(code && row.code_edition && row.code_asset_type &&
         row.code_owner_confirmed && row.code_evidence?.trim());
     if (!assigned) missing.push('Confirm construction code, edition, service and evidence');
+    if (row.routing?.status === 'FITTING_REVIEW_REQUIRED') {
+        missing.push(...(row.issues || []));
+        return {missing, notes, sourced:[], assigned};
+    }
     if (!row.reviewed && row.routing?.status === 'ROUTE_SELECTED') missing.push('Open Code and inputs, verify the source values, and check the review box');
 
-    if ((vessel || pipeline || pipe) && row.routing?.status !== 'NOT_ASSESSED') {
+    if ((vessel || pipeline || pipe) && !['NOT_ASSESSED','FITTING_CHECK_AVAILABLE'].includes(row.routing?.status)) {
         requireValue('P_psi', 'Design pressure');
         requireValue('structural_minimum_mm', 'Structural minimum thickness');
         requireValue('material', 'Material specification and grade');
@@ -387,6 +443,8 @@ function codeReviewCell(row, assigned, sourced) {
     const status = !code ? 'Choose a construction code'
         : !assigned ? 'Detected code · confirm basis'
         : row.routing?.status === 'ROUTE_SELECTED' ? 'Code assigned · calculation route available'
+        : row.routing?.status === 'FITTING_REVIEW_REQUIRED' ? 'Fitting · documented limits needed'
+        : row.routing?.status === 'FITTING_CHECK_AVAILABLE' ? 'Fitting · documented pressure check available'
         : 'Code assigned · no calculation route for this component';
     const basis = code ? `<strong>${esc(code)}</strong>` : '';
     const values = sourced.map(([label,value,source]) =>
@@ -461,6 +519,7 @@ function results() {
     const current = result && !result.stale;
     const savedRows = current ? result.rows.filter(row => row.current_id) : [];
     const ready = savedRows.filter(row => row.pressure_thickness_mm != null);
+    const fittings = savedRows.filter(row => row.fitting_check);
     const traceLink = row => `<a href="/workspace/calculation?${new URLSearchParams({result:result.id,row:row.id})}">How was this calculated?</a>`;
     $('codeResults').innerHTML = ready.length ? `<table><thead><tr><th>Location</th><th>Method</th>
         <th>Pressure thickness (mm)</th><th>Required thickness (mm)</th><th>Corrosion rate (mm/year)</th>
@@ -469,11 +528,22 @@ function results() {
         <td>${num(row.pressure_thickness_mm)}</td><td>${num(row.required_thickness_mm)}</td>
         <td>${num(row.apparent_rate_mm_year)}</td><td>${num(row.remaining_life_years)}</td>
         <td>${num(row.mawp_MPa)}</td><td>${traceLink(row)}</td></tr>`).join('')}</tbody></table>` : '';
+    if (fittings.length) $('codeResults').insertAdjacentHTML('beforeend', `<h2>Documented fitting pressure checks</h2>
+        <table><thead><tr><th>Location</th><th>Pressure checked (psi)</th><th>Minimum wall (mm)</th>
+        <th>Projected credited wall (mm)</th><th>Interval (yr)</th><th>Wall exceeds minimum</th>
+        <th>Assessment reference</th></tr></thead><tbody>${fittings.map(row => {
+            const f = row.fitting_check;
+            return `<tr><td>${esc(row.location)}</td><td>${num(f.pressure_psi)}</td><td>${num(f.minimum_mm)}</td>
+            <td>${num(f.credited_wall_mm)}</td><td>${num(f.projection_years)}</td>
+            <td>Current: ${f.current_meets_minimum ? 'Yes' : 'No'} · Projected: ${f.projected_meets_minimum ? 'Yes' : 'No'}</td>
+            <td>${esc(f.reference)}<br><small>${esc(f.construction_reference)} · API 570 §7.5</small></td></tr>`;
+        }).join('')}</tbody></table>`);
     $('metrics').innerHTML = `<div class="metric">${w.rows.length} locations</div>
         <div class="metric">${ready.length} saved draft calculations</div>
         <div class="metric">${w.rows.length - ready.length} without a saved pressure calculation</div>`;
     $('resultSummary').textContent = current
-        ? `${ready.length} of ${savedRows.length} locations have DRAFT / NOT VALIDATED pressure calculations.`
+        ? `${ready.length} of ${savedRows.length} locations have DRAFT / NOT VALIDATED pressure calculations.` +
+            (fittings.length ? ` ${fittings.length} additional locations have documented fitting pressure checks.` : '')
         : 'Calculate ready locations to save the current results.';
     $('exports').innerHTML = current
         ? `<a href="/workspace/results.csv?${new URLSearchParams({result:result.id})}">Download evaluation CSV</a>` : '';

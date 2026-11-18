@@ -66,6 +66,9 @@ def action(service, name, payload):
     elif name=='review_workbook_pipes':
         if payload.get('confirmed') is not True:raise ValueError('Confirm the workbook inputs before saving.')
         result=workspace.review_workbook_pipes(cid,rev,payload.get('ids',[]))
+    elif name=='review_fittings':
+        if payload.get('confirmed') is not True:raise ValueError('Confirm the documented fitting limits before saving.')
+        result=workspace.review_fittings(cid,rev,payload.get('entries',{}))
     elif name=='template':result=workspace.save_template(rev,payload.get('name',''),payload.get('values',{}))
     elif name=='evaluate':result=workspace.evaluate(cid,rev,payload.get('scenario'),payload.get('basis'))
     elif name=='policy':workspace.policy(cid,rev,payload.get('basis'),payload.get('scenario'))

@@ -68,7 +68,7 @@ def make_handler(service):
                 if not result or result.get('stale'):
                     self._reply('Calculate the current readings before exporting.',400,'text/plain');return
                 output=io.StringIO();writer=csv.writer(output)
-                writer.writerow(['Location','Previous date','Current date','Previous UT mm','Current UT mm','Material','Pd psi','OD in','Nominal mm','Structural mm','S psi','Pressure thickness mm','Required thickness mm','Calculated CR mm/year','CR used mm/year','CR basis','Remaining life years','Interval years','t in MAWP mm','MAWP psi','Result','Next inspection','Missing inputs'])
+                writer.writerow(['Location','Previous date','Current date','Previous UT mm','Current UT mm','Material','Pd psi','OD in','Nominal mm','Structural mm','S psi','Pressure thickness mm','Required thickness mm','Calculated CR mm/year','CR used mm/year','CR basis','Remaining life years','Interval years','t in MAWP mm','MAWP psi','Result','Next inspection','Missing inputs','Fitting pressure checked psi','Fitting minimum wall mm','Fitting projected credited wall mm','Fitting projection interval years','Fitting current exceeds minimum','Fitting projected exceeds minimum','Fitting assessment reference'])
                 for row in result['rows']:
                     if not row.get('current_id'):continue
                     i=row.get('input_trace',{}).get('inputs',{});r=row.get('row7') or {}
@@ -90,7 +90,12 @@ def make_handler(service):
                                  result=row.get('evaluation_status'), next_inspection=row.get('due_date'))
                     values=[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]
                     if values[10]:values[10]='DRAFT / NOT VALIDATED · '+str(values[10])
-                    writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+values+['; '.join(row['issues'])])
+                    fitting = row.get('fitting_check', {})
+                    fitting_columns = [fitting.get(key) for key in (
+                        'pressure_psi','minimum_mm','credited_wall_mm','projection_years',
+                        'current_meets_minimum','projected_meets_minimum','reference',
+                    )]
+                    writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+values+['; '.join(row['issues'])]+fitting_columns)
                 self._reply(output.getvalue(),200,'text/csv; charset=utf-8',(('Content-Disposition','attachment; filename="UT-evaluation.csv"'),));return
             if path in {'/','/workspace'}:
                 self._reply(page(service));return
@@ -161,7 +166,7 @@ def make_handler(service):
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return
                 if path.startswith('/api/workspace/'):
-                    if path.rsplit('/',1)[-1] not in {'reference_preview','import','apply','apply_code_basis','review_workbook_pipes','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
+                    if path.rsplit('/',1)[-1] not in {'reference_preview','import','apply','apply_code_basis','review_workbook_pipes','review_fittings','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
                         self._reply(json.dumps({'error':'Workspace action not found.'}),404,'application/json');return
                     from evaluator.workspace_api import action
                     length=int(self.headers.get('Content-Length','0'))
