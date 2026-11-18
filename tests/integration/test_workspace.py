@@ -374,7 +374,7 @@ def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_eval
     service, workspace, cid = dated_evaluation
     rows = workspace.state(cid)['workspace']['rows']
     inputs = {row['current_id']: (row['geometry'], row['material']) for row in rows}
-    values = dict(code_family='ASME B31.3', code_edition='2024', code_asset_type='process_piping',
+    values = dict(code_family='ASME B31.3', code_asset_type='process_piping',
                   code_evidence='Test line list', code_owner_confirmed='yes')
     payload = dict(comparison_id=cid, revision=service.workflow.revision(), scope='sheet',
                    ids=[rows[0]['current_id']], values=dict(values, geometry='straight_pipe'))

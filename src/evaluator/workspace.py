@@ -91,9 +91,10 @@ class Workspace:
         cid=cid or (comparisons[0]['id'] if comparisons else None)
         base={'revision':self.flow.revision()}
         if not partial:
-            from evaluator.engineering.code_context import CODES_BY_ASSET
+            from evaluator.engineering.code_context import CODES_BY_ASSET, DEFAULT_EDITIONS
             from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, LIQUID_PIPE_SMYS
             base['codes_by_asset'] = {asset: sorted(codes) for asset, codes in CODES_BY_ASSET.items()}
+            base['default_code_editions'] = DEFAULT_EDITIONS
             base['gas_pipe_grades'] = list(GAS_5L_SMYS_PSI)
             base['liquid_pipe_grades'] = list(LIQUID_PIPE_SMYS)
             base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. VIII-1 2025 lookup covers SA-516 Grade 70 plate at selected exact II-D Metric table points. Other contexts require a checked record; workbook properties remain proposals.'])
@@ -116,7 +117,7 @@ class Workspace:
             row['material']=over.get('material',_value(p,'material'));row['schedule']=_value(p,'schedule');row['nps']=_value(p,'nps')
             row['S_allow_psi']=over.get('S_allow_psi',_value(p,'S_allow_psi'))
             row['nominal_thickness_mm']=_value(p,'nominal_thickness_mm')
-            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=over.get('code_family') or p.get('code_family');row['code_edition']=over.get('code_edition') or p.get('code_edition')
+            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=over.get('code_family') or p.get('code_family');row['code_edition']=over.get('code_edition',p.get('code_edition'))
             row['code_evidence']=over.get('code_evidence',p.get('code_evidence',p.get('code_basis','')))
             row['code_owner_confirmed']=over.get('code_owner_confirmed')=='yes' or bool(p.get('code_owner_confirmed'))
             row['code_asset_type']=over.get('code_asset_type',p.get('code_asset_type',''))
@@ -217,15 +218,18 @@ class Workspace:
         return record
 
     def apply_code_basis(self, cid, revision, scope, ids, values):
-        from evaluator.engineering.code_context import CODES_BY_ASSET
+        from evaluator.engineering.code_context import CODES_BY_ASSET, DEFAULT_EDITIONS
 
         basis = {key: str(values.get(key) or '').strip() for key in (
             'code_asset_type', 'code_family', 'code_edition', 'code_evidence', 'code_owner_confirmed',
         )}
         if basis['code_family'] not in CODES_BY_ASSET.get(basis['code_asset_type'], ()):
             raise ValueError('Choose a construction code that matches the asset and service boundary.')
-        if not re.fullmatch(r'[0-9]{4}', basis['code_edition']) or not basis['code_evidence']:
-            raise ValueError('Enter the edition year and the source document for this code basis.')
+        if basis['code_edition'] and not re.fullmatch(r'[0-9]{4}', basis['code_edition']):
+            raise ValueError('Enter a four-digit edition year or leave it blank.')
+        if not basis['code_evidence']:
+            raise ValueError('Enter the source document for this code basis.')
+        basis['code_edition'] = basis['code_edition'] or DEFAULT_EDITIONS.get(basis['code_family'], '')
         if basis['code_owner_confirmed'] != 'yes':
             raise ValueError('Confirm the code basis for all locations in the selected scope.')
         if int(revision) != self.flow.revision():

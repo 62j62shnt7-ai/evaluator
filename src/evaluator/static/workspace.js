@@ -27,7 +27,7 @@ function render(){const w=workspace();renderWorkbooks();$('revision').textConten
 function visible(){const q=$('search').value.toLowerCase(),component=$('componentFilter').value;return (workspace()?.rows||[]).filter(r=>{const type=r.match_identity?.component||r.geometry||'unknown';const fits=!component||(component==='straight_pipe'?type==='straight_pipe':type!=='straight_pipe'&&type!=='unknown');return fits&&(!$('sectionFilter').value||r.segment===$('sectionFilter').value)&&[r.location,r.segment,r.material].join(' ').toLowerCase().includes(q);});}
 function edit(r,key,value){return `<input class="engineering-input" type="number" min="0" step="any" data-engineering="${key}" data-row="${esc(r.current_id)}" value="${esc(value??'')}" aria-label="${key} for ${esc(r.location)}">`;}
 function rowSelect(r,key,value,items){return `<select data-engineering="${key}" data-row="${esc(r.current_id)}" aria-label="${key} for ${esc(r.location)}">${[...new Set([value||'',...items])].map(v=>`<option value="${esc(v)}" ${String(v)===String(value??'')?'selected':''}>${esc(v||'Choose…')}</option>`).join('')}</select>`;}
-function codeEditor(id){const r=workspace().rows.find(x=>x.current_id===id);if(!r)return;$('drawer').hidden=false;const codes=['ASME B31.3','ASME B31.4','ASME B31.8','ASME VIII-1','API 650'],assets=['process_piping','liquid_transmission','gas_transmission','production_flowline','pressure_vessel','storage_tank'];$('details').innerHTML=`<h2>Code basis · ${esc(r.location)}</h2><p>Set the construction basis for this component. Code routing only selects an existing draft method; it does not establish MAWP or engineering approval. Flowlines require an explicit service boundary.</p><form id="codeBasisForm" data-row="${esc(id)}"><label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option>${assets.map(v=>`<option value="${v}" ${r.code_asset_type===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><label>Construction code<select name="code_family" required><option value="">Choose…</option>${codes.map(v=>`<option ${r.code_family===v?'selected':''}>${v}</option>`).join('')}</select></label><label>Edition year<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(r.code_edition||'')}" placeholder="e.g. 2024" required></label><label class="wide">Code basis evidence<input name="code_evidence" value="${esc(r.code_evidence||'')}" placeholder="Document, line list, drawing or approved basis reference" required></label><label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" ${r.code_owner_confirmed?'checked':''} required>I confirmed this code’s applicability and boundary for this component.</label><label>Calculation geometry<select name="geometry" required><option value="">Choose…</option>${['straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','head_unspecified','unknown'].map(v=>`<option value="${v}" ${r.geometry===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><fieldset id="methodFields"><legend>Inputs for this calculation</legend>
+function codeEditor(id){const r=workspace().rows.find(x=>x.current_id===id);if(!r)return;$('drawer').hidden=false;const codes=['ASME B31.3','ASME B31.4','ASME B31.8','ASME VIII-1','API 650'],assets=['process_piping','liquid_transmission','gas_transmission','production_flowline','pressure_vessel','storage_tank'];$('details').innerHTML=`<h2>Code basis · ${esc(r.location)}</h2><p>Set the construction basis for this component. Code routing only selects an existing draft method; it does not establish MAWP or engineering approval. Flowlines require an explicit service boundary.</p><form id="codeBasisForm" data-row="${esc(id)}"><label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option>${assets.map(v=>`<option value="${v}" ${r.code_asset_type===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><label>Construction code<select name="code_family" required><option value="">Choose…</option>${codes.map(v=>`<option ${r.code_family===v?'selected':''}>${v}</option>`).join('')}</select></label><label>Edition year (optional)<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(r.code_edition||'')}" ></label><label class="wide">Code basis evidence<input name="code_evidence" value="${esc(r.code_evidence||'')}" placeholder="Document, line list, drawing or approved basis reference" required></label><label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" ${r.code_owner_confirmed?'checked':''} required>I confirmed this code’s applicability and boundary for this component.</label><label>Calculation geometry<select name="geometry" required><option value="">Choose…</option>${['straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','head_unspecified','unknown'].map(v=>`<option value="${v}" ${r.geometry===v?'selected':''}>${v.replaceAll('_',' ')}</option>`).join('')}</select></label><fieldset id="methodFields"><legend>Inputs for this calculation</legend>
 <label>Process piping method<select name="pipe_method">
 <option value="example">Pipe workflow (E = 1, W = 1, Y = 0.4)</option>
 <option value="code" ${r.input_trace?.overrides?.pipe_method==='code'?'selected':''}>B31.3 with entered E, W and Y</option>
@@ -45,6 +45,13 @@ ${Object.entries({D_outside_in:'Outside diameter (in)',nominal_thickness_mm:'Nom
 <label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi" value="${esc(r.input_trace?.overrides?.S_allow_psi??'')}"></label>
 <label>Manual material property reference<input name="material_reference" value="${esc(r.input_trace?.overrides?.material_reference??'')}"></label>
 </fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'));}
+function showEditionDefault(form) {
+    const code = form.elements.code_family.value;
+    const fallback = state.default_code_editions[code] || '';
+    form.elements.code_edition.placeholder = fallback ? 'Defaults to ' + fallback : 'Leave blank if unknown';
+    return form.elements.code_edition.value || fallback;
+}
+
 function batchCodeEditor() {
     const w = workspace();
     if (!w) return;
@@ -60,7 +67,7 @@ function batchCodeEditor() {
             </select></label>
             <label>Asset / service boundary<select name="code_asset_type" required><option value="">Choose…</option></select></label>
             <label>Construction code<select name="code_family" required><option value="">Choose…</option></select></label>
-            <label>Edition year<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(common('code_edition'))}" required></label>
+            <label>Edition year (optional)<input name="code_edition" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" value="${esc(common('code_edition'))}"></label>
             <label>Code basis evidence<input name="code_evidence" placeholder="Document, line list, drawing or approved basis reference" value="${esc(rows.every(row => row.code_owner_confirmed) ? common('code_evidence') : '')}" required></label>
             <label class="check"><input type="checkbox" name="code_owner_confirmed" value="yes" required>
                 I confirm this code and service boundary apply to all locations in this scope.
@@ -77,9 +84,18 @@ function batchCodeEditor() {
     function updateCodes(value) {
         const allowed = choices[asset.value] || [...new Set(Object.values(choices).flat())];
         options(code.id, allowed.map(label => [label, label]), allowed.length === 1 ? allowed[0] : value);
+        showEditionDefault(form);
     }
     updateCodes(common('code_family'));
-    asset.onchange = () => updateCodes(code.value);
+    asset.onchange = () => {
+        const previous = code.value;
+        updateCodes(previous);
+        if (code.value !== previous) form.elements.code_edition.value = '';
+    };
+    code.onchange = () => {
+        form.elements.code_edition.value = '';
+        showEditionDefault(form);
+    };
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const {scope, ...values} = Object.fromEntries(new FormData(form));
@@ -96,7 +112,7 @@ function bindReferenceSelectors(form) {
     const get = key => field(key)?.value || '';
     let generation = 0;
 
-    function availableRows() {
+    function availableRows(edition) {
         const geometry = get('geometry');
         const product = get('code_family') === 'ASME VIII-1'
             ? (['shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head'].includes(geometry)
@@ -104,7 +120,7 @@ function bindReferenceSelectors(form) {
             : geometry === 'straight_pipe' ? 'pipe'
             : ['elbow','tee','reducer','branch'].includes(geometry) ? 'fitting' : '';
         return state.material_stresses.filter(row => row.code_family === get('code_family') &&
-            row.code_edition === get('code_edition') && row.product_form === product);
+            row.code_edition === edition && row.product_form === product);
     }
 
     function showMethodFields() {
@@ -153,19 +169,17 @@ function bindReferenceSelectors(form) {
     async function refresh() {
         showMethodFields();
         const current = ++generation;
-        const editions = {'ASME B31.3':'2024', 'ASME B31.4':'2025', 'ASME B31.8':'2025', 'ASME VIII-1':'2025'};
-        const libraryEdition = editions[get('code_family')];
-        field('code_edition').placeholder = libraryEdition ? 'Library edition: ' + libraryEdition : 'Enter source edition';
-        const rows = availableRows();
-        const gas = get('code_family') === 'ASME B31.8' && get('code_edition') === '2025' &&
+        const edition = showEditionDefault(form);
+        const rows = availableRows(edition);
+        const gas = get('code_family') === 'ASME B31.8' && edition === '2025' &&
             get('geometry') === 'straight_pipe';
         const materials = [...new Set(rows.map(row => row.material))];
         if (gas) materials.push(...state.gas_pipe_grades.map(grade => 'API 5L ' + grade));
-        const liquid = get('code_family') === 'ASME B31.4' && get('code_edition') === '2025' &&
+        const liquid = get('code_family') === 'ASME B31.4' && edition === '2025' &&
             get('geometry') === 'straight_pipe';
         if (liquid) materials.push(...state.liquid_pipe_grades);
         options(material.id, materials.map(value => [value, value]), get('material'),
-            materials.length ? 'Choose a grade' : !get('code_edition') ? 'Enter the code edition first' : 'No library grades for this selection');
+            materials.length ? 'Choose a grade' : 'No library grades for this selection');
         material.disabled = !materials.length;
         const points = rows.filter(row => row.material === get('material')).map(row => [
             row.temperature_F, row.temperature_F + ' °F']);
@@ -177,7 +191,7 @@ function bindReferenceSelectors(form) {
         try {
             const response = await fetch('/api/workspace/reference_preview', {
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({values:Object.fromEntries(new FormData(form))}),
+                body:JSON.stringify({values:{...Object.fromEntries(new FormData(form)), code_edition:edition}}),
             });
             const result = await response.json();
             if (!response.ok) throw Error(result.error || 'Reference lookup failed');
@@ -198,6 +212,7 @@ function bindReferenceSelectors(form) {
         refresh();
     });
     form.addEventListener('change', event => {
+        if (event.target === field('code_family')) field('code_edition').value = '';
         if (event.target === field('gas_basic_class') && get('gas_basic_class') !== 'manual') field('F_class').value = '';
         if (event.target === material && material.value) {
             field('material').value = material.value;
@@ -393,7 +408,7 @@ $('upload').onsubmit=async e=>{e.preventDefault();$('busy').hidden=false;try{con
 $('comparison').onchange=async()=>{cid=$('comparison').value;selected.clear();try{await load();}catch(e){message(e.message,true);}};
 $('changeCampaigns').onclick=()=>{const w=workspace();if(w)action('import',{source_id:w.comparison.current_selection[0],sheet:w.comparison.current_selection[1],previous:$('previousCampaign').value,current:$('currentCampaign').value});};$('resolveDates').onclick=()=>{const dates=Object.fromEntries([...document.querySelectorAll('[data-campaign-date]')].filter(el=>el.value).map(el=>[el.dataset.campaignDate,el.value]));if(!Object.keys(dates).length)return message('Enter an exact date for at least one inspection.',true);action('dates',{campaign_dates:dates});};
 $('search').oninput=table;$('sectionFilter').onchange=table;$('componentFilter').onchange=table;$('selectComponent').onclick=()=>{const type=$('componentFilter').value;if(!type)return message('Choose straight pipes or fittings first.',true);visible().filter(r=>r.current_id).forEach(r=>selected.add(r.current_id));table();};$('selectVisible').onclick=()=>{visible().filter(r=>r.current_id).forEach(r=>selected.add(r.current_id));table();};$('clearSelection').onclick=()=>{selected.clear();table();};$('selectAll').onchange=e=>{visible().filter(r=>r.current_id).forEach(r=>e.target.checked?selected.add(r.current_id):selected.delete(r.current_id));table();};
-$('locations').onchange=e=>{if(e.target.dataset.identity){action('identity',{id:e.target.dataset.row,values:{[e.target.dataset.identity]:e.target.value}});return;}if(e.target.dataset.previous){if(e.target.value)action('identity',{id:e.target.dataset.previous,previous_id:e.target.value});return;}if(e.target.dataset.component){const type=e.target.value;action('identity',{id:e.target.dataset.component,values:{component:type}});return;}if(e.target.dataset.engineering){inlineEdit(e.target);return;}if(e.target.dataset.select){e.target.checked?selected.add(e.target.dataset.select):selected.delete(e.target.dataset.select);table();}else if(e.target.dataset.reading)action('correct',{id:e.target.dataset.reading,value:e.target.value});};$('locations').onclick=e=>{const save=e.target.closest('[data-save-identity]');if(save){const fields=[...save.closest('tr').querySelectorAll('[data-identity]')];action('identity',{id:save.dataset.saveIdentity,values:Object.fromEntries(fields.map(el=>[el.dataset.identity,el.value]))});return;}const code=e.target.closest('[data-code]');if(code){codeEditor(code.dataset.code);return;}const b=e.target.closest('[data-detail]');if(b)detail(b.dataset.detail);};$('details').onsubmit=e=>{if(e.target.id!=='codeBasisForm')return;e.preventDefault();const values=Object.fromEntries([...new FormData(e.target)].filter(([,v])=>v!==''));values.reviewed=values.reviewed||'no';action('apply',{ids:[e.target.dataset.row],values}).then(saved=>{if(saved)codeEditor(e.target.dataset.row);});};$('readinessTable').onclick = event => {
+$('locations').onchange=e=>{if(e.target.dataset.identity){action('identity',{id:e.target.dataset.row,values:{[e.target.dataset.identity]:e.target.value}});return;}if(e.target.dataset.previous){if(e.target.value)action('identity',{id:e.target.dataset.previous,previous_id:e.target.value});return;}if(e.target.dataset.component){const type=e.target.value;action('identity',{id:e.target.dataset.component,values:{component:type}});return;}if(e.target.dataset.engineering){inlineEdit(e.target);return;}if(e.target.dataset.select){e.target.checked?selected.add(e.target.dataset.select):selected.delete(e.target.dataset.select);table();}else if(e.target.dataset.reading)action('correct',{id:e.target.dataset.reading,value:e.target.value});};$('locations').onclick=e=>{const save=e.target.closest('[data-save-identity]');if(save){const fields=[...save.closest('tr').querySelectorAll('[data-identity]')];action('identity',{id:save.dataset.saveIdentity,values:Object.fromEntries(fields.map(el=>[el.dataset.identity,el.value]))});return;}const code=e.target.closest('[data-code]');if(code){codeEditor(code.dataset.code);return;}const b=e.target.closest('[data-detail]');if(b)detail(b.dataset.detail);};$('details').onsubmit=e=>{if(e.target.id!=='codeBasisForm')return;e.preventDefault();const values=Object.fromEntries([...new FormData(e.target)].filter(([,v])=>v!==''));values.reviewed=values.reviewed||'no';values.code_edition=showEditionDefault(e.target);action('apply',{ids:[e.target.dataset.row],values}).then(saved=>{if(saved)codeEditor(e.target.dataset.row);});};$('readinessTable').onclick = event => {
     const target = event.target.closest('[data-readiness-code]');
     if (target) {
         codeEditor(target.dataset.readinessCode);

@@ -210,7 +210,7 @@ class BatchService:
                     counts=dict(current=sum(r['current_id'] is not None for r in rows),life_ready=sum(r['remaining_life_years'] is not None for r in rows),historical_ready=sum(r['apparent_rate_mm_year'] is not None for r in rows),issues=dict(Counter(i for r in rows for i in r['issues']))))
 
     def apply_overrides(self,comparison_id,expected_revision,group_ids,row_ids,values,profile_sheet=None,per_row_values=None):
-        clean={k:str(v).strip() for k,v in values.items() if v not in ('',None)}
+        clean={k:str(v).strip() for k,v in values.items() if v not in ('',None) or (k=='code_edition' and v=='')}
         per_row_values={oid:{k:str(v).strip() for k,v in row_values.items() if v not in ('',None)} for oid,row_values in (per_row_values or {}).items()}
         allowed=NUMERIC_OVERRIDES|TEXT_OVERRIDES
         if (not clean and not per_row_values) or not set(clean)<=allowed or any(not set(row_values)<=allowed for row_values in per_row_values.values()):raise ValueError('Select valid grouped input changes')

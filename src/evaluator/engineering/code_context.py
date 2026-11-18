@@ -46,6 +46,10 @@ _SUPPORTED_EDITIONS: Final[dict[str, frozenset[str]]] = {
     'ASME VIII-1': frozenset({'2025'}),
 }
 
+DEFAULT_EDITIONS: Final[dict[str, str]] = {
+    code: next(iter(editions)) for code, editions in _SUPPORTED_EDITIONS.items() if len(editions) == 1
+}
+
 
 @dataclass(frozen=True, slots=True)
 class CodeContext:
