@@ -52,7 +52,7 @@ ${['1 Division 1','1 Division 2','2','3','4'].map(value=>`<option value="${value
 ${Object.entries({D_outside_in:'Outside diameter (in)',nominal_thickness_mm:'Nominal wall (mm)',adopted_rate_mm_year:'Adopted corrosion rate (mm/year)',temperature_F:'Design metal temperature (°F)',D_inside_in:'Inside diameter (in)',P_psi:'Design pressure (psi)',E_joint:'Joint efficiency',structural_minimum_mm:'Structural minimum (mm)',E_quality:'Pipe quality factor',W_reduction:'Weld strength reduction factor',Y_coefficient:'Y coefficient',F_class:'Gas pipeline class factor',F_design:'Liquid pipeline design factor',E_weld:'Pipeline weld factor',T_temp:'Gas pipeline temperature factor',SMYS_psi:'Pipeline SMYS (psi)',interval_fraction:'Inspection interval fraction of remaining life',interval_cap_years:'Inspection interval cap (years)'}).map(([key,label])=>`<label>${label}<input type="number" step="any" name="${key}" value="${esc(r.input_trace?.overrides?.[key]??r.profile?.fields?.[key]?.value??'')}"></label>`).join('')}
 <label>Manual allowable stress (psi), if needed<input type="number" step="any" name="S_allow_psi" value="${esc(r.input_trace?.overrides?.S_allow_psi??'')}"></label>
 <label>Manual material property reference<input name="material_reference" value="${esc(r.input_trace?.overrides?.material_reference??'')}"></label>
-</fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes">I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'));}
+</fieldset><label class="check"><input type="checkbox" name="reviewed" value="yes" ${r.reviewed?'checked':''}>I checked the component assignment and calculation inputs against the source records.</label><button class="primary">Save code basis</button></form><p class="muted">Current routing: ${esc(r.routing?.status||'NEEDS_CODE_CONFIRMATION')} · results remain DRAFT / NOT VALIDATED.</p>`;bindReferenceSelectors($('codeBasisForm'), r);}
 function showEditionDefault(form) {
     const code = form.elements.code_family.value;
     const fallback = state.default_code_editions[code] || '';
@@ -114,12 +114,23 @@ function batchCodeEditor() {
 }
 $('editBatchCode').onclick = batchCodeEditor;
 
-function bindReferenceSelectors(form) {
+function bindReferenceSelectors(form, row) {
     const material = $('referenceMaterial');
     const temperature = $('referenceTemperature');
     const preview = $('referencePreview');
     const field = key => form.elements.namedItem(key);
     const get = key => field(key)?.value || '';
+    const stress = row.profile?.fields?.S_allow_psi;
+    const workbookStress = stress?.source_record || (stress?.kind === 'literal' ? stress : null);
+    const useStress = document.createElement('button');
+    useStress.type = 'button';
+    useStress.textContent = `Use reviewed workbook stress (${num(workbookStress?.value)} psi)`;
+    field('S_allow_psi').closest('label').after(useStress);
+    useStress.onclick = () => {
+        field('S_allow_psi').value = workbookStress.value;
+        field('material_reference').value = [row.profile.sheet, workbookStress.cell].filter(Boolean).join('!');
+        refresh();
+    };
     let generation = 0;
 
     function availableRows(edition) {
@@ -167,6 +178,8 @@ function bindReferenceSelectors(form) {
             control.disabled = !fields.has(control.name);
             control.closest('label').hidden = control.disabled;
         }
+        useStress.hidden = !fields.has('S_allow_psi') || !(Number(workbookStress?.value) > 0)
+            || get('code_family') !== row.code_family;
         const lookup = supported || processFitting;
         material.closest('label').hidden = !lookup;
         temperature.closest('label').hidden = !(process || processFitting || vessel || gas);
@@ -266,9 +279,9 @@ function readiness(row) {
     const assigned = Boolean(code && row.code_edition && row.code_asset_type &&
         row.code_owner_confirmed && row.code_evidence?.trim());
     if (!assigned) missing.push('Confirm construction code, edition, service and evidence');
-    if (!row.reviewed) missing.push('Review the component assignment and calculation inputs');
+    if (!row.reviewed && row.routing?.status === 'ROUTE_SELECTED') missing.push('Open Code and inputs, verify the source values, and check the review box');
 
-    if (vessel || pipeline || pipe) {
+    if ((vessel || pipeline || pipe) && row.routing?.status !== 'NOT_ASSESSED') {
         requireValue('P_psi', 'Design pressure');
         requireValue('structural_minimum_mm', 'Structural minimum thickness');
         requireValue('material', 'Material specification and grade');
@@ -301,7 +314,7 @@ function readiness(row) {
         if ((value(strength) == null || value(strength) === '') && !(pipeline && row.input_trace?.normalized_design?.SMYS_MPa?.reference)) {
             if (pipeline) missing.push(code === 'ASME B31.8' ? 'API 5L grade and pipe manufacturing type, or reviewed SMYS' : 'Specified minimum yield strength (SMYS)');
             else if (vessel) missing.push('Plate product form and design temperature, or reviewed allowable stress');
-            else missing.push('Design temperature for stress lookup, or reviewed allowable stress');
+            else missing.push('In Code and inputs, verify the workbook stress or enter design temperature for a code lookup');
         }
     }
     if (assigned && !vessel && !pipeline && !pipe) notes.push('Use the applicable assessment screen for this code.');
@@ -311,8 +324,13 @@ function readiness(row) {
     }
     if (row.issues?.includes('PROFILE_CURRENT_CONFLICT')) notes.push('Resolve the conflict between the source record and measured UT.');
     if (row.issues?.includes('INSPECTION_POLICY_REQUIRED')) missing.push('Inspection interval policy');
-    if (row.previous_id && Number(row.previous_thickness_mm) <= Number(row.current_thickness_mm)) {
-        notes.push('No positive observed wall loss. Review the rate before forecasting.');
+    if (row.previous_id && Number(row.previous_thickness_mm) <= Number(row.current_thickness_mm) &&
+        row.routing?.status === 'ROUTE_SELECTED') {
+        const rate = value('adopted_rate_mm_year');
+        if (!(Number(rate) > 0)) missing.push('Enter a reviewed adopted corrosion rate for forecasting');
+        else if (!row.reviewed) notes.push(`Observed loss is zero or negative. Verify the proposed rate of ${num(rate)} mm/year in Code and inputs.`);
+        else if (Number(row.previous_thickness_mm) < Number(row.current_thickness_mm) &&
+            row.issues?.some(issue => /INCREAS|GAIN/.test(issue))) notes.push('Current UT exceeds previous UT. Verify the readings and the rate basis.');
     }
 
     const sourced = ['S_allow_psi', 'SMYS_psi', 'D_outside_in', 'nominal_thickness_mm']
