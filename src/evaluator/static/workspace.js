@@ -326,7 +326,23 @@ function readiness(row) {
     if (design.SMYS_MPa?.reference) sourced.push(['SMYS (psi)', design.SMYS_MPa.value_psi, design.SMYS_MPa.reference]);
     if (design.F_class?.reference) sourced.push(['Basic design factor F', design.F_class.value, design.F_class.reference]);
     if (design.T_temp?.reference) sourced.push(['Temperature factor T', design.T_temp.value, design.T_temp.reference]);
-    return {missing, notes, sourced};
+    return {missing, notes, sourced, assigned};
+}
+
+function codeReviewCell(row, assigned, sourced) {
+    const code = [row.code_family, row.code_edition].filter(Boolean).join(' · ');
+    const status = !code ? 'Choose a construction code'
+        : !assigned ? 'Detected code · confirm basis'
+        : row.routing?.status === 'ROUTE_SELECTED' ? 'Code assigned · calculation route available'
+        : 'Code assigned · no calculation route for this component';
+    const basis = code ? `<strong>${esc(code)}</strong>` : '';
+    const values = sourced.map(([label,value,source]) =>
+        `<div>${esc(label)}: ${num(value)} <small>${esc(source)}</small></div>`).join('');
+    const stress = row.profile?.fields?.S_allow_psi;
+    const workbookStress = stress?.source_record || (stress?.kind === 'literal' ? stress : null);
+    const proposal = workbookStress?.value != null && !sourced.some(([label]) => label === 'Allowable stress (psi)')
+        ? `<div>Workbook stress: ${num(workbookStress.value)} psi <small>Source proposal</small></div>` : '';
+    return `${basis}<div>${esc(status)}</div>${values}${proposal}`;
 }
 
 function suggestedGroups(rows) {
@@ -368,11 +384,11 @@ function renderReadiness(rows = visible()) {
     $('readinessCount').textContent = '· ' + outstanding + ' of ' + records.length + ' shown need attention';
     const reading = (thickness, cell, date, sheet) => thickness == null ? 'Unavailable' :
         num(thickness) + ' mm · ' + esc(date || 'Date missing') + ' · ' + esc([sheet, cell].filter(Boolean).join('!'));
-    $('readinessTable').querySelector('tbody').innerHTML = records.map(({row, missing, notes, sourced}) =>
+    $('readinessTable').querySelector('tbody').innerHTML = records.map(({row, missing, notes, sourced, assigned}) =>
         `<tr><td>${esc(row.location)}</td>
         <td>Previous: ${reading(row.previous_thickness_mm, row.previous_cell, row.previous_inspection_date, row.previous_sheet)}<br>
         Current: ${reading(row.current_thickness_mm, row.current_cell, row.inspection_date, row.current_sheet)}</td>
-        <td>${sourced.map(([label,value,basis]) => `<div>${esc(label)}: ${num(value)} <small>${esc(basis)}</small></div>`).join('') || 'No code lookup applied'}</td>
+        <td>${codeReviewCell(row, assigned, sourced)}</td>
         <td>${[...missing,...notes].map(item => `<div>${esc(item)}</div>`).join('') || 'No missing inputs identified'}</td>
         <td><button data-readiness-code="${esc(row.current_id)}">Code and inputs</button>
         <button data-readiness-select="${esc(row.current_id)}">${selected.has(row.current_id) ? 'Deselect' : 'Select for shared inputs'}</button></td></tr>`).join('');
