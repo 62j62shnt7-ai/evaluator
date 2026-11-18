@@ -1,5 +1,10 @@
 # Code-specific pressure assessment implementation plan
 
+The [inspection workflow handoff](../../inspection-workflow-handoff.md)
+records the shipped oil-line workflow, including the read-only Calculations
+tab and its Excel export. The acceptance items below track the broader
+engineering work.
+
 **Goal.** From a measured UT location, produce a reproducible assessment at the selected next inspection date, in the user's field-specific units, with the governing method, values and evidence visible. Deliver this through the existing workbook → Location Review → batch calculation → export workflow.
 
 **Baseline and specification.** Use branch `feat/mawp-v08-code-routing-phase1`, reviewed at `47500e2`. Read the master blueprint, rule register, decision register, reference arithmetic and test matrix inside `sources/plans/MAWP_Implementation_Plan_v0.8_REATTACHED.zip`. Apply the user's current requirements for fittings and psi throughout. Use `docs/local_files.md` for the source inventory. The earlier Row 7 workbook provides a reproduction fixture. An independent engineering example establishes whether a method implements its governing edition.

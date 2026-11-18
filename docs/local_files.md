@@ -34,6 +34,10 @@ port 8766 uses its original project.
 
 ## Workbook coverage
 
+The Section 2 preview below is a separate dataset from the oil-line pilot.
+For the current oil-line comparison and verification of the **Calculations**
+preview and Excel export, see the [inspection workflow handoff](inspection-workflow-handoff.md).
+
 The Section 2 XLSX supplied four dated UT campaigns in Evaluation Nov-26.
 A clean import identified 31 straight-pipe, 13 elbow, 4 tee and 6 reducer
 locations. The straight-pipe batch produced draft pressure results for all

@@ -2,6 +2,16 @@
 
 ## Current Windows preview · 18 November 2026
 
+- The selected-sheet workflow uses one editable **Inspection grid** for UT
+  matching, code and material assignment, batch inputs, and row corrections.
+  **Calculate ready locations** opens the read-only **Calculations** tab.
+  **Download Excel (.xlsx)** exports the same saved results, including withheld
+  outcomes and their reasons. Stale results require recalculation.
+- Browser verification on a copy of the 72-location oil-line comparison
+  found 69 draft forecast MAWP results and three withheld Sleeve-T results.
+  The Excel workbook matched the preview values. The saved implementation
+  passed 192 automated tests with 49 skipped.
+
 - Draft PR #1 contains the Integrity Desk workflow, sheet-wide Code Basis,
   material library lookups, and separate sample-calculator and tank screens.
 - The Section 2 workbook's Evaluation Nov-26 tab provides four dated UT

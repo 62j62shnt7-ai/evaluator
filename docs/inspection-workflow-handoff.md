@@ -1,21 +1,20 @@
 # Inspection workflow handoff
 
-Saved November 18, 2026 on branch `feat/mawp-v08-code-routing-phase1`. Implementation changes are in the working tree. The live project database is under the user's `UT Inspection Evaluator` folder.
+Saved November 18, 2026 in commit `41f5572` on branch `feat/mawp-v08-code-routing-phase1`. The live project database is under the user's `UT Inspection Evaluator` folder.
 
 ## Resume here
 
-Open the [oil-line comparison](http://127.0.0.1:8765/?comparison=0d7f7b42-4464-463f-9e4d-875d059f6353) for the 8-inch oil line from WD 33-15 to WD 33-1 MFD. The user asked to use Chrome for browser tests. Finish piping and pipelines before returning to vessels and tanks. The broader implementation plan is in [the code-specific pressure assessment plan](superpowers/plans/2026-11-18-code-specific-pressure-assessment.md).
+Open the [oil-line comparison](http://127.0.0.1:8765/?comparison=3e3ba5a8-12de-4071-b4fe-cf9435839800) for the 8-inch oil line from WD 33-15 to WD 33-1 MFD. The user asked to use Chrome for browser tests. Finish piping and pipelines before returning to vessels and tanks. The broader implementation plan is in [the code-specific pressure assessment plan](superpowers/plans/2026-11-18-code-specific-pressure-assessment.md).
 
-- The comparison has 72 UT locations. Under **Review straight pipes in batch**, 43 of 51 straight-pipe locations have workbook input proposals with source cells. The proposals require inspector confirmation. The owner-confirmed correction for the oil-line workbook changes the interpretation of `Evaluation 11-2024!F1` from B31.5 to B31.3 and retains the original label in the trace.
-- **Review Sleeve-T locations** lists the three readings for joint 1362 at `F204:F206`. The app withholds pressure pending a dedicated approved assessment.
-- Chrome testing on a copy of the real comparison exported 72 rows, including 43 next-inspection pressures in psi with workbook references and three withheld Sleeve-T readings. The live comparison retains the workbook correction and awaits inspector review.
+- The selected UT sheet is **UT 11-2026**. The comparison has 51 straight-pipe locations, 18 elbows, tees and reducers using straight-pipe screening, and three Sleeve-T locations. Use the **Inspection grid** to review or edit the comparison inputs.
+- **Calculate ready locations** opens the read-only **Calculations** tab. **Download Excel (.xlsx)** exports the same saved snapshot. Browser verification on a copy found 69 draft forecast pressures and matched all 72 exported rows to the preview.
+- The three readings for Sleeve-T joint 1362 still require a dedicated approved assessment before pressure can be reported.
 - On the Section 2 gas-line workbook, tee and reducer qualifications carry forward within the same imported sheet by physical fitting tag and exact UT location. Cross-workbook carryover still needs a verified identity mapping. Bend-position checks, UT-linked B31G, and documented pipeline MAOP/MOP workflows are implemented.
 
 ## Records still needed
 
-- Oil-line straight-pipe locations `F151:F153`, `F167:F170`, and `F183` need matching reviewed design and corrosion inputs.
 - Sleeve-T needs the as-built drawing, sleeve and carrier dimensions and materials, weld or reinforcement details, mapped UT coverage, and an approved pressure assessment.
-- The remaining 18 oil-line fitting UT locations need documented pressure limits, applicable minimum wall, and assessment references.
+- An optional independent rating check for the 18 screened fitting locations needs documented pressure limits, applicable minimum wall, and assessment references.
 - Pipeline production validation needs real segment and defect IDs, UT or ILI records with depth and axial length, pipe OD and nominal wall, grade and SMYS, and the documented limits that establish MAOP or MOP.
 
 ## Piping and pipeline method coverage
@@ -36,7 +35,7 @@ Construction editions below are the editions implemented by the app. The reviewe
 ## Evidence check on November 18, 2026
 
 - All 29 files listed in `sources/local-manifest.json` matched their SHA-256 hashes, including the Section 2 originals, the v0.8 archive and the saved project evidence.
-- `python -m pytest -q -rs` with Python 3.15.2 exited successfully with 180 passed and 49 skipped. This rerun used the checkout's default source directory and did not write to the live comparison.
+- `python -m pytest -q` exited successfully with 192 passed and 49 skipped. The oil-line browser and workbook checks used a copy of the project database.
 
 | Missing acceptance evidence | Skipped tests |
 |---|---:|

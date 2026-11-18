@@ -5,23 +5,24 @@ runs code-scoped engineering checks. Saved results are **DRAFT / NOT VALIDATED**
 
 ## Inspection workflow
 
-1. Open **Workbook library** and import an XLSX or XLSM inspection report.
-   The importer looks for dated minimum-UT columns, including on evaluation
-   tabs. Review the previous/current matches and resolve ambiguous locations.
-2. In **Location review**, use **Set sheet code basis** to assign the
-   construction code, service boundary and evidence. If the edition is blank,
-   the form displays the supported library default when one exists.
-3. For supported B31.3 straight pipes, use **Review straight pipes in batch**
-   to confirm workbook stress and adopted corrosion rates with their source
-   cells. Use **Code and inputs** for individual changes or library lookup.
-4. Use **Review fittings in batch** for elbows, tees and reducers with paired
-   UT readings and a documented assessment. Enter the checked pressure,
-   applicable minimum wall, projection interval, adopted rate and reference.
-   The app compares the current and projected wall with that minimum. It
-   reports the check at the submitted pressure.
-5. Review **Calculation results** and download the CSV. Use **Code reference
-   library** for source tables and sample calculators, or **Tank assessments**
-   for the separate API 650 and API 653 workflow.
+1. Open **Workbook library**, import an XLSX or XLSM report, and select the UT
+   comparison sheet. This import uses the selected sheet for its readings and
+   source inputs. Choose fitting-specific calculations or straight-pipe
+   screening for elbows, tees, and reducers.
+2. In **Inspection grid**, check the previous and current UT matches and set
+   the construction code, service boundary, and evidence. Select materials
+   from the library and use **Batch inputs** for shared values. Click a
+   missing input in its row to correct it in the app.
+3. Use **Fitting review** if you want an optional check against a documented
+   fitting rating. Straight-pipe screening produces draft results under its
+   stated assumptions. A Sleeve-T requires a separate approved assessment.
+4. Click **Calculate ready locations**. The **Calculations** tab opens a
+   read-only table with the saved results and reasons for withheld results.
+   **Download Excel (.xlsx)** exports the same snapshot. The workbook has a
+   frozen header and location column, filters, and numeric result cells.
+
+Use **Code reference library** for source tables and sample calculators,
+or **Tank assessments** for the separate API 650 and API 653 workflow.
 
 Run the Windows or macOS launcher, or run `python -m evaluator` with the
 package installed. The default URL is [localhost:8765](http://127.0.0.1:8765/).
