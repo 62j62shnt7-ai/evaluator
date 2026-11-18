@@ -239,8 +239,13 @@ def save(workflow, form):
     revision = int(metadata.pop('revision'))
     try:
         from evaluator.tank_ut import import_values
-        mapped, provenance = import_values(workflow.service, form)
-        record = calculate(mapped.get('method'), mapped, mapped.get('scope', ''))
+        if form.get('method') == 'api653_forecast':
+            from evaluator.engineering.tank_forecast import calculate_forecast
+            record = calculate_forecast(form)
+            provenance = None
+        else:
+            mapped, provenance = import_values(workflow.service, form)
+            record = calculate(mapped.get('method'), mapped, mapped.get('scope', ''))
         if provenance is not None:
             record['ut_provenance'] = provenance
     except DecimalException:

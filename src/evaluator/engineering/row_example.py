@@ -50,6 +50,6 @@ def calculate(inputs):
                 elapsed_days=days, elapsed_years=days / 365, calculated_cr=cr,
                 cr_used=rate, cr_basis='Calculated CR' if cr > 0 else 'Selected manual CR',
                 remaining_life=life, interval=interval, mawp_thickness_mm=thickness,
-                mawp_psi=mawp, result='Safe' if current > required and mawp > pd and not math.isclose(mawp, pd, rel_tol=1e-12, abs_tol=1e-9) else 'Not safe',
+                mawp_psi=mawp, current_pressure_psi=2 * stress * current / (od * 25.4 - .8 * current) if od * 25.4 > .8 * current else None, result='Safe' if current > required and mawp > pd and not math.isclose(mawp, pd, rel_tol=1e-12, abs_tol=1e-9) else 'Not safe',
                 next_inspection=(current_date + timedelta(days=math.floor(interval * 365))).isoformat() if not month_only else
                 f'{(current_date.year * 12 + current_date.month - 1 + math.floor(interval * 12)) // 12:04d}-{(current_date.year * 12 + current_date.month - 1 + math.floor(interval * 12)) % 12 + 1:02d}')

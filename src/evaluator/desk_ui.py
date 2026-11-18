@@ -16,8 +16,8 @@ def shell(title, content, notice='', *, active='', workspace=False, workspace_ur
             f'<button data-screen="{key}">{label}</button>'
             for key, label in (
                 ('import', 'Workbook library'),
-                ('workspace', 'Location review'),
-                ('results', 'Calculation results'),
+                ('workspace', 'Inspection grid'),
+                ('calculations', 'Calculations'),
             )
         )
     else:
@@ -30,6 +30,8 @@ def shell(title, content, notice='', *, active='', workspace=False, workspace_ur
     navigation = (
         f'<nav aria-label="Inspection workspace">{workspace_links}</nav>'
         '<nav aria-label="Engineering tools">'
+        + link('/pipeline', 'Pipeline assessments')
+        + link('/vessels', 'Vessel assessments')
         + link('/tanks', 'Tank assessments')
         + link('/codes', 'Code reference library') + '</nav>'
     )

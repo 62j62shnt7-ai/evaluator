@@ -3,6 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script>
+    (() => {
+      const preference = matchMedia('(prefers-color-scheme: dark)');
+      let saved;
+      try { saved = localStorage.getItem('integrity-desk-theme'); } catch {}
+      const root = document.documentElement;
+      root.dataset.theme = saved || (preference.matches ? 'dark' : 'light');
+      document.addEventListener('DOMContentLoaded', () => {
+        const toggle = document.getElementById('themeToggle');
+        const render = () => toggle.setAttribute('aria-pressed', String(root.dataset.theme === 'dark'));
+        render();
+        toggle.addEventListener('click', () => {
+          saved = root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+          try { localStorage.setItem('integrity-desk-theme', saved); } catch {}
+          render();
+        });
+        preference.addEventListener('change', event => {
+          if (saved) return;
+          root.dataset.theme = event.matches ? 'dark' : 'light';
+          render();
+        });
+      });
+    })();
+  </script>
   <title>$document_title</title>
   <link rel="stylesheet" href="/assets/workspace.css">
   <link rel="stylesheet" href="/assets/integrity-desk.css">
@@ -18,6 +42,7 @@
     <div class="desk-bar">
       <span id="deskTitle">$title</span>
       <span class="draft">DRAFT / NOT VALIDATED</span>
+      <button type="button" id="themeToggle" aria-pressed="false">Dark mode</button>
       $tools
     </div>
     $notice

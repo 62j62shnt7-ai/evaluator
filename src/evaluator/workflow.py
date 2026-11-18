@@ -20,7 +20,7 @@ import zipfile
 from evaluator.storage.database import connection
 
 _LOCK = threading.RLock()
-TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets','wf_match_identity', 'wf_tank_assessments')
+TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets','wf_match_identity', 'wf_tank_assessments', 'wf_pipeline_assessments', 'wf_vessel_assessments')
 
 def tracked(label, *, inputs=True, undoable=True):
     def decorate(fn):
@@ -60,6 +60,8 @@ class Workflow:
                 'CREATE TABLE IF NOT EXISTS wf_profiles (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, sheet TEXT NOT NULL, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_profile_imports (source_id TEXT PRIMARY KEY, version TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_batch_settings (comparison_id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
+                'CREATE TABLE IF NOT EXISTS wf_vessel_assessments (id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
+                'CREATE TABLE IF NOT EXISTS wf_pipeline_assessments (id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_tank_assessments (id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_batches (id TEXT PRIMARY KEY, payload TEXT NOT NULL, stale INTEGER NOT NULL DEFAULT 0)',
                 'CREATE TABLE IF NOT EXISTS wf_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL)',
@@ -171,13 +173,15 @@ class Workflow:
 
     def match_identity(self,reading):
         from evaluator.importing.reading_identity import identity,component
+        from evaluator.importing.ut_defaults import UTTableIndex
         revision=self.revision()
         if getattr(self,'_identity_revision',None)!=revision:
             self._identity_sheets={}
             with connection(self.path) as db:self._identity_overrides={r['observation_id']:json.loads(r['payload']) for r in db.execute('SELECT observation_id,payload FROM wf_match_identity')}
             self._identity_revision=revision
         key=(reading['source_id'],reading['sheet_name'])
-        if key not in self._identity_sheets:self._identity_sheets[key]=self.service.imported_sheet(*key) or {}
+        if key not in self._identity_sheets:
+            self._identity_sheets[key] = UTTableIndex(self.service.imported_sheet(*key) or {})
         result=identity(reading,self._identity_sheets[key]);overrides=self._identity_overrides.get(reading['observation_id'],{});result.update(overrides)
         if 'band' in overrides and 'component' not in overrides:result['component'],result['material']=component(result['band'])
         return result
@@ -230,7 +234,7 @@ class Workflow:
             rebuilt=self.compare(*old['baseline'],*old['current_selection'],old['asset'],old['lifecycle'],
                                  old['continuity'],actor,reason,expected_revision=expected_revision)
             rebuilt['rebuilt_from']=comparison_id
-            for key in ('baseline_per_location','baseline_label'):
+            for key in ('baseline_per_location','baseline_label','selected_ut_only','straight_pipe_fitting_screen'):
                 if key in old:rebuilt[key]=old[key]
             db.execute('UPDATE wf_comparisons SET payload=? WHERE id=?',(json.dumps(rebuilt),rebuilt['id']))
             return rebuilt
@@ -442,6 +446,10 @@ class Workflow:
             db.execute('BEGIN IMMEDIATE')
             revision=self.revision()
             readings=self.service.readings(); comparisons=self.comparisons(); evaluations=self.evaluations(); designs=self.designs()
+            vessels = [json.loads(row[0]) for row in db.execute('SELECT payload FROM wf_vessel_assessments ORDER BY rowid')] if comparison_id is None else []
+            pipeline = [json.loads(row[0]) for row in db.execute('SELECT payload FROM wf_pipeline_assessments ORDER BY rowid')]
+            vessels = [json.loads(row[0]) for row in db.execute('SELECT payload FROM wf_vessel_assessments ORDER BY rowid')] if comparison_id is None else []
+            pipeline = [record for record in pipeline if comparison_id is None or record['comparison_id'] == comparison_id]
             tanks = [json.loads(row[0]) for row in db.execute('SELECT payload FROM wf_tank_assessments ORDER BY rowid') ] if comparison_id is None else []
             batches=[dict(json.loads(r['payload']),stale=bool(r['stale'])) for r in db.execute('SELECT payload,stale FROM wf_batches ORDER BY rowid DESC')]
             if comparison_id:
@@ -486,15 +494,19 @@ class Workflow:
             pairs={r['id']:r for r in e['source_snapshot']['rows']}
             for row in e['rows']:
                 evaluation_records.append(dict(evaluation_id=e['id'],asset=e['asset'],lifecycle=e['lifecycle'],input_revision=e['input_revision'],stale=e['stale'],status=e['status'],required_thickness_mm=e['required_thickness_mm'],basis=e['basis'],reviewer=e['reviewer'],**pair_evidence(pairs[row['pair_id']]),**row))
+        from evaluator.engineering.batch_rules import pressure_psi
         batch_records=[]
         for batch in batches:
             for row in batch['rows']:
-                batch_records.append(dict(batch_id=batch['id'],comparison_id=batch['comparison_id'],asset=batch['asset'],input_revision=batch['input_revision'],stale=batch['stale'],status=batch['status'],rule_version=batch['rule_version'],profile_sheet=batch['profile_sheet'],**row))
+                report_row = dict(row)
+                for field in ('mawp', 'forecast_mawp'):
+                    report_row[field + '_psi'] = pressure_psi(report_row.pop(field + '_MPa', None))
+                batch_records.append(dict(batch_id=batch['id'],comparison_id=batch['comparison_id'],asset=batch['asset'],input_revision=batch['input_revision'],stale=batch['stale'],status=batch['status'],rule_version=batch['rule_version'],profile_sheet=batch['profile_sheet'],**report_row))
         coverage=[dict(source_id=s['source_id'],file_name=s['file_name'],**sheet) for s in sources for sheet in self.service.sheet_statuses(s['source_id'])]
-        datasets={'sheet_imports':whole_sheets,'readings':readings,'comparisons':comparison_records,'evaluations':evaluation_records,'batch_evaluations':batch_records,'coverage':coverage,'designs':designs,'audit':audit,'source_events':events,'sources':sources}
+        datasets={'tank_forecasts':[record for record in tanks if record['method'] == 'api653_forecast'],'vessel_assessments':vessels,'pipeline_assessments':pipeline,'sheet_imports':whole_sheets,'readings':readings,'comparisons':comparison_records,'evaluations':evaluation_records,'batch_evaluations':batch_records,'coverage':coverage,'designs':designs,'audit':audit,'source_events':events,'sources':sources}
         def value(x): return json.dumps(x,ensure_ascii=False,sort_keys=True) if isinstance(x,(dict,list,tuple)) else x
         def display(key, item):
-            if item is not None and (key.endswith(('_mm_year','_mm','_years','_MPa')) or key=='maximum_interval_years'):
+            if item is not None and (key.endswith(('_mm_year','_mm','_years','_MPa','_psi')) or key=='maximum_interval_years'):
                 try:
                     places=4 if key.endswith('_mm_year') else 2
                     return format(Decimal(str(item)),f'.{places}f').rstrip('0').rstrip('.')
@@ -530,7 +542,7 @@ class Workflow:
         summary+=report_table('Source custody',sources,['file_name','source_id'])
         summary+=report_table('Extraction coverage / unresolved sheets',coverage,['file_name','sheet','status','reason'])
         summary+=report_table('Evaluation results · Current thickness and historical rates',datasets['evaluations'],['asset','location','previous_sheet','previous_cell','previous_date','previous_thickness_mm','current_sheet','current_cell','current_date','current_thickness_mm','required_thickness_mm','apparent_rate_mm_year','adopted_rate_mm_year','remaining_life_years','issues','stale','basis'])
-        summary+=report_table('Component batch evaluation · draft outputs and readiness',datasets['batch_evaluations'],['asset','location','current_sheet','current_cell','current_thickness_mm','profile_id','required_thickness_mm','apparent_rate_mm_year','adopted_rate_mm_year','remaining_life_years','inspection_interval_years','maximum_interval_years','due_date','mawp_MPa','forecast_mawp_MPa','issues','stale','evaluation_status'])
+        summary+=report_table('Component batch evaluation · draft outputs and readiness',datasets['batch_evaluations'],['asset','location','current_sheet','current_cell','current_thickness_mm','profile_id','required_thickness_mm','apparent_rate_mm_year','adopted_rate_mm_year','remaining_life_years','inspection_interval_years','maximum_interval_years','due_date','mawp_psi','forecast_mawp_psi','issues','stale','evaluation_status'])
         summary+=report_table('Location comparison',datasets['comparisons'],['asset','lifecycle','location','kind','previous_sheet','previous_cell','previous_thickness_mm','current_sheet','current_cell','current_thickness_mm','accepted','stale','basis'])
         summary+=report_table('Readings and corrections',readings,['file_name','sheet_name','cell','raw_value','effective_value','raw_unit','campaign','inspection_date','effective_location','review_status'])
         summary+='<details><summary>Complete calculation inputs, source snapshots and trace</summary><pre>'+html.escape(json.dumps(overview,indent=2,ensure_ascii=False))+'</pre></details></body></html>'

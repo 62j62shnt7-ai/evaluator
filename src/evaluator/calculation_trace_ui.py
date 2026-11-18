@@ -100,26 +100,46 @@ def page(batch, row):
     if structural not in (None, '') and row.get('pressure_thickness_mm') is not None and row.get('required_thickness_mm') is not None:
         body.append(f'<p>Required thickness: max({E(row["pressure_thickness_mm"])} mm pressure thickness, '
                     f'{E(structural)} mm structural minimum) = {E(row["required_thickness_mm"])} mm.</p>')
-    inverse = row.get('outputs', {}).get('trace', {}).get('mawp_MPa', {})
-    if row.get('mawp_MPa') is not None and inverse.get('net_thickness_mm') is not None:
-        body.append(f'<p>End-of-life net wall: {E(inverse["current_mm"])} − {E(inverse["allowance_mm"])} − '
+    from evaluator.engineering.batch_rules import pressure_psi
+    output_trace = row.get('outputs', {}).get('trace', {})
+    inspection_code = row.get('input_trace', {}).get('inspection_code_reference')
+    if inspection_code:
+        body.append(f'<p>Inspection code evidence: {E(inspection_code)}.</p>')
+    life = output_trace.get('remaining_life_years', {})
+    if row.get('remaining_life_years') is not None and life.get('required_mm') is not None:
+        source = life.get('source_reference')
+        body.append(f'<p>Remaining life uses {E(life["current_mm"])} mm measured wall and '
+                    f'{E(life["required_mm"])} mm required wall. '
+                    f'{E(life.get("basis") or (str(life.get("adopted_rate")) + " mm/year rate"))}. '
+                    f'Result: {E(row["remaining_life_years"])} years. {E(source or "")}</p>')
+    pressure_key = 'forecast_mawp_MPa' if row.get('forecast_mawp_MPa') is not None else 'mawp_MPa'
+    inverse = output_trace.get(pressure_key, {})
+    horizon = inverse.get('horizon_basis')
+    assessment = {'remaining_life_endpoint': 'End-of-life', 'current_measurement': 'Current'}.get(horizon, 'Forecast')
+    if row.get(pressure_key) is not None and inverse.get('forecast_years') is not None:
+        body.append(f'<p>{E(assessment)} net wall: {E(inverse["current_mm"])} − {E(inverse["allowance_mm"])} − '
                     f'{E(inverse["adopted_rate"])} × {E(inverse["forecast_years"])} × '
                     f'{E(inverse["forecast_factor"])} = {E(inverse["net_thickness_mm"])} mm.</p>')
+        if inverse.get('inspection_reference'):
+            body.append(f'<p>Projected physical wall: {E(inverse["projected_physical_wall_mm"])} mm. '
+                        f'Wall credited before mechanical allowances: {E(inverse["credited_wall_mm"])} mm. '
+                        f'{E(inverse["inspection_reference"])}.</p>')
         directions = (inverse, inverse.get('longitudinal_check', {}))
         for direction in directions:
             if direction.get('pressure_MPa') is not None:
                 label = _LABELS.get(direction['rule'], direction['rule'])
                 value = direction['pressure_MPa']
-                suffix = ' · governs' if value == row['mawp_MPa'] else ''
-                body.append(f'<p>{E(label)} inverse pressure: {E(value)} MPa{suffix}.</p>')
-    elif pipe and row.get('mawp_MPa') is not None:
+                suffix = ' · governs' if value == row[pressure_key] else ''
+                body.append(f'<p>{E(label)} inverse pressure: {E(pressure_psi(value))} psi{suffix}.</p>')
+    elif pipe and row.get('forecast_mawp_MPa') is not None:
         body.append(f'<p>Projected wall: {E(row["current_thickness_mm"])} − 2 × {E(pipe["cr_used"])} × '
                     f'{E(pipe["interval"])} = {E(pipe["mawp_thickness_mm"])} mm. '
                     f'The simplified inverse equation gives {E(pipe["mawp_psi"])} psi.</p>')
     output_labels = [('Pressure thickness (mm)','pressure_thickness_mm'),('Required thickness (mm)','required_thickness_mm'),
                      ('Adopted rate (mm/year)','adopted_rate_mm_year'),('Remaining life (years)','remaining_life_years'),
-                     ('Inspection interval (years)','inspection_interval_years'),('End-of-life pressure (MPa)','mawp_MPa')]
-    body.append(_table(('Saved output','Value'), [(label, row[key] if row.get(key) is not None else 'Withheld')
+                     ('Inspection interval (years)','inspection_interval_years'),('Forecast pressure (psi)','forecast_mawp_psi')]
+    saved = dict(row, forecast_mawp_psi=pressure_psi(row.get('forecast_mawp_MPa')))
+    body.append(_table(('Saved output','Value'), [(label, saved[key] if saved.get(key) is not None else 'Withheld')
                                                 for label, key in output_labels]))
     if row.get('issues'):
         body.append('<h3>Review items</h3><ul>' + ''.join(f'<li>{E(issue)}</li>' for issue in row['issues']) + '</ul>')

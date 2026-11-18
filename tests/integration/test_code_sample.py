@@ -97,12 +97,8 @@ def test_sample_forms_start_with_blank_manual_inputs_and_keep_submitted_values()
 def test_api570_annex_d_local_tables_and_result_provenance():
     import pytest
 
-    from evaluator.engineering.references import code_pdf_path
-    from evaluator.engineering.structural_reference import FILENAME, structural_cell, structural_tables
+    from evaluator.engineering.structural_reference import structural_cell, structural_tables
 
-    pytest.importorskip('pymupdf')
-    if not code_pdf_path(FILENAME).is_file():
-        pytest.skip('Original API RP 574 PDF unavailable')
     tables = structural_tables()
     assert [sum(map(len, table['cells'].values())) for table in tables] == [96] * 5 + [53]
     assert [table['cells']['24']['2500'] for table in tables] == [
@@ -125,20 +121,18 @@ def test_api570_annex_d_local_tables_and_result_provenance():
                                        structural_temperature='1100', structural_nps='2')) is None
 
 
-def test_api570_without_annex_d_keeps_manual_calculation_available(monkeypatch, tmp_path):
+def test_api570_uses_packaged_annex_d_without_the_pdf(monkeypatch, tmp_path):
     monkeypatch.setenv('UT_EVALUATOR_CODES', str(tmp_path))
     rule = 'API570_PIPE'
     form = sample_form(rule)
     form.update(service_class='1', rate_basis='short')
     markup = panel(rule, form)
-    assert 'Local API RP 574 PDF unavailable' in markup
+    assert 'API RP 574 Annex D Table D.2b' in markup
     assert 'name="structural_mm" value="3"' in markup
     assert 'Structural thickness basis: Manual reviewed structural minimum' in markup
 
     (tmp_path / 'RP_574_E5_EN_wA1.pdf').write_bytes(b'wrong PDF')
-    import pytest
-    pytest.importorskip('pymupdf')
-    assert 'Local API RP 574 PDF differs' in panel(rule)
+    assert 'API RP 574 Annex D Table D.2b' in panel(rule)
 
 
 def test_api510_vessel_double_loss_original_cap_and_inspection_limit():

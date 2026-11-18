@@ -287,3 +287,68 @@
 }
 #sample-calculator .has-field-help:hover .field-help-tooltip,
 #sample-calculator .has-field-help:focus-within .field-help-tooltip { display: block; }
+
+#themeToggle { white-space: nowrap; font-size: 12px; padding: 6px 10px; }
+#themeToggle[aria-pressed="true"] { background: var(--mint); border-color: var(--teal); }
+
+:root[data-theme="dark"] { color-scheme: dark; }
+[data-theme="dark"] .integrity-desk {
+    --ink: #eeeaf7;
+    --muted: #bcb3ce;
+    --line: #494157;
+    --bg: #181520;
+    --teal: #c8b4ff;
+    --mint: #3b2d55;
+    --surface: #251f32;
+    --surface-inset: #1e1a29;
+    --surface-active: #372d49;
+    --grid-result: #26283e;
+    background: var(--bg);
+    color: var(--ink);
+}
+[data-theme="dark"] .integrity-desk :is(
+    .desk-bar, .card, .metric, .main-table, .tool-menu, .drawer, #drawer,
+    .desk-document > section, dialog, .quick-actions, .table-toolbar, .unified-title,
+    .row-editor-panel, .batch-panel, .source, #resultSummary, .inline-review
+) { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+[data-theme="dark"] .integrity-desk :is(button, input, select, textarea) {
+    background: var(--surface-inset);
+    color: var(--ink);
+    border-color: var(--line);
+}
+[data-theme="dark"] .integrity-desk :is(button:hover, .identity-editor summary:hover) {
+    background: var(--surface-active);
+    border-color: var(--teal);
+}
+[data-theme="dark"] .integrity-desk button.primary {
+    background: #ccb7ff;
+    color: #251a3c;
+}
+[data-theme="dark"] .integrity-desk button.primary:hover { background: #e2d5ff; }
+[data-theme="dark"] .integrity-desk :is(label, small, .identity-summary small, .ut-date) {
+    color: var(--muted);
+}
+[data-theme="dark"] .integrity-desk :is(.draft, .badge, .result-badge) {
+    background: #463619; color: #ffda8e;
+}
+[data-theme="dark"] .integrity-desk :is(.table-scrollbar-row, .table-x-scroll) {
+    background: var(--surface-inset); color: var(--muted); border-color: var(--line);
+}
+[data-theme="dark"] .table-x-scroll { scrollbar-color: #8975aa var(--surface-inset); }
+[data-theme="dark"] .integrity-desk :is(th, #locations thead th) {
+    background: #332944; color: var(--ink); border-color: var(--line);
+}
+[data-theme="dark"] #locations tbody tr td { background: var(--surface); border-color: var(--line); }
+[data-theme="dark"] #locations tbody tr:nth-child(even) td { background: #2a2339; }
+[data-theme="dark"] #locations tbody td.pinned-results { background: var(--grid-result); border-color: var(--line); box-shadow: 7px 0 12px -9px #08060e; }
+[data-theme="dark"] #locations tbody tr:is(:hover, :focus-within, .selected) td { background: var(--surface-active); }
+[data-theme="dark"] #locations :is(.identity-summary strong, .reading, .engineering-input, .result-metrics, .detail-action) { color: var(--ink); }
+[data-theme="dark"] #locations :is(.identity-editor summary, .reading, .engineering-input) { background: var(--surface-inset); border-color: var(--line); }
+[data-theme="dark"] #locations .input-link { color: var(--teal); }
+[data-theme="dark"] .integrity-desk :is(.live-assessment, .sample-result) { background: var(--surface-active); color: var(--ink); border-color: var(--line); }
+
+@media (max-width: 480px) {
+    .integrity-desk main { padding-inline: 10px; }
+    .integrity-desk .unified-workspace { padding-inline: 8px; }
+}

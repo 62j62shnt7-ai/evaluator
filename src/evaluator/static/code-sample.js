@@ -148,7 +148,7 @@ function bindReferences(referenceData) {
         const match = (target, value, reference) => value && {fields: {[target]: value}, reference};
         setOptions('product_form', choices(gas.forms), referenceData.selection.product_form);
         const updateGrade = bind('material', choices(Object.keys(gas.grades)), () =>
-            match('SMYS_psi', control('product_form').value && gas.grades[control('material').value],
+            match('SMYS_psi', gas.gradeForms[control('material').value]?.includes(control('product_form').value) && gas.grades[control('material').value],
                   gas.smys_reference), 'SMYS_psi');
         control('product_form').addEventListener('change', updateGrade);
         bind('temperature', Object.keys(gas.temperatures).map(value => [value, value + ' °F']), () =>

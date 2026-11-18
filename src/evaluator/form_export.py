@@ -58,6 +58,7 @@ def _patch(xml, values):
 
 
 def export_form(service, result):
+    from evaluator.engineering.batch_rules import pressure_psi
     if result.get('stale'):raise ValueError('Re-evaluate before exporting a stale result')
     cid=result['comparison_id'];comp=service.workflow.comparison(cid)
     source=next(s for s in service.repository.sources() if s.sha256==comp['current_selection'][0])
@@ -97,7 +98,7 @@ def export_form(service, result):
         if not row:continue
         for key,col in [('current_thickness_mm','current'),('previous_thickness_mm','previous'),('adopted_rate_mm_year','rate'),('remaining_life_years','life'),('inspection_interval_years','interval')]:values[f'{layout[col]}{n}']=row[key]
         values[f"{layout['required']}{n}"]=row['required_thickness_mm'] or (row['pressure_thickness_mm'] if row['evaluation_status']!='NEEDS_REVIEW' else None)
-        if row['forecast_mawp_MPa'] is not None:values[f"{layout['pressure']}{n}"]=str(Decimal(row['forecast_mawp_MPa'])/Decimal('0.006894757293'))
+        if row['forecast_mawp_MPa'] is not None:values[f"{layout['pressure']}{n}"]=pressure_psi(row['forecast_mawp_MPa'])
         forecast=row.get('outputs',{}).get('trace',{}).get('forecast_mawp_MPa',{})
         if forecast.get('net_thickness_mm') is not None:values[f"{layout['future']}{n}"]=forecast['net_thickness_mm']
         if layout['date']:values[f"{layout['date']}{n}"]=row['due_date']
@@ -121,9 +122,16 @@ def export_form(service, result):
         values[f"{layouts[sheet]['current']}{header}"]=current_date
         values[f"{layouts[sheet]['previous']}{header}"]=previous_date
     # Create a supporting ledger inside the same workbook using inline strings.
-    columns=['location','inspection_date','previous_inspection_date','segment','component','current_sheet','current_cell','previous_cell','previous_thickness_mm','current_thickness_mm','required_thickness_mm','pressure_thickness_mm','apparent_rate_mm_year','adopted_rate_mm_year','remaining_life_years','inspection_interval_years','due_date','mawp_MPa','forecast_mawp_MPa','issues','input_trace']
+    columns=['location','inspection_date','previous_inspection_date','segment','component','current_sheet','current_cell','previous_cell','previous_thickness_mm','current_thickness_mm','required_thickness_mm','pressure_thickness_mm','apparent_rate_mm_year','adopted_rate_mm_year','remaining_life_years','inspection_interval_years','due_date','mawp_psi','forecast_mawp_psi','fitting_check','issues','input_trace']
     matrix=[['DRAFT / NOT VALIDATED', 'Selected generated form: '+sheet,'Source SHA256: '+source.sha256],['Other worksheets retain original source content. Pressure-only minima are not governing acceptance limits.'],['CR=(previous-current)/elapsed years; life=(current-required)/positive adopted CR. See input_trace for method and provenance.'],columns]
-    matrix += [[json.dumps(r.get(k),ensure_ascii=False) if isinstance(r.get(k),(dict,list)) else r.get(k) for k in columns] for r in result['rows']]
+    rows = []
+    for result_row in result['rows']:
+        row = dict(result_row)
+        for field in ('mawp', 'forecast_mawp'):
+            value = row.get(field + '_MPa')
+            row[field + '_psi'] = pressure_psi(value)
+        rows.append(row)
+    matrix += [[json.dumps(r.get(k),ensure_ascii=False) if isinstance(r.get(k),(dict,list)) else r.get(k) for k in columns] for r in rows]
     matrix += [['FORM MAPPING',json.dumps(m)] for m in mapping]
     def letters(n):
         s=''

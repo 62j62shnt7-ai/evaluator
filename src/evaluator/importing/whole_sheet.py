@@ -80,7 +80,7 @@ def snapshot(path: Path, sheet_name: str) -> dict:
                 external=rel.get('TargetMode')=='External'
                 target=rel.get('Target','') if external else _target(current,rel.get('Target',''))
                 dependencies.append({'from_part':current,'id':rel.get('Id'),'type':rel.get('Type'),'target':target,'external':external,'present':not external and target in names})
-                if external or target not in names or target in visited: continue
+                if external or target not in names or target in visited or target.startswith('xl/worksheets/'): continue
                 data=z.read(target)
                 info={'part':target,'kind':rel.get('Type','').rsplit('/',1)[-1],'size_bytes':len(data),'sha256':sha256(data).hexdigest()}
                 if target.endswith(('.xml','.vml')):

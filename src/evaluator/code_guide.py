@@ -104,6 +104,38 @@ def _dimension_library():
     )
 
 
+def _pipeline_corrosion_form(submitted):
+    from evaluator.engineering.pipeline_corrosion import modified_level_one
+
+    fields = {
+        'outside_diameter_in': 'Outside diameter (in)',
+        'nominal_wall_mm': 'Nominal wall (mm)',
+        'depth_mm': 'Effective defect depth (mm)',
+        'length_mm': 'Axial defect length (mm)',
+        'flow_stress_psi': 'Reviewed flow stress (psi)',
+        'safety_factor': 'Reviewed safety factor',
+        'applicability_reference': 'Defect applicability and interaction evidence',
+    }
+    values = {key: (submitted or {}).get(key, '') for key in fields}
+    output = ''
+    if submitted and submitted.get('sample') == 'B31G_MODIFIED':
+        try:
+            result = modified_level_one(**values)
+            failure = float(result['estimated_failure_pressure_psi'])
+            screening = float(result['defect_screening_pressure_psi'])
+            output = (f'<p role="status">Draft estimated failure pressure {failure:,.2f} psi. '
+                      f'Defect screening pressure {screening:,.2f} psi.</p>')
+        except ValueError as exc:
+            output = f'<p role="alert">{E(exc)}</p>'
+    controls = ''.join(f'<label>{E(label)}<input name="{key}" value="{E(values[key])}" required></label>'
+                       for key, label in fields.items())
+    return ('<section id="pipeline-corrosion"><h2>Modified B31G Level 1</h2>'
+            '<p>ASME B31G-2023 §2.2(b). Enter a reviewed metal-loss case with effective depth and axial extent.</p>'
+            '<form method="post" action="/codes#pipeline-corrosion">'
+            '<input type="hidden" name="sample" value="B31G_MODIFIED">' +
+            controls + '<button>Calculate screening pressure</button></form>' + output + '</section>')
+
+
 def page(sample='', submitted=None):
     from evaluator.code_sample_ui import panel
     from evaluator.engineering.reference_rules import (
@@ -173,7 +205,7 @@ def page(sample='', submitted=None):
         '<p>Allowable stress S is matched to the exact code edition, material, product form and listed temperature. '
         'Confirm table notes and the actual equipment inputs before use. Pipeline SMYS is a different property.</p>' + _lookup_table() + '</section>',
         _dimension_library(),
-        '<section><h2>Coverage boundaries</h2><p>ASME B31G metal-loss assessment, system MAOP/MOP, and whole-tank approval are outside the current calculation paths. A production flowline needs its construction code assigned from records.</p></section>',
+        '<section><h2>Coverage boundaries</h2><p>System MAOP/MOP and whole-tank approval are outside the current calculation paths. A production flowline needs its construction code assigned from records.</p></section>',
     ])
     weld_rows = ''.join(f'<tr><td>{E(spec)}</td><td>{E(factor)}</td></tr>'
                         for spec, factor in LIQUID_WELD_FACTORS.items())
@@ -192,4 +224,5 @@ def page(sample='', submitted=None):
                  f'<p><small>{E(GAS_SMYS_REFERENCE["reference"])}</small></p>'
                  '<p>Temperature factor uses the supplied table through 450 °F, including interpolation between entries.</p>'
                  f'<p><small>{E(GAS_TEMPERATURE_REFERENCE["reference"])}</small></p></section>')
+    parts.append(_pipeline_corrosion_form(submitted))
     return shell('Code reference library', ''.join(parts), active='/codes')

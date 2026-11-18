@@ -63,10 +63,10 @@ class ProjectService:
             result.append({'source_id':a,'file_name':b,'inspected':bool(c),'warning':d,'sheet_count':len(data.get('sheets',[])),'object_count':len(data.get('objects',[])),'formula_count':len(data.get('formulas',[])),'external_count':len(data.get('links',[]))})
         return result
 
-    def inspect(self, source_id: str):
+    def inspect(self, source_id: str, *, sheet_names_only=False, validated_inventory=None):
         record=next((r for r in self.repository.sources() if r.sha256==source_id),None)
         if record is None: raise KeyError('unknown source')
-        result=inventory(record.stored_path).to_dict()
+        result=(validated_inventory or inventory(record.stored_path, sheet_names_only=sheet_names_only)).to_dict()
         with connection(self.repository.path) as db:
             db.execute("UPDATE workbooks SET inventory_json=? WHERE source_id=?",(json.dumps(result,ensure_ascii=False),source_id))
             for sheet in result['sheets']:

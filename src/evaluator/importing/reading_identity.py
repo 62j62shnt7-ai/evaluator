@@ -11,12 +11,16 @@ def normalize(value):
 
 def component(band):
     label=normalize(band)
-    if label.isdigit() or label in {'S','PIPE','STRAIGHT','SPOOL'}:return 'straight_pipe','A106 B'
-    if re.match(r'^(E(?:\s|$)|ELBOW\b|BEND\b)',label):return 'elbow','A234 WPB'
-    if re.match(r'^(T(?:\s|$)|TEE\b|A$|B$|C$)',label):return 'tee','A234 WPB'
-    if re.match(r'^(R(?:\s|$)|REDUCER\b)',label):return 'reducer','A234 WPB'
+    if re.fullmatch(r'[0-9]+(?:\.0+)?|S|PIPE|STRAIGHT(?:[ -]PIPE)?|SPOOL',label):return 'straight_pipe','A106 B'
+    if re.match(r'^(E(?:[\s-]|\d|$)|ELBOW\b|BEND\b)',label):return 'elbow','A234 WPB'
+    if re.match(r'^(T(?:[\s-]|\d|$)|TEE\b|A$|B$|C$)',label):return 'tee','A234 WPB'
+    if re.match(r'^(R(?:[\s-]|\d|$)|(?:(?:CONCENTRIC|ECCENTRIC)[ -])?REDUCER\b)',label):return 'reducer','A234 WPB'
     if re.match(r'^(CAP|COUPLING|FITTING|BRANCH)\b',label):return 'fitting','A234 WPB'
     return 'unknown',None
+
+
+def is_sleeve_tee(joint, band):
+    return bool(re.search(r'\bSLEEVE[\s-]+T(?:EE)?\b', f'{normalize(joint)} {normalize(band)}'))
 
 
 def identity(reading,snapshot=None):
@@ -31,8 +35,9 @@ def identity(reading,snapshot=None):
     if size:
         try:size=str(float(sum(Fraction(x) for x in size.split())))
         except (ValueError,ZeroDivisionError):pass
+    geometry, material = ('sleeve_tee', None) if is_sleeve_tee(joint, band) else component(band)
     return dict(section=normalize(section),joint=joint,band=band,size=size,
-                component=component(band)[0],material=component(band)[1],
+                component=geometry,material=material,
                 position=tuple(normalize(x) for x in loc[3:]))
 
 

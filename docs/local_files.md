@@ -47,3 +47,22 @@ Original TL-B and Separator-204 workbooks and the independent engineering
 benchmark package were unavailable for this collection. Tests that require
 those originals continue to skip until they are placed under the configured
 source root. All engineering outputs are **DRAFT / NOT VALIDATED**.
+
+## Offline code references
+
+Runtime calculations use the versioned datasets in `src/evaluator/data`.
+The API RP 574 Annex D structural examples and the supported SI annular
+tables from API 650 and API 653 were extracted from the supplied copies
+after checking the SHA-256 hashes. The dataset records the source edition
+through the identified source file, table, page and hash. Material stress
+and pipe dimensions retain their existing reviewed row provenance and
+exact-match policy. The original PDFs can be kept separately for audit
+and future reference additions. Build and test with an empty
+`UT_EVALUATOR_CODES` directory to check runtime independence.
+
+The `code_reference_values.json` dataset holds edition-scoped B31.8 grade
+and manufacturing-form matches, temperature and basic class factors,
+B31.4 weld factors and their separately sourced material strengths, API 650
+shell erection minima, and API 653 bottom design minima. The B31.8 A25 row
+has its own manufacturing-form list. A basic location class factor still
+requires review of the applicable service and design conditions.

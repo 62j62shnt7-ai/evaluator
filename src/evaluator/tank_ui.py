@@ -7,10 +7,11 @@ from evaluator.workflow_ui import E, field, hidden, person
 
 def page(service, notice='', *, active_method=None):
     revision = service.workflow.revision()
-    records = history(service.workflow)
+    records = [record for record in history(service.workflow) if record['method'] != 'api653_forecast']
     body = ('<div class="document-heading"><div><h1>Tank assessments</h1>'
             '<p>Choose a design or in-service check. API 653 shell and bottom checks can use readings from an imported workbook.</p></div>'
             '<a href="#saved-tank-calculations">Saved calculations</a></div>'
+            '<p><a href="/tanks/forecast">Next-inspection shell and fill height</a></p>'
             '<div class="tank-methods">')
     for method, (label, fields) in METHODS.items():
         opened = ' open' if method == active_method else ''

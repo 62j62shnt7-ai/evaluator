@@ -5,6 +5,30 @@ from evaluator.engineering.records import import_records, identity
 from evaluator.engineering.batch_rules import convert, outputs
 from tests.source_config import original_workbook
 
+def test_corrected_oil_evaluation_retains_historical_inputs(tmp_path):
+    from datetime import date
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Evaluation 11-2024'
+    sheet['F1'] = 'According to API-570 & ASME B31.3'
+    sheet.append(['JOINT', 'BAND', 'MATERIAL', 'Pd (Psi)', 'OD (in)', 'S (Psi)'])
+    sheet['L4'], sheet['M4'] = date(2023, 8, 25), date(2024, 11, 6)
+    sheet.append([36, 2, 'A106 B', 800, 8.625, 20000, 12.7, 2.8, None, None, None, 12.1, None, None, .21])
+    sheet['S5'] = '=(2*F5*(R5))/((E5*25.4)-(2*0.4*R5))'
+    path = tmp_path / 'oil.xlsx'
+    book.save(path)
+
+    row, = import_records(path)
+    assert row['code_family'] == 'ASME B31.3'
+    assert row['fields']['adopted_rate_mm_year']['cell'] == 'O5'
+    assert row['historical_ut']['value'] == 12.1
+    assert row['workbook_pressure_factors'] == {
+        'values': {'E_quality': '1', 'W_reduction': '1', 'Y_coefficient': '0.4'}, 'cell': 'S5',
+    }
+
+
 def test_separator_records_preserve_provenance():
     path = original_workbook('Separator-204 Inspection Report.xlsx')
     digest = sha256(path.read_bytes()).hexdigest()

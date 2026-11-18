@@ -7,7 +7,7 @@
 .workspace-grid{grid-template-columns:minmax(0,1fr)}.batch-panel{position:static;max-height:none}.batch-panel .fields{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.engineering-input{width:100px;min-width:85px}#locations select{min-width:100px;max-width:150px}#locations td small{display:block}.batch-panel summary{font-size:18px;font-weight:650;cursor:pointer}.workspace-heading .actions{flex-wrap:wrap}.workspace-heading .actions select{flex:1 1 180px;max-width:100%}
 
 .identity-field{display:inline-block!important;width:110px;margin:3px!important;font-size:10px}.identity-field input{width:105px!important;min-width:0!important;padding:5px!important}.match-warning{color:#9b6216;max-width:260px}#locations [data-previous]{max-width:240px}
-.identity-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 6px;max-width:260px}.identity-field{display:flex!important;width:auto;min-width:0;margin:2px 0!important}.identity-field input{width:100%!important}.match-warning{white-space:normal;overflow-wrap:anywhere}#locations{table-layout:auto;width:max-content;min-width:100%}#locations td{vertical-align:top}#locations td:first-child,#locations td:nth-child(2){position:sticky;z-index:2;background:#fff}#locations td:first-child{left:0;min-width:42px}#locations td:nth-child(2){left:42px}#locations th:first-child,#locations th:nth-child(2){z-index:3}#locations th:first-child{left:0;min-width:42px}#locations th:nth-child(2){left:42px}#locations tr:hover td:first-child,#locations tr:hover td:nth-child(2){background:#f7faf9}#locations tr.selected td:first-child,#locations tr.selected td:nth-child(2){background:#edf7f2}#locations input,#locations select{font-family:inherit;font-size:13px}#locations td:nth-child(2){min-width:275px;max-width:300px;white-space:normal}#locations td:nth-child(4) select{display:block;margin-top:5px}#locations td:nth-child(3){min-width:130px}
+.identity-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 6px;max-width:260px}.identity-field{display:flex!important;width:auto;min-width:0;margin:2px 0!important}.identity-field input{width:100%!important}.match-warning{white-space:normal;overflow-wrap:anywhere}#locations{table-layout:auto;width:max-content;min-width:100%}#locations td{vertical-align:top}#locations tbody tr[data-row-id] > :is(td:first-child, td:nth-child(2)){position:sticky;z-index:2}#locations tr:hover td:first-child,#locations tr:hover td:nth-child(2){background:#f7faf9}#locations tr.selected td:first-child,#locations tr.selected td:nth-child(2){background:#edf7f2}#locations input,#locations select{font-family:inherit;font-size:13px}
 @media(max-width:760px){.workspace-heading .actions{width:100%;align-items:stretch}.workspace-heading .actions>*{flex:1 1 100%;max-width:none}.workspace-heading .actions button{white-space:normal}}
 
 
@@ -17,7 +17,7 @@
 #locations tbody tr:nth-child(even) td{background:#f8fbfa}
 #locations tbody tr:hover td{background:#f1f7f5}
 #locations tbody tr.selected td{background:#e8f4ee}
-#locations td:nth-child(2){box-shadow:8px 0 12px -12px #18343b}
+
 .identity-summary strong{display:block;color:#18343b;font-size:13px;line-height:1.3;letter-spacing:.05px;white-space:normal;overflow-wrap:anywhere}
 .identity-summary small{display:block;margin-top:4px;color:#74858a;font-size:10px;line-height:1.4;white-space:normal}
 .identity-actions{display:flex;align-items:center;gap:7px;margin-top:8px}
@@ -39,8 +39,8 @@
 .previous-match{margin-top:6px}
 #locations [data-previous]{max-width:240px;padding:6px 8px;font-size:10px}
 .allowable-stress{margin-top:4px;font-size:10px}
-#locations td:nth-child(6) select{font-weight:600}
-#locations td:nth-child(7) select+select{margin-top:6px}
+#locations .material-cell select{font-weight:600}
+
 #locations .engineering-input{width:94px;min-width:82px;height:34px;padding:5px 7px;border-color:#e0e8e7;border-radius:7px;background:#fbfcfc;font-variant-numeric:tabular-nums}
 #locations .engineering-input:focus{background:#fff}
 #locations td:nth-child(n+13):nth-child(-n+20){font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
@@ -62,5 +62,231 @@
 .identity-editor[open]{flex:1 0 100%;min-width:0}
 .identity-editor[open] .identity-fields{width:100%;max-width:280px}
 #locations .engineering-input{max-width:100%}
-#locations td:nth-child(7)>select{display:block;width:100%;max-width:190px}
+#locations .material-cell > select{display:block;width:100%;max-width:190px}
 @media(max-width:760px){.table-scroll{max-height:60vh;min-height:240px}.table-scrollbar-row{gap:6px}.table-scrollbar-row>span{font-size:9px}}
+
+.live-assessment {
+    background: #eef5f7;
+    border: 1px solid #bcd0d7;
+    border-radius: .65rem;
+    color: #18343d;
+    margin-block: .75rem;
+    padding: .8rem 1rem;
+}
+.live-assessment dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: .65rem 1rem;
+    margin: 0;
+}
+.live-assessment dt { font-size: .79rem; }
+.live-assessment dd { margin: .2rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.live-assessment small { display: block; margin-top: .55rem; }
+.fitting-preview { min-width: 15rem; }
+.live-assessment .assessment-caption {
+    margin: 0 0 .65rem;
+    font-size: .78rem;
+    font-weight: 650;
+}
+.unified-workspace .quick-actions {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 8px 4px;
+}
+.unified-workspace .quick-actions span {
+    color: var(--muted);
+    margin-right: 8px;
+}
+.unified-workspace .table-toolbar {
+    position: static;
+    padding-inline: 4px;
+}
+.unified-workspace .table-toolbar label { margin-block: 0; }
+.unified-workspace #rowCount { margin: 0; padding: 8px 12px; color: var(--muted); }
+.unified-workspace #exports a { display: inline-block; margin-bottom: 8px; }
+
+/* Frozen location and assessment results. */
+#locations {
+    --selection-width: 36px;
+    --location-width: clamp(128px, 17vw, 210px);
+    --results-width: clamp(194px, 26vw, 306px);
+    scroll-margin-top: 40px;
+}
+#locations:not(.show-engineering) .advanced-column { display: none; }
+.unified-workspace #locations :is(th, td) { padding: 8px; }
+#locations :is(th,td):first-child:not([colspan]) {
+    left: 0;
+    min-width: var(--selection-width);
+    max-width: var(--selection-width);
+    padding-inline: 8px;
+}
+#locations :is(th,td):nth-child(2) {
+    left: var(--selection-width);
+    min-width: var(--location-width);
+    max-width: var(--location-width);
+    white-space: normal;
+    box-shadow: none;
+}
+#locations .pinned-results {
+    position: sticky;
+    left: calc(var(--selection-width) + var(--location-width));
+    min-width: var(--results-width);
+    max-width: var(--results-width);
+    z-index: 2;
+    border-inline: 1px solid #dce8e5;
+    box-shadow: 7px 0 12px -9px #426a65;
+}
+#locations thead th { z-index: 3; }
+#locations thead :is(.pinned-results, :nth-child(-n+2)) { z-index: 4; }
+#locations thead th:nth-child(n+4) { scroll-snap-align: start; }
+#locations .pinned-results {
+    border-inline-end: 2px solid var(--line);
+    box-shadow: none;
+}
+#tableScroll {
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--grid-pinned, 340px) 0;
+}
+/* End padding lets the final data column align with the frozen edge as well. */
+.table-scroll::after {
+    content: '';
+    display: block;
+    width: calc(var(--grid-table-width, 0px) + var(--grid-end-padding, 0px));
+    height: 0;
+}
+.unified-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.unified-workspace .table-toolbar > label:has(#showEngineeringColumns) {
+    flex-direction: row;
+    align-items: center;
+}
+#locations .reading-cell { min-width: 110px; }
+#locations .previous-match select { width: 100%; }
+
+#locations .result-metrics {
+    display: grid;
+    grid-template-columns: 1fr .85fr 1.15fr;
+    align-items: start;
+    gap: 6px;
+    white-space: normal;
+}
+#locations .result-metrics small { display: block; font-size: 10px; font-weight: 500; }
+#locations tbody .result-metrics { color: #16554f; font-weight: 700; }
+#locations tbody .pinned-results { background: #f0f7f5; }
+#locations .size-cell { min-width: 112px; }
+#locations .size-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+#locations .size-controls select { min-width: 0; max-width: 100%; width: 100%; }
+.unified-workspace #locations .result-cell { min-width: 170px; max-width: 220px; white-space: normal; }
+.unified-workspace #locations .input-link {
+    display: block;
+    margin-top: 4px;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: var(--teal);
+    font-size: 11px;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.unified-workspace #locations thead th { background: #eaf2f0; color: #294a4b; }
+.unified-workspace #locations tbody tr:focus-within td { background: #eef6f3; }
+#locations tbody .row-editor > td {
+    position: static;
+    max-width: none;
+    background: #eaf3f1;
+}
+.row-editor-panel {
+    position: sticky;
+    left: 8px;
+    width: min(720px, calc(var(--grid-width, 90vw) - 18px));
+    padding: 14px;
+    border: 1px solid #bad5ce;
+    border-radius: 8px;
+    background: white;
+    white-space: normal;
+}
+.row-editor-panel .close-row-editor { float: right; margin-left: 10px; }
+
+#locations .row-editor-panel select { max-width: none; }
+#tableScroll { scroll-padding-block: 48px 12px; }
+.unified-workspace .table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 12px;
+}
+.unified-workspace .table-toolbar > label { white-space: normal; }
+.unified-workspace .table-toolbar > input[type="search"] { flex: 1 1 180px; }
+.unified-workspace .table-toolbar button { padding: 6px 9px; }
+.unified-workspace #locations .result-cell { overflow-wrap: anywhere; }
+#locations .result-metrics > span { min-width: 0; overflow-wrap: anywhere; }
+#locations .result-metrics { grid-template-columns: minmax(0, 1fr) minmax(0, .85fr) minmax(0, 1.15fr); }
+#tableScroll { isolation: isolate; }
+#tableScroll .live-assessment { min-width: 0; max-width: 100%; white-space: normal; }
+#locations .row-editor-panel :is(fieldset, .fields > *, input, select, textarea) { min-width: 0; }
+#locations .row-editor-panel textarea { max-width: 100%; }
+.row-editor-panel .fields { grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); }
+
+/* Size the frozen area to the grid, including when the navigation rail is visible. */
+.measurement-grid .main-table { container-type: inline-size; }
+@container (max-width: 620px) {
+    #locations {
+        --selection-width: 32px;
+        --location-width: 104px;
+        --results-width: 120px;
+    }
+    #locations .identity-actions { flex-direction: column; align-items: stretch; }
+    #locations .identity-actions :is(button, summary) { white-space: normal; width: 100%; }
+    #locations .result-metrics { grid-template-columns: 1fr; gap: 3px; }
+    #locations tbody .result-metrics small { display: inline; margin-left: 4px; }
+
+}
+
+@container (max-width: 340px) {
+    #locations { --location-width: 78px; --results-width: 100px; }
+    #locations .identity-summary small { display: none; }
+}
+
+.calculation-heading .actions { flex-wrap: wrap; }
+.calculation-download {
+    display: inline-block;
+    padding: 9px 13px;
+    border-radius: 7px;
+    background: var(--teal);
+    color: #fff;
+    font-weight: 650;
+}
+[data-theme="dark"] .calculation-download { color: var(--surface-inset); }
+.calculation-card {
+    background: var(--surface, #fff);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+#calculationStatus { margin: 0; padding: 12px 16px; color: var(--muted); }
+.calculation-scroll { overflow: auto; max-height: 69vh; border-top: 1px solid var(--line); }
+#calculationTable :is(th, td) { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+#calculationTable thead th { background: var(--surface-active, #edf3f3); color: var(--ink); }
+#calculationTable tbody tr { --result-row: var(--surface, #fff); }
+#calculationTable tbody tr:nth-child(even) { --result-row: var(--surface-inset, #f7f9fa); }
+#calculationTable tbody :is(th, td) {
+    background: var(--result-row);
+    color: var(--ink);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    min-width: 105px;
+    max-width: 310px;
+    vertical-align: top;
+}
+#calculationTable tbody th { inset: auto; font-size: inherit; }
+#calculationTable tr > :first-child {
+    position: sticky;
+    left: 0;
+    min-width: clamp(124px, 23vw, 195px);
+    max-width: 195px;
+    border-right: 1px solid var(--line);
+}
+#calculationTable thead th:first-child { z-index: 2; }
+#calculationTable .calculation-number { text-align: right; }

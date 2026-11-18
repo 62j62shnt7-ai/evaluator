@@ -5,6 +5,7 @@ from threading import Thread
 from types import SimpleNamespace
 import csv
 import io
+import json
 
 ROOT = Path(__file__).resolve().parents[2] / 'src/evaluator/static'
 
@@ -24,17 +25,22 @@ def test_active_workspace_only_exposes_current_workflow():
     assert 'id="componentFilter"' in html and 'id="selectComponent"' in html
     script = (ROOT / 'workspace.js').read_text()
     assert 'componentFilter' in script and "component==='straight_pipe'" in script
-    assert "k!=='materialCustom'" in script
+    assert 'function materialGrades(rows)' in script
+    assert 'id="materialCustom"' not in html
 
 
-def test_retired_routes_and_current_csv_export():
+def test_retired_routes_and_saved_calculation_exports():
+    from openpyxl import load_workbook
     from evaluator.webapp import make_handler
     result = dict(id='saved', stale=False, rows=[dict(current_id='current',location='Joint 2 / Band 2',
         previous_inspection_date='2023-08-25',inspection_date='2026-11-06',
         previous_thickness_mm='11.6',current_thickness_mm='11.3',issues=[],
         input_trace={'inputs':{'material':'A106 B','pd_psi':'800'}},row7={'result':'Safe','mawp_psi':1782.525})])
     result['rows'].append(dict(current_id=None,location='Historical only'))
-    service = SimpleNamespace(batch=SimpleNamespace(results=lambda:[result]))
+    service = SimpleNamespace(
+        batch=SimpleNamespace(result_by_id=lambda key: result if key == 'saved' else None),
+        workflow=SimpleNamespace(),
+    )
     server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(service))
     thread=Thread(target=server.serve_forever,daemon=True);thread.start()
     try:
@@ -42,12 +48,38 @@ def test_retired_routes_and_current_csv_export():
         for route in ['/legacy','/workflow','/calculator','/readings-only','/row-evaluation']:
             client.request('GET',route);response=client.getresponse()
             assert response.status==404;response.read()
+        for action in ('prefill_sheet_materials', 'record_sleeve_assessment'):
+            client.request('POST', f'/api/workspace/{action}', '{}')
+            response = client.getresponse()
+            assert response.status == 400
+            response.read()
         client.request('GET','/workspace/results.csv?result=saved');response=client.getresponse()
         assert response.status==200
         rows=list(csv.DictReader(io.StringIO(response.read().decode())))
         assert rows[0]['Result']=='DRAFT / NOT VALIDATED · Safe'
         assert rows[0]['Pd psi']=='800'
-        assert rows[0]['MAWP psi']=='1782.525'
+        assert rows[0]['Next-inspection component pressure psi']=='1782.525'
+        client.request('GET', '/workspace/results.json?result=saved')
+        response = client.getresponse()
+        assert response.status == 200
+        snapshot = json.loads(response.read())
+        assert len(snapshot['rows']) == 1
+        client.request('GET', '/workspace/results.xlsx?result=saved')
+        response = client.getresponse()
+        assert response.status == 200
+        assert response.getheader('Content-Type') == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        sheet = load_workbook(io.BytesIO(response.read()), data_only=True)['Calculations']
+        assert sheet.freeze_panes == 'B3'
+        assert list(sheet.values)[1:] == [
+            tuple(column['label'] for column in snapshot['columns']),
+            tuple(None if value == '' else value for value in snapshot['rows'][0]),
+        ]
+        result['stale'] = True
+        for extension in ('json', 'xlsx', 'csv'):
+            client.request('GET', f'/workspace/results.{extension}?result=saved')
+            response = client.getresponse()
+            assert response.status == 400
+            response.read()
         client.close()
     finally:
         server.shutdown();server.server_close();thread.join()

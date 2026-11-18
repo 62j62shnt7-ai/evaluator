@@ -4,7 +4,7 @@ from decimal import Decimal, DecimalException
 
 from evaluator.engineering.batch_rules import convert, pressure_at_thickness
 from evaluator.engineering.reference_rules import (
-    GAS_5L_FORMS, GAS_5L_SMYS_PSI, GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE,
+    GAS_5L_FORMS, GAS_5L_GRADE_FORMS, GAS_5L_SMYS_PSI, GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE,
     GAS_SMYS_REFERENCE, GAS_TEMPERATURE_REFERENCE, gas_temperature_factor,
     LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE, LIQUID_WELD_FACTORS, LIQUID_WELD_REFERENCE,
 )
@@ -202,6 +202,7 @@ def _reference_controls(rule, submitted, annex_tables=(), annex_error=''):
             grades={f'API 5L {grade}': str(psi)
                     for grade, psi in GAS_5L_SMYS_PSI.items()},
             forms=sorted(GAS_5L_FORMS),
+            gradeForms={f'API 5L {grade}': forms for grade, forms in GAS_5L_GRADE_FORMS.items()},
             temperatures={str(t): str(gas_temperature_factor(t)) for t in (250, 300, 350, 400, 450)},
             classes=GAS_BASIC_CLASS_F,
             smys_reference=GAS_SMYS_REFERENCE['reference'],
