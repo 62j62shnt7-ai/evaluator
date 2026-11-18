@@ -184,82 +184,51 @@ class WorkflowHTTPTests(unittest.TestCase):
     setUp=WorkflowTests.setUp
     tearDown=WorkflowTests.tearDown
 
-    def test_rebuild_route_refreshes_existing_comparison_and_retains_date_context(self):
+    def test_workspace_dates_and_undo_are_revision_checked(self):
         from http.client import HTTPConnection
         from http.server import ThreadingHTTPServer
         from threading import Thread
-        from urllib.parse import urlencode, urlsplit, parse_qs
         from evaluator.webapp import make_handler
-        comp=WorkflowTests.compare(self)
-        server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(self.service))
-        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
-        client=HTTPConnection('127.0.0.1',server.server_port,timeout=10)
-        def post(path,values):
-            client.request('POST',path,urlencode(values),{'Content-Type':'application/x-www-form-urlencoded'})
-            response=client.getresponse();response.read()
-            return response.status,response.getheader('Location')
-        try:
-            status,location=post('/workflow/campaign-date',dict(comparison_id=comp['id'],campaign_selection=json.dumps(comp['current_selection']),chosen_date='2024-01-01',reviewer='reviewer',reason='record date',revision=self.flow.revision()))
-            self.assertEqual(status,303)
-            self.assertEqual(parse_qs(urlsplit(location).query)['comparison'],[comp['id']])
-            status,location=post('/workflow/rebuild',dict(comparison_id=comp['id'],revision=self.flow.revision(),reviewer='reviewer',reason='refresh'))
-            self.assertEqual(status,303)
-            rebuilt=self.flow.comparison(parse_qs(urlsplit(location).query)['comparison'][0])
-            self.assertEqual(rebuilt['rebuilt_from'],comp['id'])
-            self.assertEqual(next(r for r in rebuilt['rows'] if r['kind']=='matched')['current']['inspection_date'],'2024-01-01')
-            self.assertEqual(post('/workflow/rebuild',dict(comparison_id=rebuilt['id'],revision=0,reviewer='reviewer',reason='stale'))[0],400)
-        finally:
-            client.close();server.shutdown();server.server_close();thread.join()
 
-    def test_browser_routes_comparison_proposals_evaluation_export_and_undo(self):
-        from http.client import HTTPConnection
-        from http.server import ThreadingHTTPServer
-        from threading import Thread
-        from urllib.parse import urlencode, urlsplit, parse_qs
-        from evaluator.webapp import make_handler
-        server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(self.service))
-        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
-        client=HTTPConnection('127.0.0.1',server.server_port,timeout=10)
-        def request(path,data=None):
-            if data is None: client.request('GET',path)
-            else: client.request('POST',path,urlencode(data,doseq=True),{'Content-Type':'application/x-www-form-urlencoded'})
-            response=client.getresponse(); content=response.read()
-            return response.status,content,response.getheader('Location')
+        cid = WorkflowTests.compare(self)['id']
+        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(self.service))
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = HTTPConnection('127.0.0.1', server.server_port, timeout=10)
+
+        def post(action, revision, **fields):
+            payload = json.dumps(dict(comparison_id=cid, revision=revision, **fields))
+            client.request('POST', '/api/workspace/' + action, payload,
+                           {'Content-Type': 'application/json'})
+            response = client.getresponse()
+            return response.status, json.loads(response.read())
+
+        def current_date():
+            comparison = self.flow.comparison(cid)
+            return next(row['current']['inspection_date'] for row in comparison['rows']
+                        if row['current_id'] == 'b')
+
         try:
-            self.assertEqual(request('/workflow')[0],200)
-            status,_,location=request('/workflow/compare',dict(revision=self.flow.revision(),baseline=json.dumps(['source','old','current']),current=json.dumps(['source','new','current']),asset='asset',lifecycle='life',continuity='yes',reviewer='reviewer',reason='same physical scope'))
-            self.assertEqual(status,303)
-            cid=parse_qs(urlsplit(location).query)['comparison'][0]
-            self.assertEqual(request(location)[0],200)
-            proposal=self.flow.proposals(cid)[0]
-            self.assertEqual(request('/workflow/proposal',dict(proposal_id=proposal['id'],comparison_id=cid,revision=proposal['expected_revision'],reviewer='reviewer',reason='mapping checked'))[0],303)
-            pair=next(x for x in self.flow.comparison(cid)['rows'] if x['kind']=='matched')
-            status,_,location=request('/workflow/evaluate',dict(comparison_id=cid,revision=self.flow.revision(),pair_ids=[pair['id']],required_thickness='6',adopted_rate='0.5',year_days='365.2425',basis='scoped component input',reviewer='reviewer',reason='draft review',scope='yes'))
-            self.assertEqual(status,303)
-            self.assertIn(b'Your report is ready',request(location)[1])
-            status,content,_=request('/workflow/export',{})
-            self.assertEqual(status,200)
-            with zipfile.ZipFile(io.BytesIO(content)) as archive:
-                manifest=json.loads(archive.read('manifest.json'))
-                self.assertEqual(manifest['revision'],self.flow.revision())
-                import hashlib
-                for name,digest in manifest['files'].items(): self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),digest)
-                from openpyxl import load_workbook
-                wb=load_workbook(io.BytesIO(archive.read('evaluation.xlsx')),read_only=True)
-                self.assertIn('evaluations',wb.sheetnames); wb.close()
-            package=next((self.service.project_dir/'exports').glob('revision-*.zip'))
-            self.assertEqual(request('/export/revision?name='+package.name)[1],content)
-            self.assertEqual(request('/export/revision?name=../../project.sqlite')[0],400)
-            revision=self.flow.revision()
-            self.assertEqual(request('/workflow/correct',dict(revision=revision,observation_id='b',value_mm='8.5',section='S1',joint='J1',band='B1',position='',reviewer='reviewer',reason='correction evidence'))[0],303)
-            self.assertTrue(self.flow.comparison(cid)['stale'])
-            self.assertTrue(self.flow.evaluations()[0]['stale'])
-            self.assertEqual(request('/workflow/proposal',dict(proposal_id=proposal['id'],comparison_id=cid,revision=proposal['expected_revision'],reviewer='reviewer',reason='stale'))[0],400)
-            self.assertEqual(request('/workflow/undo',dict(revision=self.flow.revision(),reviewer='reviewer',reason='restore source value'))[0],303)
-            self.assertEqual(next(r for r in self.service.readings() if r['observation_id']=='b')['effective_value'],'9')
-            self.assertTrue(self.flow.evaluations()[0]['stale'])
+            client.request('GET', '/api/workspace?comparison=' + cid)
+            response = client.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())['workspace']['comparison']['id'], cid)
+
+            original_date = current_date()
+            revision = self.flow.revision()
+            status, result = post('dates', revision, campaign_dates={'current': '2024-01-01'})
+            self.assertEqual(status, 200, result)
+            self.assertEqual(result['comparison_id'], cid)
+            self.assertEqual(current_date(), '2024-01-01')
+            self.assertEqual(post('undo', revision)[0], 400)
+            self.assertEqual(current_date(), '2024-01-01')
+            self.assertEqual(post('undo', self.flow.revision())[0], 200)
+            self.assertEqual(current_date(), original_date)
         finally:
-            client.close();server.shutdown();server.server_close();thread.join()
+            client.close()
+            server.shutdown()
+            server.server_close()
+            thread.join()
 
     def test_atomic_rollback_and_export_failure_leave_last_commit_intact(self):
         from unittest.mock import patch

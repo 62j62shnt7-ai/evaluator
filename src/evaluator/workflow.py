@@ -20,7 +20,7 @@ import zipfile
 from evaluator.storage.database import connection
 
 _LOCK = threading.RLock()
-TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets','wf_match_identity')
+TABLES = ('readings', 'workbook_sheets', 'sheet_dates', 'wf_comparisons', 'wf_evaluations', 'wf_designs', 'reading_overrides', 'campaign_dates', 'imported_sheets', 'wf_profiles', 'wf_profile_imports', 'wf_batch_settings', 'wf_batches', 'wf_templates', 'wf_campaign_sets','wf_match_identity', 'wf_tank_assessments')
 
 def tracked(label, *, inputs=True, undoable=True):
     def decorate(fn):
@@ -60,6 +60,7 @@ class Workflow:
                 'CREATE TABLE IF NOT EXISTS wf_profiles (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, sheet TEXT NOT NULL, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_profile_imports (source_id TEXT PRIMARY KEY, version TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_batch_settings (comparison_id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
+                'CREATE TABLE IF NOT EXISTS wf_tank_assessments (id TEXT PRIMARY KEY, payload TEXT NOT NULL)',
                 'CREATE TABLE IF NOT EXISTS wf_batches (id TEXT PRIMARY KEY, payload TEXT NOT NULL, stale INTEGER NOT NULL DEFAULT 0)',
                 'CREATE TABLE IF NOT EXISTS wf_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL)',
                 'INSERT OR IGNORE INTO wf_meta VALUES(1,0)',
@@ -441,6 +442,7 @@ class Workflow:
             db.execute('BEGIN IMMEDIATE')
             revision=self.revision()
             readings=self.service.readings(); comparisons=self.comparisons(); evaluations=self.evaluations(); designs=self.designs()
+            tanks = [json.loads(row[0]) for row in db.execute('SELECT payload FROM wf_tank_assessments ORDER BY rowid') ] if comparison_id is None else []
             batches=[dict(json.loads(r['payload']),stale=bool(r['stale'])) for r in db.execute('SELECT payload,stale FROM wf_batches ORDER BY rowid DESC')]
             if comparison_id:
                 selected=self.comparison(comparison_id)
@@ -518,7 +520,7 @@ class Workflow:
                 letter=col[0].column_letter
                 sheet.column_dimensions[letter].width=min(50,max(14,max(len(str(c.value or '')) for c in col[:100])+2))
         xlsx=io.BytesIO(); wb.save(xlsx); files['evaluation.xlsx']=xlsx.getvalue()
-        overview={'comparison_scope':comparison_id,'whole_sheet_imports':whole_sheets,'coverage':coverage,'revision':revision,'created':_now(),'status':'DRAFT / NOT VALIDATED','sources':sources,'comparisons':comparisons,'evaluations':evaluations,'batch_evaluations':batches,'designs':designs,'readings':readings}
+        overview={'comparison_scope':comparison_id,'whole_sheet_imports':whole_sheets,'coverage':coverage,'revision':revision,'created':_now(),'status':'DRAFT / NOT VALIDATED','sources':sources,'comparisons':comparisons,'evaluations':evaluations,'batch_evaluations':batches,'tank_assessments':tanks,'designs':designs,'readings':readings}
         files['project_snapshot.json']=json.dumps(overview,ensure_ascii=False,indent=2).encode()
         def report_table(title, records, columns):
             heading='<h2>'+html.escape(title)+'</h2>'

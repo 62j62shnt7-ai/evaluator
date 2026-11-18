@@ -16,6 +16,37 @@ from evaluator.workflow import _LOCK
 CONFIG_FIELDS=PROFILE_FIELDS|PROFILE_TEXT|NUMERIC_OVERRIDES|{'rule','dimension_reference','material_reference','source_config_reference'}
 
 
+def _workbook_pipe_review(row):
+    from evaluator.batch import _num
+
+    profile = row['profile'] or {}
+    fields = profile.get('fields', {})
+
+    def source(key):
+        field = fields.get(key, {})
+        record = field.get('source_record') or field
+        return record if record.get('kind') == 'literal' else {}
+
+    def reference(record):
+        return f"{profile['sheet']}!{record['cell']}" if record.get('cell') else ''
+
+    stress = source('S_allow_psi')
+    rate = source('adopted_rate_mm_year')
+    material = source('material')
+    if row['routing']['status'] != 'ROUTE_SELECTED':
+        reason = 'Confirm the sheet code basis first.'
+    elif material.get('value') != row['material']:
+        reason = 'Check the material against the workbook.'
+    elif _num(stress.get('value'), True) is None or not reference(stress):
+        reason = 'Enter reviewed allowable stress for this location.'
+    elif _num(rate.get('value'), True) is None or not reference(rate):
+        reason = 'Enter a reviewed adopted corrosion rate for this location.'
+    else:
+        reason = ''
+    return dict(eligible=not reason, reason=reason, stress=stress.get('value'), rate=rate.get('value'),
+                stress_source=reference(stress), rate_source=reference(rate))
+
+
 class Workspace:
     def __init__(self, service):
         self.service=service
@@ -71,7 +102,6 @@ class Workspace:
         try:
             for s in inv.get('sheets',[]):
                 name=s['name']
-                if re.search(r'photo|visual|preview|history|eval|reassess|control',name,re.I):continue
                 result=detect(source.stored_path,name,workbook=wb,source_hash=source_id)
                 campaigns={o.campaign_label for o in result.observations if o.date_candidates}
                 dates=[d for o in result.observations for d in o.date_candidates]
@@ -92,12 +122,18 @@ class Workspace:
         cid=cid or (comparisons[0]['id'] if comparisons else None)
         base={'revision':self.flow.revision()}
         if not partial:
-            base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. Other contexts require a checked record; workbook properties remain proposals.'])
+            from evaluator.engineering.code_context import CODES_BY_ASSET, DEFAULT_EDITIONS
+            from evaluator.engineering.reference_rules import GAS_5L_SMYS_PSI, LIQUID_PIPE_SMYS
+            base['codes_by_asset'] = {asset: sorted(codes) for asset, codes in CODES_BY_ASSET.items()}
+            base['default_code_editions'] = DEFAULT_EDITIONS
+            base['gas_pipe_grades'] = list(GAS_5L_SMYS_PSI)
+            base['liquid_pipe_grades'] = list(LIQUID_PIPE_SMYS)
+            base.update(sources=self.sources(),comparisons=[dict(id=c['id'],asset=c['asset'],sheet=c['current_selection'][1]) for c in comparisons],templates=self.templates(),dimensions=dimensions(),material_stresses=material_stresses(),reference_gaps=['Allowable-stress lookups currently cover B31.3-2024 A106 Grade B pipe and A234 WPB fittings at exact 100–600°F table points. VIII-1 2025 lookup covers SA-516 Grade 70 plate at selected exact II-D Metric table points. Other contexts require a checked record; workbook properties remain proposals.'])
             from evaluator.project_cleanup import latest_backup
             base['cleanup_backup_available']=latest_backup(self.service) is not None
         if not cid:return dict(base,workspace=None)
         comp=self.flow.comparison(cid)
-        preview=self.service.batch.preview(cid,sheet,dict(basis='row7',confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
+        preview=self.service.batch.preview(cid,sheet,dict(basis=self.service.batch.settings(cid).get('basis','assigned'),confirm_records=False,confirm_history=False,confirm_rules=False,workspace_review=True))
         config=preview['settings']
         profiles=preview['profiles']
         rows=preview['rows']
@@ -110,13 +146,20 @@ class Workspace:
             row['segment']=over.get('segment') or p.get('segment') or p.get('section') or row['location'].split(' / ')[0]
             row['component']=p.get('component') or ' / '.join(row['location'].split(' / ')[1:3])
             row['material']=over.get('material',_value(p,'material'));row['schedule']=_value(p,'schedule');row['nps']=_value(p,'nps')
+            row['S_allow_psi']=over.get('S_allow_psi',_value(p,'S_allow_psi'))
             row['nominal_thickness_mm']=_value(p,'nominal_thickness_mm')
-            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=p.get('code_family');row['code_edition']=p.get('code_edition')
+            row['geometry']=over.get('geometry') or p.get('geometry','unknown');row['code_family']=over.get('code_family') or p.get('code_family');row['code_edition']=over.get('code_edition',p.get('code_edition'))
+            row['code_evidence']=over.get('code_evidence',p.get('code_evidence',p.get('code_basis','')))
+            row['code_owner_confirmed']=over.get('code_owner_confirmed')=='yes' or bool(p.get('code_owner_confirmed'))
+            row['code_asset_type']=over.get('code_asset_type',p.get('code_asset_type',''))
+            row['routing']=row.get('routing') or {'status':'NEEDS_CODE_CONFIRMATION','issues':['Owner-confirmed code basis is required.']}
+            if row['code_family']=='ASME B31.3' and row['geometry']=='straight_pipe':
+                row['workbook_review'] = _workbook_pipe_review(row)
             od=_value(p,'D_outside_in')
             if not row['nps'] and od:
                 matches={d['nps'] for d in dimensions() if abs(Decimal(d['od_in'])-Decimal(str(od)))<Decimal('.001')}
                 if len(matches)==1:row['nps']=matches.pop();row['size_basis']='API 574 OD correspondence; schedule requires source evidence or confirmation'
-            row['status']='Below minimum' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'Review' if row['issues'] else (row.get('row7') or {}).get('result','Calculated')
+            row['status']='DRAFT / NOT VALIDATED · BELOW MINIMUM REVIEW' if 'BELOW_OR_AT_REQUIRED_THICKNESS' in row['issues'] else 'NEEDS REVIEW' if row['issues'] else 'DRAFT / NOT VALIDATED · '+str((row.get('row7') or {}).get('result','Calculated'))
             row['attention']=bool(row['issues']) or not row['reviewed']
         readings={r['observation_id']:r for r in self.flow._selection(*comp['current_selection'])}
         previous=self.flow._selection(*comp['baseline'])
@@ -135,7 +178,7 @@ class Workspace:
             elif row['previous_id']:
                 prior=next((r for r in previous if r['observation_id']==row['previous_id']),None)
                 if prior and self.flow._key(prior)!=self.flow._key(readings[row['current_id']]):row['match_flags'].append('Manually selected previous reading has different identity fields; review the assignment')
-            if row['match_flags']:row['attention']=True
+            if row['match_flags'] or row['routing'].get('status')!='ROUTE_SELECTED':row['attention']=True
         def natural(row):return [int(t) if t.isdigit() else t.casefold() for t in re.split(r'(\d+)',row['location'])]
         rows.sort(key=natural)
         catalog={}
@@ -147,7 +190,7 @@ class Workspace:
         campaigns=single_sheet_campaigns(self.service,*comp['current_selection'][:2])
         if comp.get('baseline_per_location'):campaigns.append(dict(campaign=comp['baseline'][2],label=comp['baseline_label'],count=len(self.flow._selection(*comp['baseline'])),date_rank=''))
         if partial:return dict(revision=base['revision'],workspace=dict(rows=rows))
-        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,previous_choices_by_section=previous_by_section,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum(r['status']=='Below minimum' for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
+        return dict(base,workspace=dict(comparison=comp,profile_sheet=preview['profile_sheet'],profile_sheets=preview['sheets'],campaigns=campaigns,rows=rows,previous_choices_by_section=previous_by_section,catalog=list(catalog.values()),assignment_choices=[dict(id=p['id'],label=f"{p['section']} / {p['component']} / {p['point']} · {_value(p,'D_outside_in')} in OD · row {p['row']}") for p in profiles],settings=config,counts=dict(locations=sum(bool(r['current_id']) for r in rows),review=sum(r['attention'] for r in rows),below=sum('BELOW_OR_AT_REQUIRED_THICKNESS' in r['issues'] for r in rows),life=sum(r['remaining_life_years'] is not None for r in rows)),results=[r for r in self.service.batch.results(cid) if r['profile_sheet']==preview['profile_sheet']][:5]))
 
     def apply(self, cid, revision, ids, values=None, template_id=None, dimension_key=None, sheet=None, clear=False, fill_missing=False):
         values=dict(values or {})
@@ -161,8 +204,8 @@ class Workspace:
             if dimension_key:
                 d=dimension(*dimension_key)
                 values.update(nps=d['nps'],schedule=d['schedule'],D_outside_in=d['od_in'],nominal_thickness_mm=d['nominal_mm'],dimension_reference=f"{d['reference']}; PDF page {d['pdf_page']}; SHA256 {d['source_sha256']}")
-            stress=material_stress(values.get('material'),values.get('geometry'),values.get('code_family'),values.get('code_edition'),values.get('temperature_F'))
-            if stress and 'S_allow_psi' not in values and 'material' in values:
+            stress=material_stress(values.get('material'),values.get('geometry'),values.get('code_family'),values.get('code_edition'),values.get('temperature_F'),values.get('product_form'))
+            if stress and 'S_allow_psi' not in values:
                 values.update(S_allow_psi=stress['S_allow_psi'],material_reference=stress['reference']+'; SHA256 '+stress['source_sha256'])
             if clear:
                 preview=self.service.batch.preview(cid,sheet)
@@ -180,7 +223,7 @@ class Workspace:
                     if any(Decimal(str(values.get('adopted_rate_mm_year',existing.get(oid,{}).get('adopted_rate_mm_year','0'))))<=0 for oid in ids):raise ValueError('An increasing-reading override requires an explicit positive adopted rate for every selected row')
                 if not set(values)<=NUMERIC_OVERRIDES|TEXT_OVERRIDES:raise ValueError('Unknown engineering field')
                 # A manual material/temperature/code change cannot inherit a stress silently.
-                if set(values)&{'material','temperature_F','code_family','code_edition'}:
+                if set(values)&{'material','temperature_F','code_family','code_edition','code_evidence','code_asset_type'}:
                     values.setdefault('review_note','Changed material/code/temperature; confirm property applicability')
                 if fill_missing:
                     current={r['current_id']:r for r in self.state(cid,sheet)['workspace']['rows']}
@@ -207,16 +250,87 @@ class Workspace:
             db.execute('INSERT INTO wf_templates VALUES(?,?)',(record['id'],json.dumps(record)))
         return record
 
+    def apply_code_basis(self, cid, revision, scope, ids, values):
+        from evaluator.engineering.code_context import CODES_BY_ASSET, DEFAULT_EDITIONS
+
+        basis = {key: str(values.get(key) or '').strip() for key in (
+            'code_asset_type', 'code_family', 'code_edition', 'code_evidence', 'code_owner_confirmed',
+        )}
+        if basis['code_family'] not in CODES_BY_ASSET.get(basis['code_asset_type'], ()):
+            raise ValueError('Choose a construction code that matches the asset and service boundary.')
+        if basis['code_edition'] and not re.fullmatch(r'[0-9]{4}', basis['code_edition']):
+            raise ValueError('Enter a four-digit edition year or leave it blank.')
+        if not basis['code_evidence']:
+            raise ValueError('Enter the source document for this code basis.')
+        basis['code_edition'] = basis['code_edition'] or DEFAULT_EDITIONS.get(basis['code_family'], '')
+        if basis['code_owner_confirmed'] != 'yes':
+            raise ValueError('Confirm the code basis for all locations in the selected scope.')
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; refresh before applying changes')
+        if scope == 'sheet':
+            preview = self.service.batch.preview(cid)
+            ids = list(dict.fromkeys(row['current_id'] for row in preview['rows'] if row['current_id']))
+        elif scope != 'selected':
+            raise ValueError('Choose the current sheet or selected locations.')
+        self.apply(cid, revision, ids, basis)
+        return dict(message=f"Code basis saved for {len(ids)} locations.")
+
     def policy(self,cid,revision,basis,sheet=None):
-        if basis not in {'provided','recalculate','row7'}:raise ValueError('Unsupported calculation basis')
+        if basis not in {'provided','recalculate','row7','assigned'}:raise ValueError('Unsupported calculation basis')
         with self.flow.change('Change workspace calculation basis',inputs=False,expected=revision,actor=local_actor(),reason='Explicit source or recalculation method') as db:
             config=self.service.batch.preview(cid,sheet)['settings'];config['basis']=basis
             db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(cid,json.dumps(config)))
             self.service.batch._stale(db,cid)
 
+    def review_workbook_pipes(self, cid, revision, ids):
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; reopen batch review to confirm current inputs.')
+        rows = self.state(cid)['workspace']['rows']
+        proposals = {row['current_id']: row['workbook_review'] for row in rows
+                     if row.get('workbook_review', {}).get('eligible')}
+        if not ids or not set(ids) <= proposals.keys():
+            raise ValueError('Choose straight pipes with a saved route and usable workbook inputs.')
+        changes = {}
+        for oid in ids:
+            proposal = proposals[oid]
+            changes[oid] = dict(reviewed='yes', S_allow_psi=proposal['stress'],
+                                material_reference=proposal['stress_source'],
+                                adopted_rate_mm_year=proposal['rate'],
+                                review_note=f"Batch user review of workbook stress ({proposal['stress_source']}) and adopted corrosion rate ({proposal['rate_source']}).")
+        self.service.batch.apply_overrides(cid, revision, [], [], {}, per_row_values=changes)
+        return dict(message=f'Workbook inputs confirmed for {len(changes)} straight-pipe locations.')
+
+    def review_fittings(self, cid, revision, entries):
+        from evaluator.batch import _num
+
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; reopen fitting review.')
+        rows = {row['current_id']: row for row in self.state(cid)['workspace']['rows']
+                if row['routing']['status'] in {'FITTING_REVIEW_REQUIRED','FITTING_CHECK_AVAILABLE'}}
+        if not isinstance(entries, dict) or not entries or not entries.keys() <= rows.keys():
+            raise ValueError('Select fittings on the confirmed B31.3-2024 sheet.')
+        changes = {}
+        for oid, entry in entries.items():
+            row = rows[oid]
+            if not isinstance(entry, dict):
+                raise ValueError('Each fitting needs its own assessment inputs.')
+            values = {key: _num(entry.get(key), True) for key in
+                      ('fitting_pressure_psi','fitting_minimum_mm','fitting_interval_years')}
+            reference = str(entry.get('fitting_reference') or '').strip()
+            rate = _num(entry.get('adopted_rate_mm_year'))
+            if not row['previous_id'] or None in values.values() or not reference or rate is None:
+                raise ValueError(f"{row['location']}: provide paired UT, documented pressure, minimum wall, reference, interval and adopted rate.")
+            changes[oid] = dict(values, reviewed='yes', fitting_reference=reference,
+                                fitting_geometry=row['geometry'], adopted_rate_mm_year=rate)
+        self.service.batch.apply_overrides(cid, revision, [], [], {}, per_row_values=changes)
+        return dict(message=f'Documented fitting inputs saved for {len(changes)} locations.')
+
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.
-        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis='row7',workspace_review=True))
+        basis = basis or self.service.batch.settings(cid).get('basis', 'assigned')
+        if basis not in {'row7', 'recalculate', 'provided', 'assigned'}:
+            raise ValueError('Unsupported calculation basis')
+        return self.service.batch.evaluate(cid,revision,dict(profile_sheet=sheet,confirm_records=True,confirm_history=False,confirm_rules=False,basis=basis,workspace_review=True))
 
     def _refresh(self, db, comp, changed_ids):
         readings={r['observation_id']:r for r in self.service.readings()}

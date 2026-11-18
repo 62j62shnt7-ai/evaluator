@@ -17,7 +17,9 @@ from evaluator.app_services import ProjectService
 
 
 def page(service, notice=''):
-    return (Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8')
+    from evaluator.desk_ui import workspace_page
+
+    return workspace_page()
 
 
 def make_handler(service):
@@ -31,6 +33,31 @@ def make_handler(service):
             self._reply('',303,'text/plain',(('Location','/?'+urlencode({'notice':message})),))
         def do_GET(self):
             path=self.path.split('?',1)[0]
+            if path == '/workspace/calculation':
+                from evaluator.calculation_trace_ui import page as calculation_page
+
+                params = parse_qs(urlsplit(self.path).query)
+                result_id = params.get('result', [''])[0]
+                row_id = params.get('row', [''])[0]
+                batch = next((entry for entry in service.batch.results() if entry['id'] == result_id), None)
+                row = next((entry for entry in batch['rows'] if entry['id'] == row_id), None) if batch else None
+                if row is None:
+                    self._reply('Saved calculation not found', 404, 'text/plain')
+                else:
+                    self._reply(calculation_page(batch, row))
+                return
+            if path == '/codes':
+                from evaluator.code_guide import page as code_guide
+                from evaluator.code_sample_ui import code_rule
+
+                params = parse_qs(urlsplit(self.path).query)
+                sample = code_rule(params.get('code', [''])[0], params.get('geometry', [''])[0])
+                self._reply(code_guide(sample or params.get('sample', [''])[0]))
+                return
+            if path == '/tanks':
+                from evaluator.tank_ui import page as tank_page
+                self._reply(tank_page(service))
+                return
             if path not in {'/','/workspace','/api/workspace','/workspace/results.csv','/source-workbook','/sheet-object','/sheet'} and not path.startswith('/assets/'):
                 self._reply('Not found',404,'text/plain');return
             if path=='/workspace/results.csv':
@@ -41,17 +68,40 @@ def make_handler(service):
                 if not result or result.get('stale'):
                     self._reply('Calculate the current readings before exporting.',400,'text/plain');return
                 output=io.StringIO();writer=csv.writer(output)
-                writer.writerow(['Location','Previous date','Current date','Previous UT mm','Current UT mm','Material','Pd psi','OD in','Nominal mm','Structural mm','S psi','Pressure thickness mm','Required thickness mm','Calculated CR mm/year','CR used mm/year','CR basis','Remaining life years','Interval years','t in MAWP mm','MAWP psi','Result','Next inspection','Missing inputs'])
+                writer.writerow(['Location','Previous date','Current date','Previous UT mm','Current UT mm','Material','Pd psi','OD in','Nominal mm','Structural mm','S psi','Pressure thickness mm','Required thickness mm','Calculated CR mm/year','CR used mm/year','CR basis','Remaining life years','Interval years','t in MAWP mm','MAWP psi','Result','Next inspection','Missing inputs','Fitting pressure checked psi','Fitting minimum wall mm','Fitting projected credited wall mm','Fitting projection interval years','Fitting current exceeds minimum','Fitting projected exceeds minimum','Fitting assessment reference'])
                 for row in result['rows']:
                     if not row.get('current_id'):continue
                     i=row.get('input_trace',{}).get('inputs',{});r=row.get('row7') or {}
-                    writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]+['; '.join(row['issues'])])
+                    if not r and row.get('input_trace', {}).get('basis') == 'recalculate':
+                        from evaluator.engineering.batch_rules import convert
+                        fields = (row.get('profile') or {}).get('fields', {})
+                        raw = lambda key: fields.get(key, {}).get('value')
+                        trace = row['input_trace']
+                        pressure = row.get('mawp_MPa')
+                        i = dict(material=raw('material'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+                                 nominal_mm=raw('nominal_thickness_mm'),
+                                 structural_mm=trace.get('overrides', {}).get('structural_minimum_mm'))
+                        r = dict(s_psi=raw('S_allow_psi'), pressure_mm=row.get('pressure_thickness_mm'),
+                                 required_mm=row.get('required_thickness_mm'), calculated_cr=row.get('apparent_rate_mm_year'),
+                                 cr_used=row.get('adopted_rate_mm_year'), cr_basis=trace.get('rate_basis'),
+                                 remaining_life=row.get('remaining_life_years'), interval=row.get('inspection_interval_years'),
+                                 mawp_thickness_mm=row.get('outputs', {}).get('trace', {}).get('mawp_MPa', {}).get('net_thickness_mm'),
+                                 mawp_psi=str(convert(pressure, 'MPa', 'psi')) if pressure is not None else None,
+                                 result=row.get('evaluation_status'), next_inspection=row.get('due_date'))
+                    values=[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]
+                    if values[10]:values[10]='DRAFT / NOT VALIDATED · '+str(values[10])
+                    fitting = row.get('fitting_check', {})
+                    fitting_columns = [fitting.get(key) for key in (
+                        'pressure_psi','minimum_mm','credited_wall_mm','projection_years',
+                        'current_meets_minimum','projected_meets_minimum','reference',
+                    )]
+                    writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+values+['; '.join(row['issues'])]+fitting_columns)
                 self._reply(output.getvalue(),200,'text/csv; charset=utf-8',(('Content-Disposition','attachment; filename="UT-evaluation.csv"'),));return
             if path in {'/','/workspace'}:
-                self._reply((Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8'));return
+                self._reply(page(service));return
             if path.startswith('/assets/'):
                 name=path.removeprefix('/assets/')
-                if name not in {'workspace.css','workspace.js'}:self._reply('Not found',404,'text/plain');return
+                if name not in {'workspace.css','workspace.js','integrity-desk.css','code-sample.js'}:self._reply('Not found',404,'text/plain');return
                 self._reply((Path(__file__).parent/'static'/name).read_bytes(),200,'text/css' if name.endswith('.css') else 'text/javascript');return
             if path=='/api/workspace':
                 from evaluator.workspace import Workspace
@@ -90,11 +140,34 @@ def make_handler(service):
                 origin=self.headers.get('Origin')
                 if origin and origin not in {'http://'+expected_host,f'http://localhost:{self.server.server_port}'}: raise ValueError('Cross-origin project changes are blocked')
                 path=self.path.split('?',1)[0]
+                if path == '/codes':
+                    from evaluator.code_guide import page as code_guide
+
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 8192:
+                        raise ValueError('Invalid sample calculation form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    self._reply(code_guide(form.get('sample', ''), form))
+                    return
+                if path == '/tanks':
+                    from evaluator.tanks import save
+                    from evaluator.tank_ui import page as tank_page
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 32_768:
+                        raise ValueError('Invalid tank form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    try:
+                        save(service.workflow, form)
+                    except ValueError as exc:
+                        self._reply(tank_page(service, str(exc), active_method=form.get('method')), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/tanks#saved-tank-calculations'),))
+                    return
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return
                 if path.startswith('/api/workspace/'):
-                    if path.rsplit('/',1)[-1] not in {'import','apply','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
-                        self._reply('Not found',404,'text/plain');return
+                    if path.rsplit('/',1)[-1] not in {'reference_preview','import','apply','apply_code_basis','review_workbook_pipes','review_fittings','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
+                        self._reply(json.dumps({'error':'Workspace action not found.'}),404,'application/json');return
                     from evaluator.workspace_api import action
                     length=int(self.headers.get('Content-Length','0'))
                     if length<=0 or length>2_000_000:raise ValueError('Invalid workspace request size')
@@ -118,7 +191,7 @@ def make_handler(service):
                     from evaluator.workspace import Workspace
                     workspace=Workspace(service)
                     result=workspace.auto_open(record.sha256,service.workflow.revision())
-                    if result.get('comparison_id'):workspace.policy(result['comparison_id'],service.workflow.revision(),'row7')
+                    if result.get('comparison_id'):workspace.policy(result['comparison_id'],service.workflow.revision(),'assigned')
                     self._reply(json.dumps(result),200,'application/json');return
             except (ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
                 self._reply(json.dumps({'error':str(exc)}),400,'application/json')

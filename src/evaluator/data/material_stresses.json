@@ -190,5 +190,316 @@
       "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 40 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 65 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 100 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 125 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 150 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 200 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71\u201373; printed pages 20\u201322; 250 \u00b0C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   }
 ]

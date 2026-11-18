@@ -25,6 +25,9 @@ def defaults(snapshot, cell, band):
             nps=val.replace('"','').replace("'",'').strip()
             matches=[d for d in dimensions() if d['family']=='ferritic' and d['nps']==nps]
             if matches:result.update(nps=nps,D_outside_in=matches[0]['od_in'])
+        elif heading == 'ODIN':
+            matches = {d['nps'] for d in dimensions() if d['family']=='ferritic' and d['od_in']==val}
+            if len(matches)==1:result.update(nps=matches.pop(),D_outside_in=val)
         elif heading in {'NOMT','TNOM','NOMINALTHICKNESS'}:
             try:
                 if float(val)>0:result['nominal_thickness_mm']=val

@@ -93,7 +93,7 @@ def export_form(service, result):
         mapping.append(dict(profile_id=pid,template_row=n,current_ids=[r['current_id'] for r in items],state='mapped' if row else 'ambiguous' if items else 'unmatched'))
         values[f"{layout['status']}{n}"]='DRAFT / '+('REVIEW: '+', '.join(row['issues']) if row else 'unresolved mapping')
         if row and row.get('row7'):
-            values[f"{layout['status']}{n}"] = row['row7']['result']
+            values[f"{layout['status']}{n}"] = 'DRAFT / NOT VALIDATED · '+row['row7']['result']
         if not row:continue
         for key,col in [('current_thickness_mm','current'),('previous_thickness_mm','previous'),('adopted_rate_mm_year','rate'),('remaining_life_years','life'),('inspection_interval_years','interval')]:values[f'{layout[col]}{n}']=row[key]
         values[f"{layout['required']}{n}"]=row['required_thickness_mm'] or (row['pressure_thickness_mm'] if row['evaluation_status']!='NEEDS_REVIEW' else None)

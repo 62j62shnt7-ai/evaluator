@@ -15,12 +15,16 @@ from evaluator.engineering.records import import_records,identity
 from evaluator.engineering.batch_rules import outputs,convert,VERSION
 from evaluator.engineering.draft import evaluate as pressure_thickness
 
-ADAPTER_VERSION='records-6'
+ADAPTER_VERSION='records-7'
 NUMERIC_OVERRIDES={'required_thickness_mm','adopted_rate_mm_year','structural_minimum_mm','allowance_mm','interval_fraction','interval_cap_years','selected_interval_years','forecast_years','forecast_factor','year_days','F_class','E_weld','T_temp','E_quality','W_reduction','Y_coefficient','F_design','E_joint'}
 PROFILE_FIELDS={'material','P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm','schedule','nps'}
-PROFILE_TEXT={'component','geometry','code_family','code_edition','segment'}
+PROFILE_TEXT={'component','geometry','code_family','code_edition','segment','product_form'}
 NUMERIC_OVERRIDES.update({'P_psi','temperature_F','S_allow_psi','SMYS_psi','D_outside_in','D_inside_in','nominal_thickness_mm'})
-TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase'}
+TEXT_OVERRIDES={'profile_id','rule','code_edition','material','geometry','code_family','segment','schedule','nps','reviewed','reconcile_conflict','review_note','dimension_reference','component','material_reference','source_config_reference','allow_increase','product_form'}
+TEXT_OVERRIDES.update({'code_evidence','code_owner_confirmed'})
+TEXT_OVERRIDES.update({'code_asset_type', 'gas_basic_class', 'pipe_method'})
+NUMERIC_OVERRIDES.update({'fitting_pressure_psi','fitting_minimum_mm','fitting_interval_years'})
+TEXT_OVERRIDES.update({'fitting_reference','fitting_geometry'})
 RULES={'VIII_SHELL','VIII_UG27_HOOP','VIII_UG27_LONG','VIII_UG32_ELLIP','VIII_UG32_TORI','B31_3_304_1_2','B31_4_403_2_1','B31_8_841_1_1'}
 
 
@@ -101,6 +105,9 @@ class BatchService:
         sheet=self._nominal_sheets[key]
         if not sheet:return None
         row=re.search(r'\d+',reading['cell'])[0]
+        if str(sheet['cells'].get('C2', {}).get('value', '')).strip().upper() == 'MATERIAL':
+            from evaluator.importing.ut_defaults import defaults
+            return defaults(sheet, reading['cell'], '').get('nps')
         raw=sheet['cells'].get('C'+row,{}).get('value')
         return str(raw).strip() if raw not in ('',None) else None
 
@@ -127,6 +134,14 @@ class BatchService:
                 assigned[items[0]['current']['observation_id']]=(candidates[0],'Unique component/point label proposal')
                 continue
             for item in items:
+                current = item['current']
+                same_row = [p for p in candidates if p['source_id'] == current['source_id']
+                            and p['sheet'] == current['sheet_name']
+                            and p['fields'].get('current_mm', {}).get('cell') == current['cell']]
+                if len(same_row) == 1 and same_row[0]['id'] not in used:
+                    assigned[current['observation_id']] = (same_row[0], 'Same worksheet and current UT cell')
+                    used.add(same_row[0]['id'])
+                    continue
                 nominal=self._nominal(item['current']);known=size_map.get(nominal,set())
                 compatible=[p for p in candidates if str(_num(_value(p,'D_outside_in'),True)) in known]
                 if len(compatible)==1 and compatible[0]['id'] not in used:
@@ -151,7 +166,7 @@ class BatchService:
     @staticmethod
     def _group(profile):
         if not profile:return 'unmapped'
-        key=[profile.get(k) for k in ('code_family','code_edition','geometry')]+[_value(profile,k) for k in ('material','S_allow_psi','SMYS_psi','P_psi')]
+        key=[profile.get(k) for k in ('code_family','code_edition','geometry','product_form')]+[_value(profile,k) for k in ('material','S_allow_psi','SMYS_psi','P_psi')]
         return _hash(key)[:16]
 
     def _select_sheet(self,comp,profiles,selected):
@@ -197,7 +212,7 @@ class BatchService:
                     counts=dict(current=sum(r['current_id'] is not None for r in rows),life_ready=sum(r['remaining_life_years'] is not None for r in rows),historical_ready=sum(r['apparent_rate_mm_year'] is not None for r in rows),issues=dict(Counter(i for r in rows for i in r['issues']))))
 
     def apply_overrides(self,comparison_id,expected_revision,group_ids,row_ids,values,profile_sheet=None,per_row_values=None):
-        clean={k:str(v).strip() for k,v in values.items() if v not in ('',None)}
+        clean={k:str(v).strip() for k,v in values.items() if v not in ('',None) or (k=='code_edition' and v=='')}
         per_row_values={oid:{k:str(v).strip() for k,v in row_values.items() if v not in ('',None)} for oid,row_values in (per_row_values or {}).items()}
         allowed=NUMERIC_OVERRIDES|TEXT_OVERRIDES
         if (not clean and not per_row_values) or not set(clean)<=allowed or any(not set(row_values)<=allowed for row_values in per_row_values.values()):raise ValueError('Select valid grouped input changes')
@@ -205,8 +220,13 @@ class BatchService:
             if k in NUMERIC_OVERRIDES and _num(v) is None:raise ValueError(k+' must be finite and nonnegative')
         for key in ('reviewed','reconcile_conflict'):
             if key in clean and clean[key] not in {'yes','no'}:raise ValueError('Invalid review decision')
+        if any('code_owner_confirmed' in values and values['code_owner_confirmed'] not in {'yes','no'} for values in [clean,*per_row_values.values()]):raise ValueError('Invalid code applicability confirmation')
+        from evaluator.engineering.reference_rules import GAS_BASIC_CLASS_F
+        for changes in (clean, *per_row_values.values()):
+            if changes.get('gas_basic_class') in GAS_BASIC_CLASS_F and 'F_class' not in changes:
+                changes['F_class'] = None
         all_values={**clean,**{k:v for row_values in per_row_values.values() for k,v in row_values.items()}}
-        if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
+        if all_values.get('geometry') and all_values['geometry'] not in {'straight_pipe','elbow','tee','reducer','branch','nozzle','shell','cylindrical_shell','ellipsoidal_head_2to1','standard_torispherical_head','head_unspecified','unknown'}:raise ValueError('Unsupported component geometry')
         if all_values.get('rule') and all_values['rule'] not in RULES:raise ValueError('Unsupported rule')
         preview=self.preview(comparison_id,profile_sheet)
         if not set(group_ids)<={g['id'] for g in preview['groups']} or not (set(row_ids)|set(per_row_values))<={r['current_id'] for r in preview['rows'] if r['current_id']}:raise ValueError('Selected input scope changed; refresh the batch preview')
@@ -221,7 +241,7 @@ class BatchService:
                 config.setdefault('row_overrides',{}).setdefault(identifier,{}).update(row_values)
             # Compare with the previous effective context, not just the original
             # source record: earlier lookup/manual overrides must also expire.
-            context_keys=('material','temperature_F','code_family','code_edition','geometry')
+            context_keys=('material','temperature_F','code_family','code_edition','geometry','product_form')
             for row in preview['rows']:
                 oid=row['current_id']
                 if not oid or not (oid in row_ids or oid in per_row_values or row['group_id'] in group_ids):continue
@@ -256,13 +276,51 @@ class BatchService:
         for factor in ('E_joint','E_quality','W_reduction','Y_coefficient','F_class','F_design','E_weld','T_temp'):
             value=raw(factor)
             if value not in ('',None):inputs[factor]=str(value)
+        gas_2025 = profile.get('code_family') == 'ASME B31.8' and profile.get('code_edition') == '2025'
+        if (profile.get('code_family') == 'ASME B31.4' and profile.get('code_edition') == '2025'
+                and profile.get('geometry') == 'straight_pipe'
+                and 'SMYS_MPa' not in inputs and config.get('confirm_rules')):
+            from evaluator.engineering.reference_rules import LIQUID_PIPE_SMYS, LIQUID_PIPE_SMYS_REFERENCE
+            grade = LIQUID_PIPE_SMYS.get(raw('material'))
+            if grade:
+                smys, line = grade
+                inputs['SMYS_MPa'] = str(convert(smys, 'psi', 'MPa'))
+                trace['SMYS_MPa'] = dict(reference=f'{LIQUID_PIPE_SMYS_REFERENCE}, line {line}',
+                                        value_psi=smys, converted=inputs['SMYS_MPa'], unit='MPa',
+                                        material=raw('material'))
+        if gas_2025 and 'SMYS_MPa' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_SMYS_REFERENCE, gas_pipe_smys
+            smys = gas_pipe_smys(raw('material'), profile.get('product_form'))
+            if smys is not None:
+                inputs['SMYS_MPa'] = str(convert(smys, 'psi', 'MPa'))
+                trace['SMYS_MPa'] = dict(**GAS_SMYS_REFERENCE, value_psi=smys,
+                                        converted=inputs['SMYS_MPa'], unit='MPa',
+                                        material=raw('material'), product_form=profile['product_form'])
+        has_temperature = raw('temperature_F') not in ('', None)
+        if gas_2025 and has_temperature and 'T_temp' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_TEMPERATURE_REFERENCE, gas_temperature_factor
+            try:
+                factor = str(gas_temperature_factor(raw('temperature_F')))
+            except (ValueError, InvalidOperation):
+                issues.append('B31_8_TEMPERATURE_REFERENCE_UNAVAILABLE')
+            else:
+                inputs['T_temp'] = factor
+                trace['T_temp'] = dict(**GAS_TEMPERATURE_REFERENCE, value=factor,
+                                       temperature_F=str(raw('temperature_F')))
+        if gas_2025 and 'F_class' not in inputs and config.get('confirm_rules'):
+            from evaluator.engineering.reference_rules import GAS_BASIC_CLASS_F, GAS_CLASS_REFERENCE
+            location_class = overrides.get('gas_basic_class')
+            factor = GAS_BASIC_CLASS_F.get(location_class)
+            if factor is not None:
+                inputs['F_class'] = factor
+                trace['F_class'] = dict(**GAS_CLASS_REFERENCE, value=factor, location_class=location_class)
         proposal=profile.get('factor_candidates',{}).get('design_factor')
         if 'F_class' not in inputs and proposal and config.get('confirm_rules'):inputs['F_class']=str(proposal['value']);trace['F_class']=dict(source_proposal=proposal)
         if proposal and config.get('confirm_rules') and profile.get('code_family')=='ASME B31.8':
             # This proposal exists only for the recognized source expression
             # t=P*D/(2*SMYS*0.8). Its omitted E and T multipliers are unity.
             for factor in ('E_weld','T_temp'):
-                if factor not in inputs:
+                if factor not in inputs and not (factor == 'T_temp' and has_temperature):
                     inputs[factor]='1'
                     trace[factor]=dict(value='1',source_cell=proposal['cell'],source_formula=proposal['raw'],
                                        basis='unit multiplier in recognized workbook pressure expression')
@@ -272,19 +330,6 @@ class BatchService:
         current,old,pair,p=item['current'],item['previous'],item['pair'],item['profile']
         gid=self._group(p);oid=current['observation_id'] if current else None
         override=dict(config.get('group_overrides',{}).get(gid,{}));override.update(config.get('row_overrides',{}).get(oid,{}))
-        if config.get('basis')=='row7' and p is not None:
-            override.setdefault('S_allow_psi',_value(p,'S_allow_psi'))
-        if config.get('basis')=='row7' and current and hasattr(self,'service'):
-            from evaluator.importing.ut_defaults import defaults
-            cache=getattr(self,'_ut_source_defaults',{})
-            key=(current['source_id'],current['sheet_name'])
-            if key not in cache:cache[key]=self.service.imported_sheet(*key) or {}
-            self._ut_source_defaults=cache
-            source_defaults=defaults(cache[key],current['cell'],_location(current)[-1])
-            identity=self.flow.match_identity(current)
-            if identity['component']!='unknown':
-                source_defaults.update(geometry=identity['component'],material='A106 B' if identity['component']=='straight_pipe' else 'A234 WPB')
-            override=dict(source_defaults,**override)
         config=dict(config)
         if config.get('workspace_review'):config.update(confirm_records=False,confirm_history=False,confirm_rules=False)
         if override.get('reviewed')=='yes':
@@ -302,18 +347,29 @@ class BatchService:
                     p.setdefault('fields',{})[key]=dict(value=override[key],kind='reference_derived' if reference else 'manual_override',unit=(p.get('fields',{}).get(key) or {}).get('unit'),source_record=(source_profile.get('fields',{}).get(key)),basis=reference or 'Explicit batch configuration')
             for key in PROFILE_TEXT:
                 if key in override:p[key]=override[key]
-            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry'))
+            if 'code_evidence' in override:p['code_evidence']=override['code_evidence']
+            if 'code_owner_confirmed' in override:p['code_owner_confirmed']=override['code_owner_confirmed']=='yes'
+            if 'code_asset_type' in override:p['code_asset_type']=override['code_asset_type']
+            context_changed=any(key in override and str(override[key])!=str(source_profile.get(key) if key in PROFILE_TEXT else _value(source_profile,key)) for key in ('material','code_family','code_edition','temperature_F','geometry','product_form'))
             if context_changed:
                 for key in ('S_allow_psi','SMYS_psi'):
                     if key not in override:p.setdefault('fields',{})[key]=dict(value=None,kind='invalidated',basis='Material/code/temperature changed; property must be supplied for this context')
         row=dict(id=oid or 'history-'+str(pair['id']),pair_id=pair['id'],current_id=oid,previous_id=old['observation_id'] if old else None,
                  location=' / '.join(_location(current or old)) if current or old else 'Ambiguous source location',group_id=gid,profile_id=p['id'] if p else None,profile=p,
                  candidate_profile_ids=[candidate['id'] for candidate in item.get('candidates',[])],
-                 current_cell=current['cell'] if current else None,previous_cell=old['cell'] if old else None,current_sheet=current['sheet_name'] if current else None,
+                 current_cell=current['cell'] if current else None,previous_cell=old['cell'] if old else None,current_sheet=current['sheet_name'] if current else None,previous_sheet=old['sheet_name'] if old else None,
                  current_thickness_mm=str(_current(current)) if current else None,previous_thickness_mm=str(_current(old)) if old else None,
                  inspection_date=current['inspection_date'] if current else None,previous_inspection_date=old['inspection_date'] if old else None,nominal_size=item['nominal_size'],assignment_basis=item['assignment_basis'],
                  required_thickness_mm=None,pressure_thickness_mm=None,adopted_rate_mm_year=None,apparent_rate_mm_year=None,elapsed_days=None,issues=[],input_trace={},outputs={},output_readiness={})
         issues=row['issues'];blocked=False
+        if config.get('basis') == 'assigned':
+            is_straight_process_pipe = (p or {}).get('code_family') == 'ASME B31.3' and (p or {}).get('geometry') == 'straight_pipe'
+            config['basis'] = 'row7' if is_straight_process_pipe and override.get('pipe_method') != 'code' else 'recalculate'
+        if config.get('basis') == 'recalculate' and p:
+            from evaluator.engineering.fitting_review import CLAUSES
+            if (p.get('geometry') in CLAUSES and p.get('code_family') == 'ASME B31.3'
+                    and p.get('code_edition') == '2024' and p.get('code_owner_confirmed')):
+                return self._fitting_check(row, item, override)
         if config.get('basis') == 'row7':
             return self._row7(row, item, override)
         if not current:issues.append('CURRENT_MISSING');blocked=True
@@ -330,6 +386,21 @@ class BatchService:
                 issues.append('PROFILE_CURRENT_CONFLICT')
                 if not config.get('confirm_conflicts'):blocked=True
             if p.get('inspection_date')!=current['inspection_date']:issues.append('PROFILE_EVENT_SCOPE_CONFIRMATION')
+        route=None
+        if p:
+            from evaluator.engineering.code_context import CodeContext,route_code
+            family=p.get('code_family') or ''
+            asset_type=p.get('code_asset_type') or {'ASME B31.3':'process_piping','ASME B31.4':'liquid_transmission',
+                        'ASME B31.8':'gas_transmission','ASME VIII-1':'pressure_vessel'}.get(family,'unknown')
+            route=route_code(CodeContext(
+                component_id=str(p.get('component') or (item.get('key') or [''])[0] or oid or ''),
+                asset_type=asset_type,geometry={'shell':'cylindrical_shell'}.get(p.get('geometry'), p.get('geometry') or 'unknown'),
+                construction_code=family or None,construction_edition=p.get('code_edition'),
+                code_evidence=p.get('code_evidence'),owner_confirmed=bool(p.get('code_owner_confirmed'))))
+            row['routing']=dict(status=route.status,code=family or None,edition=p.get('code_edition'),
+                                geometry=p.get('geometry'),issues=list(route.issues),
+                                candidate_rule_ids=list(route.candidate_rule_ids))
+            if route.status!='ROUTE_SELECTED':issues.append('CODE_ROUTING_'+route.status)
         # Historical rates are independent of engineering-record readiness.
         source_year_days=(p or {}).get('year_days')
         year_days=override.get('year_days') or config.get('year_days') or source_year_days or '365.2425'
@@ -363,17 +434,27 @@ class BatchService:
         source_life_basis=None
         if p:
             inputs,input_trace,input_issues=self._inputs(p,override,config);issues.extend(input_issues)
-            if not rule:
-                rule='VIII_SHELL' if p['geometry']=='shell' else 'B31_8_841_1_1' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.8' else 'B31_3_304_1_2' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.3' else 'B31_4_403_2_1' if p['geometry']=='straight_pipe' and p['code_family']=='ASME B31.4' else None
-            geometry_unsupported=p['geometry'] in {'nozzle','elbow','tee','reducer','branch','unknown'}
-            if geometry_unsupported:issues.append('GEOMETRY_RULE_UNSUPPORTED')
-            if not config.get('confirm_rules'):rule=None;issues.append('DESIGN_SCOPE_NOT_CONFIRMED')
-            elif geometry_unsupported:rule=None
-            elif p['geometry']=='head_unspecified' and rule not in {'VIII_UG32_ELLIP','VIII_UG32_TORI'}:rule=None;issues.append('HEAD_GEOMETRY_REQUIRED')
-            elif (p['family']=='separator') != bool(rule and rule.startswith('VIII')):rule=None;issues.append('RULE_FAMILY_MISMATCH')
-        if rule and p:
-            code_for_rule='ASME VIII-1' if rule.startswith('VIII_') else {'B31_3':'ASME B31.3','B31_4':'ASME B31.4','B31_8':'ASME B31.8'}.get(rule[:5])
-            if code_for_rule!=p.get('code_family'):rule=None;issues.append('RULE_CODE_MISMATCH')
+            candidates = route.candidate_rule_ids
+            if len(candidates) > 1:
+                # Shell capacity must include both stress directions.
+                allowed_rules = {'VIII_SHELL'}
+                default_rule = 'VIII_SHELL'
+            else:
+                allowed_rules = set(candidates)
+                default_rule = candidates[0] if candidates else None
+            if p['geometry'] in {'nozzle','elbow','tee','reducer','branch','unknown'}:
+                issues.append('GEOMETRY_RULE_UNSUPPORTED')
+            if blocked or not config.get('confirm_rules'):
+                rule = None
+                if not config.get('confirm_rules'):
+                    issues.append('DESIGN_SCOPE_NOT_CONFIRMED')
+            elif rule and rule not in allowed_rules:
+                issues.append('RULE_CODE_MISMATCH')
+                rule = None
+            else:
+                rule = rule or default_rule
+        else:
+            rule = None
         if p and not p.get('code_edition'):
             issues.append('CODE_EDITION_REQUIRED')
             if mode=='recalculate':rule=None
@@ -382,6 +463,7 @@ class BatchService:
             if supplied and p['code_edition']!=supplied:
                 issues.append('CODE_EDITION_REFERENCE_UNAVAILABLE')
                 if mode=='recalculate':rule=None
+        pressure_checks = []
         if mode=='recalculate':
             required=None;pressure=None
             if rule:
@@ -389,10 +471,12 @@ class BatchService:
                 for candidate in (('VIII_UG27_HOOP','VIII_UG27_LONG') if rule=='VIII_SHELL' else (rule,)):
                     try:
                         result=pressure_thickness(candidate,inputs)
+                        pressure_checks.append(result)
                         if result['value'] is not None:values.append(Decimal(result['value']))
                         else:issues.extend(result['issues'])
                     except (ValueError,InvalidOperation,KeyError) as exc:issues.append('PRESSURE_INPUTS: '+str(exc))
-                if values:pressure=max(values)
+                if len(values) == (2 if rule == 'VIII_SHELL' else 1):
+                    pressure=max(values)
             if structural is None:issues.append('STRUCTURAL_MINIMUM_REQUIRED')
             elif pressure is not None:required=max(pressure,structural)
         elif required is None and pressure is not None:
@@ -438,9 +522,14 @@ class BatchService:
                    adopted_rate_mm_year=str(adopted) if adopted is not None else None,required_basis='recalculated draft pressure plus structural minimum' if mode=='recalculate' else 'provided governing source record' if _num(raw('required_thickness_mm'),True) is not None else 'provided pressure candidate plus explicit structural minimum' if structural is not None else 'source pressure-thickness basis for remaining-life estimate; governing minimum not established',
                    rule=rule,maximum_interval_years=None,selected_interval_years=str(selected_interval) if selected_interval is not None else None,
                    scheduled_due_date=scheduled_date,next_inspection_years=str(next_inspection_years) if next_inspection_years is not None else None,forecast_policy=forecast_policy,
-                   input_trace=dict(history=dict(formula='(previous thickness - current thickness) / elapsed years',source_reference='API 570 fifth edition 7.1.2',previous_date=old['inspection_date'] if old else None,current_date=current['inspection_date'] if current else None,elapsed_basis='calendar months / 12' if old and current and len(old.get('inspection_date') or '')==len(current.get('inspection_date') or '')==7 else 'elapsed days / year_days'),profile_fields=(p or {}).get('fields',{}),normalized_design=input_trace,design_inputs=inputs,overrides=override,basis=mode,interval_policy=dict(fraction=fraction,cap_years=cap),forecast_policy=forecast_policy,year_days=year_days,source_rate_selected=False,rate_basis='manual override' if 'adopted_rate_mm_year' in override else 'calculated historical CR'))
+                   input_trace=dict(history=dict(formula='(previous thickness - current thickness) / elapsed years',source_reference='API 570 fifth edition 7.1.2',previous_date=old['inspection_date'] if old else None,current_date=current['inspection_date'] if current else None,elapsed_basis='calendar months / 12' if old and current and len(old.get('inspection_date') or '')==len(current.get('inspection_date') or '')==7 else 'elapsed days / year_days'),profile_fields=(p or {}).get('fields',{}),normalized_design=input_trace,design_inputs=inputs,pressure_checks=pressure_checks,overrides=override,basis=mode,interval_policy=dict(fraction=fraction,cap_years=cap),forecast_policy=forecast_policy,year_days=year_days,source_rate_selected=False,rate_basis='manual override' if 'adopted_rate_mm_year' in override else 'calculated historical CR'))
         values=outputs(row['current_thickness_mm'] if current and current.get('review_status')!='excluded' else None,life_required,adopted,row['inspection_date'],year_days,fraction,cap,
                        'VIII_UG27_HOOP' if rule=='VIII_SHELL' else rule,inputs,allowance,forecast,factor,selected_interval,scheduled_date,next_inspection_years,manual_interval_override,manual_selected_interval)
+        if route is None or not route.can_attempt_arithmetic or not rule:
+            values['mawp_MPa']=None
+            values['forecast_mawp_MPa']=None
+            for key in ('mawp_MPa','forecast_mawp_MPa'):
+                values.setdefault('issues',{}).setdefault(key,[]).append('CODE_ROUTING_REQUIRED')
         if rule=='VIII_SHELL':
             other=outputs(row['current_thickness_mm'],life_required,adopted,row['inspection_date'],year_days,fraction,cap,'VIII_UG27_LONG',inputs,allowance,forecast,factor,selected_interval,scheduled_date,next_inspection_years,manual_interval_override,manual_selected_interval)
             for key in ('mawp_MPa','forecast_mawp_MPa'):
@@ -460,6 +549,49 @@ class BatchService:
         row['issues']=list(dict.fromkeys(issues))
         return row
 
+    def _fitting_check(self, row, item, override):
+        from evaluator.engineering.code_context import CODES_BY_ASSET
+        from evaluator.engineering.fitting_review import CLAUSES, assess_fitting
+
+        profile = row['profile']
+        geometry = profile['geometry']
+        row.update({key: None for key in ('thickness_margin_mm','remaining_life_years',
+                   'inspection_interval_years','maximum_inspection_interval_years','due_date',
+                   'mawp_MPa','forecast_mawp_MPa')})
+        row['input_trace'] = dict(basis='documented_fitting_pressure', overrides=override)
+        row['rule'] = 'Documented fitting pressure check'
+        row['routing'] = dict(status='FITTING_REVIEW_REQUIRED', code='ASME B31.3', edition='2024',
+                              geometry=geometry, issues=[], candidate_rule_ids=[])
+        try:
+            if ('ASME B31.3' not in CODES_BY_ASSET.get(profile.get('code_asset_type'), ())
+                    or not profile.get('code_evidence')):
+                raise ValueError('Confirm the construction code and service boundary.')
+            if (override.get('reviewed') != 'yes' or override.get('fitting_geometry') != geometry
+                    or not override.get('fitting_reference')):
+                raise ValueError('Enter the fitting’s documented pressure, minimum wall and assessment reference.')
+            if (not item['current'] or not item['previous'] or item['pair']['kind'] not in {'matched','lifecycle_mismatch'}
+                    or any(reading['raw_unit'] != 'mm' or reading.get('review_status') == 'excluded'
+                           for reading in (item['current'],item['previous']))):
+                raise ValueError('A comparable previous and current UT pair in mm is required.')
+            assessment = assess_fitting(
+                row['previous_thickness_mm'], row['current_thickness_mm'],
+                row['previous_inspection_date'], row['inspection_date'],
+                override['fitting_minimum_mm'], override['fitting_pressure_psi'],
+                override['fitting_interval_years'], override.get('adopted_rate_mm_year', '0'),
+            )
+        except (ValueError, TypeError, KeyError, InvalidOperation) as exc:
+            row['issues'].append(str(exc))
+            return self._withheld_row7(row, ('remaining_life_years','mawp_MPa','forecast_mawp_MPa'))
+        assessment.update(reference=override['fitting_reference'], construction_reference=CLAUSES[geometry])
+        row.update(fitting_check=assessment, required_thickness_mm=assessment['minimum_mm'],
+                   apparent_rate_mm_year=assessment['observed_rate'], adopted_rate_mm_year=assessment['used_rate'],
+                   remaining_life_years=assessment['remaining_life_years'], evaluation_status='EVALUATED')
+        row['routing']['status'] = 'FITTING_CHECK_AVAILABLE'
+        row['outputs'] = dict(fitting_check=assessment, remaining_life_years=row['remaining_life_years'])
+        if not assessment['projected_meets_minimum']:
+            row['issues'].append('FITTING_WALL_BELOW_OR_AT_REQUIRED_AT_PROJECTED_DATE')
+        return row
+
     def _row7(self, row, item, override):
         from evaluator.engineering.row_example import calculate
         p = row['profile'] or {}
@@ -469,7 +601,7 @@ class BatchService:
         row.update({key: None for key in output_keys})
         row.update(maximum_interval_years=None, selected_interval_years=None, rule='ROW7',
                    required_basis='Row 7: MAX(pressure thickness, structural minimum)', row7=None)
-        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi') or {'A106 B':'20000','A234 WPB':'20000','API 5L X52':'22000'}.get(str(raw('material') or '').upper().replace('ASTM ', '').replace('GRADE ', '').replace('GR ', '').replace(' ', '')), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
+        inputs = dict(material=raw('material'), s_allow_psi=raw('S_allow_psi'), pd_psi=raw('P_psi'), od_in=raw('D_outside_in'),
                       nominal_mm=raw('nominal_thickness_mm'), structural_mm=raw('structural_minimum_mm'),
                       selected_cr=raw('adopted_rate_mm_year'), previous_mm=row['previous_thickness_mm'],
                       current_mm=row['current_thickness_mm'], previous_date=row['previous_inspection_date'],
@@ -477,17 +609,39 @@ class BatchService:
         row['input_trace'] = dict(basis='row7', inputs=inputs, overrides=override,
                                  history=dict(previous_cell=row['previous_cell'],current_cell=row['current_cell'],
                                               previous_date=row['previous_inspection_date'],current_date=row['inspection_date']))
+        if not p:
+            row['issues'].append('CODE_ROUTING_NOT_ASSESSED')
+            return self._withheld_row7(row, output_keys)
+        from evaluator.engineering.code_context import CodeContext,route_code
+        family=p.get('code_family') or ''
+        asset_type=p.get('code_asset_type') or {'ASME B31.3':'process_piping','ASME B31.4':'liquid_transmission',
+                    'ASME B31.8':'gas_transmission','ASME VIII-1':'pressure_vessel'}.get(family,'unknown')
+        routed=route_code(CodeContext(component_id=str(p.get('component') or row.get('location') or row['id']),
+            asset_type=asset_type,geometry=str(p.get('geometry') or 'unknown'),construction_code=family or None,
+            construction_edition=p.get('code_edition'),code_evidence=p.get('code_evidence'),
+            owner_confirmed=bool(p.get('code_owner_confirmed'))))
+        row['routing']=dict(status=routed.status,code=family or None,edition=p.get('code_edition'),
+            geometry=p.get('geometry'),issues=list(routed.issues),candidate_rule_ids=list(routed.candidate_rule_ids))
+        if not routed.can_attempt_arithmetic or routed.candidate_rule_ids!=('B31_3_304_1_2',):
+            status=routed.status
+            if routed.can_attempt_arithmetic:
+                status='NOT_ASSESSED'
+                row['routing']['status']='NOT_ASSESSED'
+                row['routing']['issues'].append('Row 7 arithmetic is only routed for the reviewed B31.3 straight-pipe candidate.')
+            row['issues'].append('CODE_ROUTING_'+status)
+            return self._withheld_row7(row,output_keys)
+        if override.get('reviewed')!='yes':
+            row['issues'].append('PROFILE_SCOPE_NOT_CONFIRMED')
+            return self._withheld_row7(row,output_keys)
         try:
             if not item['current'] or not item['previous'] or item['pair']['kind'] not in {'matched','lifecycle_mismatch'}:
                 raise ValueError('A unique previous/current reading pair is required')
             if any(r.get('raw_unit') != 'mm' or r.get('review_status') == 'excluded' for r in (item['current'], item['previous'])):
                 raise ValueError('Both readings must be included measurements in mm')
-            missing = [key for key,value in inputs.items() if value in (None,'') and key not in {'selected_cr','s_allow_psi'}]
+            missing = [key for key,value in inputs.items() if value in (None,'') and key not in {'selected_cr','nominal_mm'}]
             if missing:
                 raise ValueError('Missing inputs: ' + ', '.join(missing))
             result = calculate(inputs)
-            if row['profile'] is not None:
-                row['profile'].setdefault('fields', {})['S_allow_psi'] = dict(value=str(result['s_psi']),kind='manual_override' if raw('S_allow_psi') not in (None,'') else 'fixed_material_lookup',basis='Batch input' if raw('S_allow_psi') not in (None,'') else 'User-selected fixed material S for row 7 workflow')
             row.update(row7=result, elapsed_days=result['elapsed_days'],
                        pressure_thickness_mm=str(result['pressure_mm']), required_thickness_mm=str(result['required_mm']),
                        apparent_rate_mm_year=str(result['calculated_cr']), adopted_rate_mm_year=str(result['cr_used']),
@@ -506,6 +660,14 @@ class BatchService:
         row['output_readiness'] = {key:dict(state='evaluated' if row[key] is not None else 'withheld',issues=list(row['issues'])) for key in output_keys}
         return row
 
+    @staticmethod
+    def _withheld_row7(row, output_keys):
+        row['evaluation_status']='NEEDS_REVIEW'
+        row['outputs']={key:None for key in output_keys}
+        row['outputs'].update(trace={'row7':None},issues={key:list(row['issues']) for key in output_keys})
+        row['output_readiness']={key:dict(state='withheld',issues=list(row['issues'])) for key in output_keys}
+        return row
+
     def evaluate(self,comparison_id,expected_revision,options,preview_token=None):
         if not options.get('confirm_records'):raise ValueError('Confirm the proposed component records and their applicability before batch evaluation')
         with _LOCK,connection(self.path) as db:
@@ -515,7 +677,7 @@ class BatchService:
             if original['stale']:raise ValueError('Inspection inputs changed. Refresh the batch preview before confirming its assignments.')
             preview=self.preview(comparison_id,options.get('profile_sheet'),options)
             if preview_token and preview_token!=preview['preview_token']:raise ValueError('Component assignments changed. Refresh the batch preview.')
-            config=preview['settings'];config.update(options)
+            config=preview['settings']
             for value,selection in [(options.get('previous_date'),original['baseline']),(options.get('current_date'),original['current_selection'])]:
                 if value and {r['inspection_date'] for r in self.flow._selection(*selection)}!={value}:
                     self.service.resolve_campaign_date(*selection,value,'Local batch reviewer','Inspection event date supplied for batch evaluation',_expected_revision=self.flow.revision())

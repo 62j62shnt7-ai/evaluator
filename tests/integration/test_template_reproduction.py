@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from evaluator.template_engine import reproduce_workbook
-from tests.source_config import SOURCE_ROOT
+from tests.source_config import original_workbook
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_reference_formula_cells_match_cached_values(template, workbook, expected_formula_count):
     report = reproduce_workbook(
         ROOT / "src/evaluator/data/templates" / template,
-        SOURCE_ROOT / "workbooks" / workbook,
+        original_workbook(workbook),
     )
     assert len(report.comparisons) == expected_formula_count
     assert report.cached_values_missing == ()

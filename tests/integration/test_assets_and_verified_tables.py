@@ -4,6 +4,7 @@ import pytest
 
 from evaluator.engineering.verified_tables import ReferenceLookupError, VerifiedTables
 from evaluator.storage.assets import AssetStore
+from tests.source_config import SOURCE_ROOT
 
 
 def test_asset_inputs_are_versioned_reused_and_audited(tmp_path):
@@ -29,7 +30,10 @@ def test_asset_updates_require_author_reason_and_verified_code_table_provenance(
 
 
 def test_reference_tables_require_exact_match_and_withhold_discrepant_rows():
-    tables = VerifiedTables()
+    code_dir = SOURCE_ROOT / "codes"
+    if not (code_dir / "B31_3_2024.pdf").is_file():
+        pytest.skip("Original B31.3 reference PDF is unavailable")
+    tables = VerifiedTables(code_dir=code_dir)
     row = tables.allowable_stress("ASTM A106 Grade B", "pipe", "ASME B31.3", "2024", "300")
     assert row["S_allow_psi"] == "20000"
     assert row["provenance"]["source_type"] == "code_table"

@@ -13,14 +13,14 @@ from evaluator.app_services import ProjectService
 from evaluator.engineering.references import dimension, dimensions
 from evaluator.form_export import export_form
 from evaluator.workspace import Workspace
-from tests.source_config import SOURCE_ROOT
+from tests.source_config import SOURCE_ROOT, original_workbook
 
 ROOT=Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def project(tmp_path):
     service=ProjectService(tmp_path)
-    source=service.add_source(SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx')
+    source=service.add_source(original_workbook('TL-B from SAG Gas MFD to GP.xlsx'))
     service.inspect(source.sha256)
     workspace=Workspace(service)
     opened=workspace.open_sheet(source.sha256,'UT 5-2025',service.workflow.revision(), '01-2021','05-2025')
@@ -40,8 +40,11 @@ def test_reference_dimensions_and_source_discrepancies():
     assert len([d for d in data if d['issues']])==2
     with pytest.raises(ValueError,match='source discrepancy'):dimension('stainless','1/8','80S')
     with pytest.raises(ValueError):dimension('ferritic','40','80')
-    digest=sha256((SOURCE_ROOT/'codes/RP_574_E5_EN_wA1.pdf').read_bytes()).hexdigest()
-    assert all(d['source_sha256']==digest for d in data)
+    reference = SOURCE_ROOT / 'codes/RP_574_E5_EN_wA1.pdf'
+    if not reference.is_file():
+        pytest.skip('Original API RP 574 reference PDF is unavailable')
+    digest = sha256(reference.read_bytes()).hexdigest()
+    assert {row['source_sha256'] for row in data} == {digest}, reference.name
 
 
 def test_row7_group_inputs_individual_override_and_saved_results(project):
@@ -269,7 +272,7 @@ def test_campaign_date_correction_and_increasing_rate_override_are_explicit(proj
 
 @pytest.mark.parametrize('filename',['Separator-204 Inspection Report.xlsx','Separator-204 Inspection Report.xlsm'])
 def test_separator_auto_import_and_preserved_form(tmp_path,filename):
-    s=ProjectService(tmp_path);source=s.add_source(SOURCE_ROOT/'workbooks'/filename);s.inspect(source.sha256);w=Workspace(s)
+    s=ProjectService(tmp_path);source=s.add_source(original_workbook(filename));s.inspect(source.sha256);w=Workspace(s)
     opened=w.auto_open(source.sha256,s.workflow.revision());cid=opened['comparison_id']
     state=w.state(cid)['workspace']
     assert state['comparison']['current_selection'][1]=='UT Jan 2026'
@@ -312,11 +315,153 @@ def test_automatic_history_uses_latest_available_prior_measurement_per_location(
 def test_uploaded_workbook_family_is_detected_from_structure_not_staging_name(tmp_path):
     import shutil
     incoming=tmp_path/'upload-random.xlsx'
-    shutil.copyfile(SOURCE_ROOT/'workbooks/Separator-204 Inspection Report.xlsx',incoming)
+    shutil.copyfile(original_workbook('Separator-204 Inspection Report.xlsx'),incoming)
     s=ProjectService(tmp_path/'project');source=s.add_source(incoming,'inspection.xlsx');s.inspect(source.sha256)
     opened=Workspace(s).auto_open(source.sha256,s.workflow.revision())
     assert opened['comparison_id']
     assert Workspace(s).state(opened['comparison_id'])['workspace']['counts']['locations']==37
+
+
+@pytest.fixture
+def dated_evaluation(tmp_path):
+    from datetime import date
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Evaluation Nov-26'
+    sheet['F1'] = 'According to API-570 & ASME B31.3'
+    sheet.append(['JOINT', 'BAND', 'MATERIAL', 'Pd (Psi)', 'OD\n(in)', 'S (Psi)',
+                  'tstrc. (mm)\nAPI 574', 'tPd (mm)', 'tReq (mm)', 'Min. UT Reading (mm)'])
+    sheet.merge_cells('J2:M2')
+    sheet['L4'], sheet['M4'] = date(2018, 6, 20), date(2025, 7, 30)
+    sheet.append(['# 1', 'S', 'A106 B', 250, 8.625, 20000, 2.8, '=D5*E5', '=MAX(G5,H5)',
+                  None, None, 6.5, 6.5])
+    sheet['O3'], sheet['O5'] = 'Selected', 0.01
+    for joint, band in enumerate(('E', 'T', 'R'), start=2):
+        sheet.append([f'# {joint}', band, 'SA-234-WPB', 250, 8.625, 20000, 2.8,
+                      None, None, None, None, 6.5, 6.4])
+    path = tmp_path / 'inspection.xlsx'
+    book.save(path)
+
+    service = ProjectService(tmp_path / 'project')
+    source = service.add_source(path)
+    service.inspect(source.sha256)
+    workspace = Workspace(service)
+    opened = workspace.auto_open(source.sha256, service.workflow.revision())
+    return service, workspace, opened['comparison_id']
+
+
+def test_auto_open_uses_dated_ut_columns_on_evaluation_tab(dated_evaluation):
+    _, workspace, cid = dated_evaluation
+    rows = workspace.state(cid)['workspace']['rows']
+    assert {row['current_cell']: row['geometry'] for row in rows} == {
+        'M5': 'straight_pipe', 'M6': 'elbow', 'M7': 'tee', 'M8': 'reducer',
+    }
+    row = next(row for row in rows if row['current_cell'] == 'M5')
+    assert row['current_cell'] == 'M5'
+    assert row['previous_id']
+    assert row['match_identity']['size'] == '8.0'
+    assert row['material'] == 'A106 B'
+    assert row['profile']['fields']['structural_minimum_mm']['value'] == 2.8
+    assert row['code_family'] == 'ASME B31.3'
+    assert row['code_edition'] is None
+    assert row['routing']['status'] == 'NEEDS_CODE_CONFIRMATION'
+
+
+def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_evaluation):
+    from http.client import HTTPConnection
+    from http.server import ThreadingHTTPServer
+    from threading import Thread
+    from evaluator.webapp import make_handler
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    rows = workspace.state(cid)['workspace']['rows']
+    inputs = {row['current_id']: (row['geometry'], row['material']) for row in rows}
+    values = dict(code_family='ASME B31.3', code_asset_type='process_piping',
+                  code_evidence='Test line list', code_owner_confirmed='yes')
+    payload = dict(comparison_id=cid, revision=service.workflow.revision(), scope='sheet',
+                   ids=[rows[0]['current_id']], values=dict(values, geometry='straight_pipe'))
+    with ThreadingHTTPServer(('127.0.0.1', 0), make_handler(service)) as server:
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        client = HTTPConnection('127.0.0.1', server.server_port)
+        try:
+            client.request('POST', '/api/workspace/apply_code_basis', json.dumps(payload),
+                           {'Content-Type':'application/json'})
+            response = client.getresponse()
+            assert response.status == 200
+            assert json.loads(response.read())['message'] == 'Code basis saved for 4 locations.'
+        finally:
+            client.close()
+            server.shutdown()
+            thread.join()
+    updated = workspace.state(cid)['workspace']['rows']
+    for row in updated:
+        assert (row['geometry'], row['material']) == inputs[row['current_id']]
+        assert row['code_family'] == 'ASME B31.3'
+        assert row['code_edition'] == '2024'
+        assert row['code_owner_confirmed']
+    assert sum(row['routing']['status'] == 'ROUTE_SELECTED' for row in updated) == 1
+    with pytest.raises(ValueError, match='Project changed'):
+        action(service, 'apply_code_basis', payload)
+    target = rows[0]['current_id']
+    action(service, 'apply_code_basis', dict(payload, revision=service.workflow.revision(),
+           scope='selected', values=dict(values, code_edition='2022')))
+    checked = workspace.state(cid)['workspace']['rows']
+    assert {row['current_id']: row['code_edition'] for row in checked} == {
+        oid: '2022' if oid == target else '2024' for oid in inputs
+    }
+
+
+def test_batch_workbook_pipe_review_saves_source_values_and_calculates(dated_evaluation):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    values = dict(code_family='ASME B31.3', code_asset_type='process_piping',
+                  code_evidence='Test line list', code_owner_confirmed='yes')
+    workspace.apply_code_basis(cid, service.workflow.revision(), 'sheet', [], values)
+    rows = workspace.state(cid)['workspace']['rows']
+    pipe = next(row for row in rows if row['geometry'] == 'straight_pipe')
+    assert pipe['workbook_review']['eligible']
+    payload = dict(comparison_id=cid, revision=service.workflow.revision(), ids=[pipe['current_id']])
+    with pytest.raises(ValueError, match='Confirm the workbook'):
+        action(service, 'review_workbook_pipes', payload)
+    action(service, 'review_workbook_pipes', dict(payload, confirmed=True))
+    batch = workspace.evaluate(cid, service.workflow.revision(), basis='assigned')
+    result = next(row for row in batch['rows'] if row['current_id'] == pipe['current_id'])
+    assert result['row7']['s_psi'] == 20000
+    assert result['row7']['cr_used'] == 0.01
+    assert result['input_trace']['overrides']['material_reference'] == 'Evaluation Nov-26!F5'
+    assert 'Evaluation Nov-26!O5' in result['input_trace']['overrides']['review_note']
+    assert batch['summary']['mawp_evaluated'] == 1
+
+
+def test_fitting_checks_require_documented_limits_and_keep_mawp_blank(dated_evaluation):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    basis = dict(code_family='ASME B31.3', code_asset_type='process_piping',
+                 code_evidence='Test line list', code_owner_confirmed='yes')
+    workspace.apply_code_basis(cid, service.workflow.revision(), 'sheet', [], basis)
+    rows = workspace.state(cid)['workspace']['rows']
+    fittings = [row for row in rows if row['geometry'] != 'straight_pipe']
+    assert all(row['routing']['status'] == 'FITTING_REVIEW_REQUIRED' for row in fittings)
+    review = dict(fitting_pressure_psi=250, fitting_minimum_mm=5,
+                  fitting_interval_years=2, adopted_rate_mm_year=0.4,
+                  fitting_reference='Synthetic assessment')
+    entries = {row['current_id']: review for row in fittings}
+    action(service, 'review_fittings', dict(comparison_id=cid, revision=service.workflow.revision(),
+           confirmed=True, entries=entries))
+    batch = workspace.evaluate(cid, service.workflow.revision(), basis='assigned')
+    results = [row for row in batch['rows'] if row['current_id'] in entries]
+    assert len(results) == 3
+    for row in results:
+        assert row['mawp_MPa'] is None
+        assert row['fitting_check']['current_meets_minimum'] is True
+        assert row['fitting_check']['projected_meets_minimum'] is False
+        assert Decimal(row['fitting_check']['credited_wall_mm']) == Decimal('4.8')
 
 
 def test_later_context_edit_cannot_reuse_a_previously_looked_up_stress(project):

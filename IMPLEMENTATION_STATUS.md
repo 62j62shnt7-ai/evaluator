@@ -1,5 +1,22 @@
 # Implementation status
 
+## Current Windows preview · 18 November 2026
+
+- Draft PR #1 contains the Integrity Desk workflow, sheet-wide Code Basis,
+  material library lookups, and separate sample-calculator and tank screens.
+- The Section 2 workbook's Evaluation Nov-26 tab provides four dated UT
+  campaigns and 54 current locations. A test copy produced 31 draft
+  straight-pipe MAWP results. A mixed batch ran one elbow, tee and reducer
+  check with synthetic documented limits.
+- The 23 actual fittings need location-specific pressure and minimum-wall
+  evidence. The saved preview still shows missing previous UT matches at
+  M9, M21 and M51. The documented-pressure check does not derive fitting MAWP.
+- The fitting implementation baseline passed 158 tests with 49 skipped.
+  See [Local files and verification](docs/local_files.md) for local inputs
+  and the snapshot.
+
+## Historical implementation notes
+
 Updated 4 November 2026. The requested macOS/offline prototype workflows are implemented: workbook intake and correction, history matching, grouped proposals, reversible review, integrated draft calculations, revisioned export and backup/restore. Source workbooks and licensed PDFs remain unchanged. Formal engineering approval was waived as a build blocker by the user; calculated outputs remain DRAFT / NOT VALIDATED.
 
 |Task|Status|Evidence / remaining boundary|

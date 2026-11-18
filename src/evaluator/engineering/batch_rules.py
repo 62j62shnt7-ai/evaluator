@@ -50,7 +50,9 @@ def convert(value, from_unit, to_unit):
     return amount * 9 / 5 + 32
 
 
-def _pressure(net, rule, inputs):
+def pressure_at_thickness(net, rule, inputs):
+    """Invert a supported pressure equation at explicitly supplied net wall."""
+    net = _number(net, "net thickness", positive=True)
     if rule not in PRESSURE_RULES:
         raise ValueError('Explicit supported pressure rule is required; unsupported geometry needs separate analysis')
     if not isinstance(inputs, Mapping):
@@ -81,7 +83,7 @@ def _pressure(net, rule, inputs):
     if abs(Decimal(checked['value'])-net) > max(abs(net), d(1))*d('1e-24'):
         raise ValueError('Pressure roundtrip outside numerical tolerance')
     return pressure, {'rule':rule, 'source_reference':REFERENCES[rule], 'basis':'inverse of '+checked['formula'],
-                      'net_thickness_mm':str(net), 'inputs':checked['inputs'],
+                      'net_thickness_mm':str(net), 'pressure_MPa':str(pressure), 'inputs':checked['inputs'],
                       'limitations':'Candidate arithmetic only; applicability, geometry and other loads require verification'}
 
 
@@ -152,7 +154,7 @@ def outputs(current_mm, required_mm=None, adopted_rate=None, inspection_date=Non
                  'forecast_years':str(years), 'forecast_factor':str(factor),
                  'adopted_rate':str(rate), 'horizon_basis':horizon_basis}
         if net <= 0: raise ValueError('Available net thickness must be positive')
-        value, details = _pressure(net, rule, design_inputs)
+        value, details = pressure_at_thickness(net, rule, design_inputs)
         return value, dict(trace, **details)
 
     def remaining_life_mawp():
