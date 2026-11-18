@@ -114,6 +114,43 @@ function batchCodeEditor() {
 }
 $('editBatchCode').onclick = batchCodeEditor;
 
+$('reviewWorkbookPipes').onclick = () => {
+    const rows = (workspace()?.rows || []).filter(row => row.workbook_review);
+    if (!rows.length) return message('No B31.3 straight pipes on this sheet.', true);
+    const cell = (value, source, unit) => value == null ? 'Missing' :
+        `${num(value)} ${unit}<br><small>${esc(source)}</small>`;
+    $('drawer').hidden = false;
+    $('details').innerHTML = `<h2>Review straight pipes in batch</h2>
+        <p>Review each row’s workbook values. Clear any row you want to review separately. In the pipe workflow, the workbook rate is used when the measured corrosion rate is zero or negative.</p>
+        <form id="pipeReviewForm">
+            <div class="table-scroll"><table>
+                <thead><tr><th>Include</th><th>Location</th><th>Material</th><th>Workbook stress</th><th>Workbook rate</th></tr></thead>
+                <tbody>${rows.map(row => {
+                    const p = row.workbook_review;
+                    return `<tr><td>${p.eligible
+                        ? `<input type="checkbox" name="ids" value="${esc(row.current_id)}" aria-label="Include ${esc(row.location)}" checked>`
+                        : esc(p.reason)}</td><td>${esc(row.location)}</td><td>${esc(row.material)}</td>
+                        <td>${cell(p.stress,p.stress_source,'psi')}</td><td>${cell(p.rate,p.rate_source,'mm/year')}</td></tr>`;
+                }).join('')}</tbody>
+            </table></div>
+            <label class="check"><input name="confirmed" type="checkbox" required>
+                I checked the component assignments and confirm the displayed stress and corrosion rate for each included location.
+            </label>
+            <button class="primary" ${rows.some(row => row.workbook_review.eligible) ? '' : 'disabled'}>Confirm inputs and calculate</button>
+        </form>`;
+    $('pipeReviewForm').onsubmit = async event => {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        const ids = form.getAll('ids');
+        if (!ids.length) return message('Include at least one straight-pipe location.', true);
+        const saved = await action('review_workbook_pipes', {ids, confirmed:form.has('confirmed')});
+        if (saved) {
+            $('drawer').hidden = true;
+            await action('evaluate', {basis:'assigned'});
+        }
+    };
+};
+
 function bindReferenceSelectors(form, row) {
     const material = $('referenceMaterial');
     const temperature = $('referenceTemperature');
@@ -298,8 +335,6 @@ function readiness(row) {
                 requireValue('E_quality', 'Quality factor');
                 requireValue('W_reduction', 'Weld strength reduction factor');
                 requireValue('Y_coefficient', 'Y coefficient');
-            } else if (pipe) {
-                requireValue('nominal_thickness_mm', 'Nominal wall thickness');
             }
             if (pipeline) {
                 if (!row.input_trace?.normalized_design?.F_class?.reference) requireValue(code === 'ASME B31.8' ? 'F_class' : 'F_design', 'Applicable design factor');

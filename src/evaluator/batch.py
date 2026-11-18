@@ -588,7 +588,7 @@ class BatchService:
                 raise ValueError('A unique previous/current reading pair is required')
             if any(r.get('raw_unit') != 'mm' or r.get('review_status') == 'excluded' for r in (item['current'], item['previous'])):
                 raise ValueError('Both readings must be included measurements in mm')
-            missing = [key for key,value in inputs.items() if value in (None,'') and key != 'selected_cr']
+            missing = [key for key,value in inputs.items() if value in (None,'') and key not in {'selected_cr','nominal_mm'}]
             if missing:
                 raise ValueError('Missing inputs: ' + ', '.join(missing))
             result = calculate(inputs)
@@ -627,7 +627,7 @@ class BatchService:
             if original['stale']:raise ValueError('Inspection inputs changed. Refresh the batch preview before confirming its assignments.')
             preview=self.preview(comparison_id,options.get('profile_sheet'),options)
             if preview_token and preview_token!=preview['preview_token']:raise ValueError('Component assignments changed. Refresh the batch preview.')
-            config=preview['settings'];config.update(options)
+            config=preview['settings']
             for value,selection in [(options.get('previous_date'),original['baseline']),(options.get('current_date'),original['current_selection'])]:
                 if value and {r['inspection_date'] for r in self.flow._selection(*selection)}!={value}:
                     self.service.resolve_campaign_date(*selection,value,'Local batch reviewer','Inspection event date supplied for batch evaluation',_expected_revision=self.flow.revision())

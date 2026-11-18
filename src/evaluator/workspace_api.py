@@ -63,6 +63,9 @@ def action(service, name, payload):
     elif name=='apply':result=workspace.apply(cid,rev,payload.get('ids',[]),payload.get('values'),payload.get('template_id'),payload.get('dimension_key'),payload.get('scenario'),payload.get('clear',False),payload.get('fill_missing',False))
     elif name=='apply_code_basis':
         result=workspace.apply_code_basis(cid,rev,payload['scope'],payload.get('ids',[]),payload.get('values',{}))
+    elif name=='review_workbook_pipes':
+        if payload.get('confirmed') is not True:raise ValueError('Confirm the workbook inputs before saving.')
+        result=workspace.review_workbook_pipes(cid,rev,payload.get('ids',[]))
     elif name=='template':result=workspace.save_template(rev,payload.get('name',''),payload.get('values',{}))
     elif name=='evaluate':result=workspace.evaluate(cid,rev,payload.get('scenario'),payload.get('basis'))
     elif name=='policy':workspace.policy(cid,rev,payload.get('basis'),payload.get('scenario'))

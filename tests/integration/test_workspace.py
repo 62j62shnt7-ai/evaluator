@@ -336,7 +336,8 @@ def dated_evaluation(tmp_path):
     sheet.merge_cells('J2:M2')
     sheet['L4'], sheet['M4'] = date(2018, 6, 20), date(2025, 7, 30)
     sheet.append(['# 1', 'S', 'A106 B', 250, 8.625, 20000, 2.8, '=D5*E5', '=MAX(G5,H5)',
-                  None, None, 6.5, 6.4])
+                  None, None, 6.5, 6.5])
+    sheet['O3'], sheet['O5'] = 'Selected', 0.01
     for joint, band in enumerate(('E', 'T', 'R'), start=2):
         sheet.append([f'# {joint}', band, 'SA-234-WPB', 250, 8.625, 20000, 2.8,
                       None, None, None, None, 6.5, 6.4])
@@ -412,6 +413,29 @@ def test_sheet_code_basis_keeps_each_components_geometry_and_material(dated_eval
     assert {row['current_id']: row['code_edition'] for row in checked} == {
         oid: '2022' if oid == target else '2024' for oid in inputs
     }
+
+
+def test_batch_workbook_pipe_review_saves_source_values_and_calculates(dated_evaluation):
+    from evaluator.workspace_api import action
+
+    service, workspace, cid = dated_evaluation
+    values = dict(code_family='ASME B31.3', code_asset_type='process_piping',
+                  code_evidence='Test line list', code_owner_confirmed='yes')
+    workspace.apply_code_basis(cid, service.workflow.revision(), 'sheet', [], values)
+    rows = workspace.state(cid)['workspace']['rows']
+    pipe = next(row for row in rows if row['geometry'] == 'straight_pipe')
+    assert pipe['workbook_review']['eligible']
+    payload = dict(comparison_id=cid, revision=service.workflow.revision(), ids=[pipe['current_id']])
+    with pytest.raises(ValueError, match='Confirm the workbook'):
+        action(service, 'review_workbook_pipes', payload)
+    action(service, 'review_workbook_pipes', dict(payload, confirmed=True))
+    batch = workspace.evaluate(cid, service.workflow.revision(), basis='assigned')
+    result = next(row for row in batch['rows'] if row['current_id'] == pipe['current_id'])
+    assert result['row7']['s_psi'] == 20000
+    assert result['row7']['cr_used'] == 0.01
+    assert result['input_trace']['overrides']['material_reference'] == 'Evaluation Nov-26!F5'
+    assert 'Evaluation Nov-26!O5' in result['input_trace']['overrides']['review_note']
+    assert batch['summary']['mawp_evaluated'] == 1
 
 
 def test_later_context_edit_cannot_reuse_a_previously_looked_up_stress(project):

@@ -16,6 +16,37 @@ from evaluator.workflow import _LOCK
 CONFIG_FIELDS=PROFILE_FIELDS|PROFILE_TEXT|NUMERIC_OVERRIDES|{'rule','dimension_reference','material_reference','source_config_reference'}
 
 
+def _workbook_pipe_review(row):
+    from evaluator.batch import _num
+
+    profile = row['profile'] or {}
+    fields = profile.get('fields', {})
+
+    def source(key):
+        field = fields.get(key, {})
+        record = field.get('source_record') or field
+        return record if record.get('kind') == 'literal' else {}
+
+    def reference(record):
+        return f"{profile['sheet']}!{record['cell']}" if record.get('cell') else ''
+
+    stress = source('S_allow_psi')
+    rate = source('adopted_rate_mm_year')
+    material = source('material')
+    if row['routing']['status'] != 'ROUTE_SELECTED':
+        reason = 'Confirm the sheet code basis first.'
+    elif material.get('value') != row['material']:
+        reason = 'Check the material against the workbook.'
+    elif _num(stress.get('value'), True) is None or not reference(stress):
+        reason = 'Enter reviewed allowable stress for this location.'
+    elif _num(rate.get('value'), True) is None or not reference(rate):
+        reason = 'Enter a reviewed adopted corrosion rate for this location.'
+    else:
+        reason = ''
+    return dict(eligible=not reason, reason=reason, stress=stress.get('value'), rate=rate.get('value'),
+                stress_source=reference(stress), rate_source=reference(rate))
+
+
 class Workspace:
     def __init__(self, service):
         self.service=service
@@ -122,6 +153,8 @@ class Workspace:
             row['code_owner_confirmed']=over.get('code_owner_confirmed')=='yes' or bool(p.get('code_owner_confirmed'))
             row['code_asset_type']=over.get('code_asset_type',p.get('code_asset_type',''))
             row['routing']=row.get('routing') or {'status':'NEEDS_CODE_CONFIRMATION','issues':['Owner-confirmed code basis is required.']}
+            if row['code_family']=='ASME B31.3' and row['geometry']=='straight_pipe':
+                row['workbook_review'] = _workbook_pipe_review(row)
             od=_value(p,'D_outside_in')
             if not row['nps'] and od:
                 matches={d['nps'] for d in dimensions() if abs(Decimal(d['od_in'])-Decimal(str(od)))<Decimal('.001')}
@@ -248,6 +281,24 @@ class Workspace:
             config=self.service.batch.preview(cid,sheet)['settings'];config['basis']=basis
             db.execute('INSERT OR REPLACE INTO wf_batch_settings VALUES(?,?)',(cid,json.dumps(config)))
             self.service.batch._stale(db,cid)
+
+    def review_workbook_pipes(self, cid, revision, ids):
+        if int(revision) != self.flow.revision():
+            raise ValueError('Project changed; reopen batch review to confirm current inputs.')
+        rows = self.state(cid)['workspace']['rows']
+        proposals = {row['current_id']: row['workbook_review'] for row in rows
+                     if row.get('workbook_review', {}).get('eligible')}
+        if not ids or not set(ids) <= proposals.keys():
+            raise ValueError('Choose straight pipes with a saved route and usable workbook inputs.')
+        changes = {}
+        for oid in ids:
+            proposal = proposals[oid]
+            changes[oid] = dict(reviewed='yes', S_allow_psi=proposal['stress'],
+                                material_reference=proposal['stress_source'],
+                                adopted_rate_mm_year=proposal['rate'],
+                                review_note=f"Batch user review of workbook stress ({proposal['stress_source']}) and adopted corrosion rate ({proposal['rate_source']}).")
+        self.service.batch.apply_overrides(cid, revision, [], [], {}, per_row_values=changes)
+        return dict(message=f'Workbook inputs confirmed for {len(changes)} straight-pipe locations.')
 
     def evaluate(self,cid,revision,sheet=None,basis=None):
         # Saved review flags apply per row, keeping unconfirmed rows withheld.

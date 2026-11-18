@@ -35,6 +35,7 @@
 <summary>Location review <span id="readinessCount"></span></summary>
 <p>Review the matched readings and input sources below. Use the table filters to narrow the list. Select rows in the table to apply shared inputs.</p>
 <button id="editBatchCode">Set sheet code basis</button>
+<button id="reviewWorkbookPipes">Review straight pipes in batch</button>
 <div class="table-toolbar"><input id="search" type="search" placeholder="Find location, group or material" aria-label="Filter locations"><label>UT section<select id="sectionFilter"><option value="">All sections</option></select></label><label>Component<select id="componentFilter"><option value="">All components</option><option value="straight_pipe">Straight pipes</option><option value="fittings">Fittings</option></select></label><button id="selectComponent" hidden>Select component type</button><button id="selectVisible">Select visible</button><button id="clearSelection">Clear selection</button><button id="showSharedInputs">Edit shared inputs</button><span id="selectedCount"></span></div>
 <div id="suggestedGroups" aria-live="polite"></div>
 <div class="table-scroll"><table id="readinessTable">
