@@ -7,11 +7,11 @@
     "code_edition": "2024",
     "temperature_F": "100",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -23,11 +23,11 @@
     "code_edition": "2024",
     "temperature_F": "200",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -39,11 +39,11 @@
     "code_edition": "2024",
     "temperature_F": "300",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -55,11 +55,11 @@
     "code_edition": "2024",
     "temperature_F": "400",
     "S_allow_psi": "19900",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -71,11 +71,11 @@
     "code_edition": "2024",
     "temperature_F": "500",
     "S_allow_psi": "19000",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -87,11 +87,11 @@
     "code_edition": "2024",
     "temperature_F": "600",
     "S_allow_psi": "17900",
-    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322\u2013323; printed pages 288\u2013289",
+    "reference": "ASME B31.3-2024 Table A-1C line 33; PDF pages 322–323; printed pages 288–289",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -103,11 +103,11 @@
     "code_edition": "2024",
     "temperature_F": "100",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -119,11 +119,11 @@
     "code_edition": "2024",
     "temperature_F": "200",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -135,11 +135,11 @@
     "code_edition": "2024",
     "temperature_F": "300",
     "S_allow_psi": "20000",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -151,11 +151,11 @@
     "code_edition": "2024",
     "temperature_F": "400",
     "S_allow_psi": "19900",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -167,11 +167,11 @@
     "code_edition": "2024",
     "temperature_F": "500",
     "S_allow_psi": "19000",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
   },
@@ -183,12 +183,1806 @@
     "code_edition": "2024",
     "temperature_F": "600",
     "S_allow_psi": "17900",
-    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328\u2013329; printed pages 294\u2013295",
+    "reference": "ASME B31.3-2024 Table A-1C line 129; PDF pages 328–329; printed pages 294–295",
     "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
     "notes": [
       "Table notes (1), (2a), (57), (59)",
-      "Only exact tabulated 100\u2013600\u00b0F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
+      "Only exact tabulated 100–600°F points enabled. Confirm product specification and applicability. Basic allowable stress; joint quality and weld reduction factors are separate."
     ],
     "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 40 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 65 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 100 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 125 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 150 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 200 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 70",
+    "material_token": "SA51670",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 43; PDF pages 71–73; printed pages 20–22; 250 °C, 138 MPa",
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A53 Type S Grade B",
+    "material_token": "A53TYPESB",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 32; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A333 Grade 6",
+    "material_token": "A3336",
+    "product_form": "pipe",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 34; PDF pages 322–323; printed pages 288–289",
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57)",
+      "Exact table temperatures only. Confirm the listed specification, product and applicable notes."
+    ],
+    "verification": "Visual check against supplied table and associated specification row; engineering applicability remains subject to review"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "20000",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "19900",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "19000",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A420 WPL6",
+    "material_token": "A420WPL6",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "17900",
+    "reference": "ASME B31.3-2024 Table A-1C line 128; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "23300",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "23300",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "23300",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "22800",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "21700",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A234 WPC",
+    "material_token": "A234WPC",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "20400",
+    "reference": "ASME B31.3-2024 Table A-1C line 146; PDF pages 328 and 329",
+    "pdf_page": 329,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (57), (59). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "15800",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "14700",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP304L",
+    "material_token": "A403WP304L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "14000",
+    "reference": "ASME B31.3-2024 Table A-1C line 198; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "100",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "200",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "300",
+    "S_allow_psi": "16700",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "400",
+    "S_allow_psi": "15700",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "500",
+    "S_allow_psi": "14800",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "ASTM A403 WP316L",
+    "material_token": "A403WP316L",
+    "product_form": "fitting",
+    "code_family": "ASME B31.3",
+    "code_edition": "2024",
+    "temperature_F": "600",
+    "S_allow_psi": "14000",
+    "reference": "ASME B31.3-2024 Table A-1C line 200; PDF pages 354 and 355",
+    "pdf_page": 355,
+    "source_sha256": "8e92264efb1fb34e1e11ea6de0a93f73b3d6c019e54b1a9335033a5f5d576d28",
+    "notes": [
+      "Table notes (1), (2a), (32), (37). Confirm listed specification and applicability."
+    ],
+    "verification": "Checked material line and tabulated stress columns against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 40 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 65 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 100 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 125 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 150 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 200 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-516 Grade 65",
+    "material_token": "SA51665",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 1; PDF pages 71–73; 250 °C, 128 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 40 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 65 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 100 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 125 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 150 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 200 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-515 Grade 70",
+    "material_token": "SA51570",
+    "product_form": "plate",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 42; PDF pages 71–73; 250 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm plate specification, table notes and applicability."
+    ],
+    "verification": "Checked specification, VIII-1 applicability and temperature column against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 40 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 65 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 100 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 125 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 150 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 200 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-106 Grade B",
+    "material_token": "SA106B",
+    "product_form": "pipe",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 14; PDF pages 67–69; 250 °C, 118 MPa",
+    "pdf_page": 69,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T1. Confirm material specification and applicable notes."
+    ],
+    "material_condition_record_required": false,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 40 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 65 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 100 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 125 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 150 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 200 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-105",
+    "material_token": "SA105",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "19725.13233179011628480828672",
+    "S_allow_MPa": "136",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 29; PDF pages 71–73; 250 °C, 136 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, S1, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 40 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 65 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 100 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 125 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 150 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 200 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 1",
+    "material_token": "SA350LF2CLASS1",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "19725.13233179011628480828672",
+    "S_allow_MPa": "136",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 34; PDF pages 71–73; 250 °C, 136 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 40 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 65 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 100 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 125 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 150 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 200 °C, 138 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-350 LF2 Class 2",
+    "material_token": "SA350LF2CLASS2",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "19725.13233179011628480828672",
+    "S_allow_MPa": "136",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 35; PDF pages 71–73; 250 °C, 136 MPa",
+    "pdf_page": 73,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G10, T2. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 40 °C, 138 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 65 °C, 128 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 100 °C, 118 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "16244.22662618009576395976554",
+    "S_allow_MPa": "112",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 125 °C, 112 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "15519.03793751134148878299029",
+    "S_allow_MPa": "107",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 150 °C, 107 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "14387.74358318808481950722090",
+    "S_allow_MPa": "99.2",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 200 °C, 99.2 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "13459.50206169207934728094859",
+    "S_allow_MPa": "92.8",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 8; PDF pages 139–141; 250 °C, 92.8 MPa",
+    "pdf_page": 141,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "maximum_thickness_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "104.0",
+    "temperature_C": "40",
+    "S_allow_psi": "20015.20780725761799487899682",
+    "S_allow_MPa": "138",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 40 °C, 138 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "149.0",
+    "temperature_C": "65",
+    "S_allow_psi": "18564.83042992010944452544633",
+    "S_allow_MPa": "128",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 65 °C, 128 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "212.0",
+    "temperature_C": "100",
+    "S_allow_psi": "17114.45305258260089417189583",
+    "S_allow_MPa": "118",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 100 °C, 118 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "257.0",
+    "temperature_C": "125",
+    "S_allow_psi": "16244.22662618009576395976554",
+    "S_allow_MPa": "112",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 125 °C, 112 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "302.0",
+    "temperature_C": "150",
+    "S_allow_psi": "15519.03793751134148878299029",
+    "S_allow_MPa": "107",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 150 °C, 107 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "392.0",
+    "temperature_C": "200",
+    "S_allow_psi": "14387.74358318808481950722090",
+    "S_allow_MPa": "99.2",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 200 °C, 99.2 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
+  },
+  {
+    "material": "SA-182 F316",
+    "material_token": "SA182F316",
+    "product_form": "forging",
+    "code_family": "ASME VIII-1",
+    "code_edition": "2025",
+    "temperature_F": "482.0",
+    "temperature_C": "250",
+    "S_allow_psi": "13459.50206169207934728094859",
+    "S_allow_MPa": "92.8",
+    "reference": "ASME BPVC II-D Metric 2025 Table 1A line 45; PDF pages 135–137; 250 °C, 92.8 MPa",
+    "pdf_page": 137,
+    "source_sha256": "35e9f34cb1cb9ffe413d9727784fb89b0584809cbc770b7747d25409fef47e06",
+    "notes": [
+      "G12, T9. Confirm material specification and applicable notes.",
+      "Review the MTR and documented as-supplied heat-treatment condition before using this forging row."
+    ],
+    "material_condition_record_required": true,
+    "minimum_thickness_exclusive_mm": "130",
+    "verification": "Checked specification, product form, VIII-1 applicability and tabulated stress against supplied PDF"
   }
 ]

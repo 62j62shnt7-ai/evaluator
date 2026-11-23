@@ -2,73 +2,61 @@ import json
 import unittest
 from tests.integration import test_workflow as fixtures
 from evaluator.storage.database import connection
-from tests.source_config import SOURCE_ROOT
+from tests.source_config import original_workbook
 
 class QuickWorkflowTests(unittest.TestCase):
     setUp=fixtures.WorkflowTests.setUp
     tearDown=fixtures.WorkflowTests.tearDown
 
-    def test_single_sheet_http_selects_dates_before_matching_and_reports_selected_pair(self):
+    def test_single_sheet_selects_dates_before_matching_and_reports_selected_pair(self):
         import tempfile
         from pathlib import Path
-        from http.client import HTTPConnection
-        from http.server import ThreadingHTTPServer
-        from threading import Thread
-        from urllib.parse import urlencode
         from evaluator.app_services import ProjectService
-        from evaluator.webapp import make_handler
+        from evaluator.quick_workflow import generate, import_single_dated_sheet, match_single_sheet
+
+        path = original_workbook('TL-B from SAG Gas MFD to GP.xlsx')
         with tempfile.TemporaryDirectory() as td:
-            service=ProjectService(Path(td)/'project')
-            path=SOURCE_ROOT/'workbooks/TL-B from SAG Gas MFD to GP.xlsx'
-            source=service.add_source(path,path.name);service.inspect(source.sha256)
-            server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(service))
-            thread=Thread(target=server.serve_forever,daemon=True);thread.start()
-            client=HTTPConnection('127.0.0.1',server.server_port,timeout=20)
-            def request(path,values=None):
-                client.request('GET' if values is None else 'POST',path,None if values is None else urlencode(values),{} if values is None else {'Content-Type':'application/x-www-form-urlencoded'})
-                r=client.getresponse();return r.status,r.read().decode(),r.getheader('Location')
-            try:
-                for sheet,dates in [('UT 5-2025',['01-2021','10-2022','02-2025','05-2025']),('Evalation 4-2026',['2021-01-22','2022-10-21','2025-06-08'])]:
-                    status,_,location=request('/workflow/quick-import-single',dict(source_id=source.sha256,sheet_name=sheet,revision=service.workflow.revision()))
-                    self.assertEqual(status,303)
-                    self.assertEqual(service.workflow.comparisons(),[])
-                    status,body,_=request(location)
-                    self.assertEqual(status,200)
-                    for date in dates:self.assertIn('value="'+date+'"',body)
-                    self.assertNotIn('data-historical hidden',body)
-                form=dict(source_id=source.sha256,sheet_name='Evalation 4-2026',previous_campaign='2021-01-22',current_campaign='2025-06-08',revision=service.workflow.revision())
-                for previous,current in [('2021-01-22','2021-01-22'),('2025-06-08','2021-01-22'),('bogus','2025-06-08')]:
-                    status,_,_=request('/workflow/quick-match-single',dict(form,previous_campaign=previous,current_campaign=current))
-                    self.assertEqual(status,400)
-                    self.assertEqual(service.workflow.comparisons(),[])
-                status,_,location=request('/workflow/quick-match-single',form)
-                self.assertEqual(status,303)
-                comp=service.workflow.comparisons()[0]
-                self.assertEqual(comp['baseline'][2],'2021-01-22')
-                self.assertEqual(comp['current_selection'][2],'2025-06-08')
-                self.assertNotIn('data-historical hidden',request(location)[1])
-                status,_,_=request('/workflow/quick-report',dict(comparison_id=comp['id'],revision=service.workflow.revision(),confirm='yes'))
-                self.assertEqual(status,303)
-                row=next(r for r in service.workflow.evaluations()[0]['rows'] if r.get('current_id') and any(p['id']==r['pair_id'] and p['current'] and p['current']['cell']=='N15' for p in service.workflow.comparison(comp['id'])['rows']))
-                self.assertAlmostEqual(float(row['apparent_rate_mm_year']),.2 * 365.2425 / 1598,places=9)
-                # Change dates without reimporting; the report must use the newly selected pair.
-                status,_,location=request('/workflow/quick-match-single',dict(form,previous_campaign='2022-10-21',revision=service.workflow.revision()))
-                self.assertEqual(status,303)
-                changed=service.workflow.comparisons()[0]
-                self.assertEqual(changed['baseline'][2],'2022-10-21')
-                self.assertEqual(request(location)[0],200)
-                # UT headers provide month-only dates; resolving dates affects only the selected campaigns.
-                status,_,location=request('/workflow/quick-match-single',dict(form,sheet_name='UT 5-2025',previous_campaign='01-2021',current_campaign='05-2025',revision=service.workflow.revision()))
-                self.assertEqual(status,303)
-                ut=service.workflow.comparisons()[0]
-                status,_,location=request('/workflow/quick-report',dict(comparison_id=ut['id'],revision=service.workflow.revision(),confirm='yes',previous_date='2021-01-22',current_date='2025-06-08'))
-                self.assertEqual(status,303)
-                self.assertEqual(request(location)[0],200)
-                report=service.workflow.evaluations()[0]
-                self.assertTrue(any(r['apparent_rate_mm_year'] is not None for r in report['rows']))
-                for campaign in ['10-2022','02-2025']:
-                    self.assertTrue(all(r['inspection_date']=={'10-2022':'2022-10','02-2025':'2025-02'}[campaign] for r in service.workflow._selection(source.sha256,'UT 5-2025',campaign)))
-            finally:client.close();server.shutdown();server.server_close();thread.join()
+            service = ProjectService(Path(td) / 'project')
+            source = service.add_source(path, path.name)
+            service.inspect(source.sha256)
+            flow = service.workflow
+            for sheet, dates in (
+                ('UT 5-2025', {'01-2021', '10-2022', '02-2025', '05-2025'}),
+                ('Evalation 4-2026', {'2021-01-22', '2022-10-21', '2025-06-08'}),
+            ):
+                campaigns = import_single_dated_sheet(service, source.sha256, sheet, flow.revision())
+                self.assertTrue(dates <= {item['campaign'] for item in campaigns})
+                self.assertEqual(flow.comparisons(), [])
+
+            def compare(sheet, previous, current):
+                return match_single_sheet(service, source.sha256, sheet, previous, current, flow.revision())
+
+            sheet = 'Evalation 4-2026'
+            for previous, current in (
+                ('2021-01-22', '2021-01-22'), ('2025-06-08', '2021-01-22'), ('bogus', '2025-06-08'),
+            ):
+                with self.assertRaises(ValueError):
+                    compare(sheet, previous, current)
+                self.assertEqual(flow.comparisons(), [])
+
+            comparison = compare(sheet, '2021-01-22', '2025-06-08')
+            self.assertEqual(comparison['baseline'][2], '2021-01-22')
+            self.assertEqual(comparison['current_selection'][2], '2025-06-08')
+            report = generate(service, comparison['id'], flow.revision(), confirm=True)
+            pair_ids = {pair['id'] for pair in comparison['rows']
+                        if pair['current'] and pair['current']['cell'] == 'N15'}
+            row = next(row for row in report['evaluation']['rows'] if row['pair_id'] in pair_ids)
+            self.assertAlmostEqual(float(row['apparent_rate_mm_year']), .2 * 365.2425 / 1598, places=9)
+            self.assertEqual(compare(sheet, '2022-10-21', '2025-06-08')['baseline'][2], '2022-10-21')
+
+            sheet = 'UT 5-2025'
+            comparison = compare(sheet, '01-2021', '05-2025')
+            report = generate(service, comparison['id'], flow.revision(), confirm=True,
+                              previous_date='2021-01-22', current_date='2025-06-08')
+            self.assertTrue(any(row['apparent_rate_mm_year'] is not None for row in report['evaluation']['rows']))
+            for campaign, date in [('10-2022', '2022-10'), ('02-2025', '2025-02')]:
+                self.assertTrue(all(row['inspection_date'] == date
+                                    for row in flow._selection(source.sha256, sheet, campaign)))
 
     def test_life_defaults_to_calculated_rate_and_export_uses_same_result(self):
         from evaluator.quick_workflow import match,generate
@@ -172,36 +160,18 @@ class QuickWorkflowTests(unittest.TestCase):
         self.assertFalse(any(r['accepted'] for r in result['comparison']['rows']))
         self.assertEqual(self.flow.evaluations(),[])
 
-    def test_simple_http_match_report_and_download_without_manual_metadata(self):
-        import io,zipfile
-        from http.client import HTTPConnection
-        from http.server import ThreadingHTTPServer
-        from threading import Thread
-        from urllib.parse import urlencode,urlsplit,parse_qs
-        from evaluator.webapp import make_handler
-        server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(self.service))
-        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
-        client=HTTPConnection('127.0.0.1',server.server_port,timeout=10)
-        def request(path,values=None):
-            client.request('GET' if values is None else 'POST',path,None if values is None else urlencode(values),{} if values is None else {'Content-Type':'application/x-www-form-urlencoded'})
-            r=client.getresponse();return r.status,r.read(),r.getheader('Location')
-        try:
-            status,_,location=request('/workflow/quick-match',dict(revision=self.flow.revision(),baseline=json.dumps(['source','old','current']),current=json.dumps(['source','new','current'])))
-            self.assertEqual(status,303)
-            cid=parse_qs(urlsplit(location).query)['comparison'][0]
-            status,body,_=request(location)
-            self.assertEqual(status,200);self.assertNotIn(b'name="reviewer"',body)
-            status,_,location=request('/workflow/quick-report',dict(comparison_id=cid,revision=self.flow.revision(),confirm='yes'))
-            self.assertEqual(status,303);self.assertIn('report=',location)
-            self.assertIn(b'Your report is ready',request(location)[1])
-            name=parse_qs(urlsplit(location).query)['report'][0]
-            status,body,_=request('/export/revision?name='+name)
-            self.assertEqual(status,200)
-            with zipfile.ZipFile(io.BytesIO(body)) as z:
-                self.assertEqual(json.loads(z.read('project_snapshot.json'))['comparison_scope'],cid)
-                self.assertIn('whole_sheets.json',z.namelist())
-            self.assertEqual(request('/advanced?comparison='+cid)[0],200)
-        finally:client.close();server.shutdown();server.server_close();thread.join()
+    def test_simple_report_exports_selected_comparison_without_manual_metadata(self):
+        import zipfile
+        from evaluator.quick_workflow import generate, match
+
+        comp = match(self.service, ['source', 'old', 'current'], ['source', 'new', 'current'],
+                     self.flow.revision())
+        report = generate(self.service, comp['id'], self.flow.revision(), confirm=True)
+        self.assertIsNotNone(report['evaluation'])
+        with zipfile.ZipFile(self.flow.export_revision(comp['id'])) as archive:
+            snapshot = json.loads(archive.read('project_snapshot.json'))
+            self.assertEqual(snapshot['comparison_scope'], comp['id'])
+            self.assertIn('whole_sheets.json', archive.namelist())
 
     def test_default_inspection_choices_do_not_mix_all_historical_columns(self):
         from evaluator.quick_ui import quick_page

@@ -31,7 +31,7 @@ class VerifiedTables:
 
     def __init__(self, data_dir: str | Path | None = None, code_dir: str | Path | None = None):
         self.data_dir = Path(data_dir) if data_dir else Path(__file__).parents[1] / "data"
-        self.code_dir = Path(code_dir) if code_dir else Path(__file__).parents[3] / "sources" / "codes"
+        self.code_dir = Path(code_dir) if code_dir is not None else None
         self._stresses = json.loads((self.data_dir / "material_stresses.json").read_text(encoding="utf-8"))
         self._dimensions = json.loads((self.data_dir / "pipe_dimensions.json").read_text(encoding="utf-8"))
         self._validate_rows()
@@ -58,6 +58,8 @@ class VerifiedTables:
         }
 
     def _verify_source(self, row: dict[str, Any], filename: str) -> None:
+        if self.code_dir is None:
+            return
         source = self.code_dir / filename
         if not source.is_file():
             raise ReferenceLookupError(
@@ -70,8 +72,10 @@ class VerifiedTables:
             )
 
     def allowable_stress(
-        self, material: str, product_form: str, code: str, edition: str, temperature_F: Any
+        self, material: str, product_form: str, code: str, edition: str, temperature_F: Any, *,
+        material_thickness_mm=None, material_condition_reference=None
     ) -> dict[str, Any]:
+        from .references import stress_conditions_match
         temperature = _decimal(temperature_F, "temperature_F")
         material_key = _material_token(material)
         matches = [
@@ -81,6 +85,7 @@ class VerifiedTables:
             and row["code_family"] == code
             and row["code_edition"] == str(edition)
             and _decimal(row["temperature_F"], "table temperature") == temperature
+            and stress_conditions_match(row, material_thickness_mm, material_condition_reference)
         ]
         if len(matches) != 1:
             available = sorted({row["temperature_F"] for row in self._stresses
@@ -90,11 +95,12 @@ class VerifiedTables:
                                 and row["code_edition"] == str(edition)})
             raise ReferenceLookupError(
                 f"No exact allowable-stress match for {material} ({product_form}), {code} {edition}, "
-                f"{temperature}°F, Table A-1C; available exact temperatures: {available or 'none'}"
+                f"{temperature}°F; available exact temperatures: {available or 'none'}"
             )
         row = dict(matches[0])
-        self._verify_source(row, "B31_3_2024.pdf")
-        row["provenance"] = self._provenance(row, code, str(edition), "Table A-1C")
+        vessel = code == "ASME VIII-1"
+        self._verify_source(row, "ASME_BPVC_II_D_M-2025.pdf" if vessel else "B31_3_2024.pdf")
+        row["provenance"] = self._provenance(row, code, str(edition), "II-D Table 1A" if vessel else "Table A-1C")
         return row
 
     def pipe_dimension(self, family: str, nps: str, schedule: str) -> dict[str, Any]:

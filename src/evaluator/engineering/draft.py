@@ -2,6 +2,8 @@
 from decimal import Decimal
 
 REQUIRED={
+ 'API650_ONE_FOOT_PRODUCT':('D_m','H_m','G','Sd_MPa','CA_mm'),
+ 'API650_ONE_FOOT_HYDRO':('D_m','H_m','St_MPa'),
  'CR_LT':('t_initial_mm','t_current_mm','elapsed_years'),
  'CR_ST':('t_previous_mm','t_current_mm','elapsed_years'),
  'REMAINING_LIFE':('t_current_mm','t_required_mm','approved_governing_CR_mm_per_year'),
@@ -17,6 +19,8 @@ REQUIRED={
 
 
 REFERENCES={
+ 'API650_ONE_FOOT_PRODUCT':'API 650 14th edition (2025), 5.6.3.1–2, SI product case',
+ 'API650_ONE_FOOT_HYDRO':'API 650 14th edition (2025), 5.6.3.1–2, SI hydrotest case',
  'CR_LT':'API 510 11th edition §7.1.1.1 / API 570 5th edition §7.1.2',
  'CR_ST':'API 510 11th edition §7.1.1.1 / API 570 5th edition §7.1.2',
  'REMAINING_LIFE':'API 510 11th edition §7.2.1 / API 570 5th edition §7.2',
@@ -30,6 +34,8 @@ REFERENCES={
  'B31_8_841_1_1':'ASME B31.8 2025 §841.1.1',
 }
 FORMULAS={
+ 'API650_ONE_FOOT_PRODUCT':'4.9*D*(H-0.3)*G/Sd + CA',
+ 'API650_ONE_FOOT_HYDRO':'4.9*D*(H-0.3)/St',
  'CR_LT':'(t_initial_mm - t_current_mm) / elapsed_years',
  'CR_ST':'(t_previous_mm - t_current_mm) / elapsed_years',
  'REMAINING_LIFE':'(t_current_mm - t_required_mm) / selected_governing_rate_mm_year',
@@ -64,6 +70,19 @@ def evaluate(rule, inputs):
         if rate<=0: result['issues'].append('RATE_UNRESOLVED')
         elif v['t_current_mm']<=v['t_required_mm']: result['issues'].append('BELOW_OR_AT_REQUIRED_THICKNESS')
         else: value=divide(v['t_current_mm']-v['t_required_mm'],rate)
+    elif rule.startswith('API650_ONE_FOOT_'):
+        if not 0 < v['D_m'] <= d('61'):
+            raise ValueError('One-foot method requires a tank diameter above zero and at most 61 m')
+        if v['H_m'] <= d('0.3'):
+            raise ValueError('Liquid height above the course bottom must exceed 0.3 m')
+        head_term = d('4.9') * v['D_m'] * (v['H_m'] - d('0.3'))
+        if rule == 'API650_ONE_FOOT_PRODUCT':
+            if v['G'] <= 0:
+                raise ValueError('Product specific gravity must be positive')
+            value = divide(head_term * v['G'], v['Sd_MPa']) + v['CA_mm']
+        else:
+            value = divide(head_term, v['St_MPa'])
+        result['issues'].append('Shell-course candidate only; check both load cases, nominal plate minimum and other governing loads')
     elif rule=='API570_T_REQUIRED': value=max(v.values())
     else:
         if any(x<=0 for k,x in v.items() if k!='Y_coefficient'): raise ValueError('Geometry, pressure and factors must be positive')

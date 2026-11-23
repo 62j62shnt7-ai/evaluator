@@ -5,7 +5,7 @@ from email import policy
 from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit
 import mimetypes
 import zipfile
 import json
@@ -17,7 +17,9 @@ from evaluator.app_services import ProjectService
 
 
 def page(service, notice=''):
-    return (Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8')
+    from evaluator.desk_ui import workspace_page
+
+    return workspace_page()
 
 
 def make_handler(service):
@@ -31,27 +33,150 @@ def make_handler(service):
             self._reply('',303,'text/plain',(('Location','/?'+urlencode({'notice':message})),))
         def do_GET(self):
             path=self.path.split('?',1)[0]
-            if path not in {'/','/workspace','/api/workspace','/workspace/results.csv','/source-workbook','/sheet-object','/sheet'} and not path.startswith('/assets/'):
+            if path == '/workspace/calculation':
+                from evaluator.calculation_trace_ui import page as calculation_page
+
+                params = parse_qs(urlsplit(self.path).query)
+                result_id = params.get('result', [''])[0]
+                row_id = params.get('row', [''])[0]
+                batch = next((entry for entry in service.batch.results() if entry['id'] == result_id), None)
+                row = next((entry for entry in batch['rows'] if entry['id'] == row_id), None) if batch else None
+                if row is None:
+                    self._reply('Saved calculation not found', 404, 'text/plain')
+                else:
+                    self._reply(calculation_page(batch, row))
+                return
+            if path == '/codes':
+                from evaluator.code_guide import page as code_guide
+                from evaluator.code_sample_ui import code_rule
+
+                params = parse_qs(urlsplit(self.path).query)
+                sample = code_rule(params.get('code', [''])[0], params.get('geometry', [''])[0])
+                self._reply(code_guide(sample or params.get('sample', [''])[0]))
+                return
+            if path == '/vessels':
+                from evaluator.vessel_ui import page as vessel_page
+                self._reply(vessel_page(service))
+                return
+            if path == '/vessels/results.csv':
+                import csv
+                import io
+                from evaluator.engineering.vessel_assessment import history
+                ident = parse_qs(urlsplit(self.path).query).get('id', [''])[0]
+                record = next((row for row in history(service.workflow) if row['id'] == ident), None)
+                if record is None:
+                    self._reply('Vessel assessment not found', 404, 'text/plain')
+                    return
+                metadata = dict(record)
+                components = metadata.pop('components')
+                metadata['governing_components'] = ' | '.join(record['governing_components'])
+                rows = [dict(metadata, **component) for component in components]
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
+                self._reply(output.getvalue(), 200, 'text/csv; charset=utf-8',
+                            (('Content-Disposition', 'attachment; filename="vessel-assessment.csv"'),))
+                return
+            if path == '/pipeline':
+                from evaluator.pipeline_ui import page as pipeline_page
+                query = parse_qs(urlsplit(self.path).query)
+                self._reply(pipeline_page(service, {'comparison_id': query.get('comparison', [''])[0]}))
+                return
+            if path == '/pipeline/results.csv':
+                import csv
+                import io
+                from evaluator.engineering.pipeline_corrosion import history
+                query = parse_qs(urlsplit(self.path).query)
+                record = next((record for record in history(service.workflow)
+                               if record['id'] == query.get('id', [''])[0]), None)
+                if record is None:
+                    self._reply('Pipeline assessment not found', 404, 'text/plain')
+                    return
+                fields = dict(record)
+                inputs = fields.pop('inputs')
+                if record.get('assessment_type') == 'documented_limits':
+                    fields['governing_limits'] = ' | '.join(record['governing_limits'])
+                    for key, item in inputs.items():
+                        fields[key] = item['psi']
+                        fields[key + '_disposition'] = item['disposition']
+                        fields[key + '_reference'] = item['reference']
+                else:
+                    fields.update(inputs)
+                    ut = fields.pop('ut_trace', {})
+                    fields.update({'ut_' + key: value for key, value in ut.items()})
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=list(fields))
+                writer.writeheader()
+                writer.writerow(fields)
+                self._reply(output.getvalue(), 200, 'text/csv; charset=utf-8',
+                            (('Content-Disposition', 'attachment; filename="pipeline-assessment.csv"'),))
+                return
+            if path == '/tanks/forecast':
+                from evaluator.tank_forecast_ui import page as forecast_page
+                self._reply(forecast_page(service))
+                return
+            if path == '/tanks/forecast.csv':
+                import csv
+                import io
+                from evaluator.tanks import history
+                ident = parse_qs(urlsplit(self.path).query).get('id', [''])[0]
+                record = next((row for row in history(service.workflow)
+                               if row['id'] == ident and row['method'] == 'api653_forecast'), None)
+                if record is None:
+                    self._reply('Tank forecast not found', 404, 'text/plain')
+                    return
+                metadata = dict(record['inputs'], **record['outputs'], tank=record['tank'],
+                                reviewer=record['reviewer'], design_basis=record['reason'],
+                                rule=record['reference'], status=record['status'], id=record['id'])
+                metadata['governing_shell_courses'] = ' | '.join(record['outputs']['governing_shell_courses'])
+                for key in ('governing_local_areas', 'pit_exclusion_failed_courses'):
+                    metadata[key] = ' | '.join(metadata.get(key, []))
+                rows = [dict(metadata, **{key: value for key, value in course.items() if key not in {'api653', 'local_checks', 'pit_check'}},
+                             local_checks=json.dumps(course.get('local_checks', [])),
+                             pit_check=json.dumps(course.get('pit_check', {})),
+                             **{key: course['api653']['outputs'][key] for key in ('allowable_stress_MPa', 'minimum_mm')})
+                        for course in record['courses']]
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
+                self._reply(output.getvalue(), 200, 'text/csv; charset=utf-8',
+                            (('Content-Disposition', 'attachment; filename="tank-forecast.csv"'),))
+                return
+            if path == '/tanks':
+                from evaluator.tank_ui import page as tank_page
+                self._reply(tank_page(service))
+                return
+            if path not in {'/','/workspace','/api/workspace','/workspace/results.csv','/workspace/results.xlsx','/workspace/results.json','/source-workbook','/sheet-object','/sheet'} and not path.startswith('/assets/'):
                 self._reply('Not found',404,'text/plain');return
-            if path=='/workspace/results.csv':
+            if path in {'/workspace/results.csv', '/workspace/results.xlsx', '/workspace/results.json'}:
+                from evaluator.result_export import result_rows, review_rows, workbook_bytes
                 import csv
                 import io
                 q=parse_qs(urlsplit(self.path).query)
-                result=next((r for r in service.batch.results() if r['id']==q.get('result',[''])[0]),None)
+                result=service.batch.result_by_id(q.get('result',[''])[0])
                 if not result or result.get('stale'):
+                    if path == '/workspace/results.json':
+                        self._reply(json.dumps({'error': 'Calculate the current readings before reviewing results.'}), 400, 'application/json')
+                        return
                     self._reply('Calculate the current readings before exporting.',400,'text/plain');return
+                if path == '/workspace/results.json':
+                    self._reply(json.dumps(review_rows(result)), 200, 'application/json')
+                    return
+                if path == '/workspace/results.xlsx':
+                    self._reply(workbook_bytes(result), 200,
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                (('Content-Disposition', 'attachment; filename="UT-calculations.xlsx"'),))
+                    return
                 output=io.StringIO();writer=csv.writer(output)
-                writer.writerow(['Location','Previous date','Current date','Previous UT mm','Current UT mm','Material','Pd psi','OD in','Nominal mm','Structural mm','S psi','Pressure thickness mm','Required thickness mm','Calculated CR mm/year','CR used mm/year','CR basis','Remaining life years','Interval years','t in MAWP mm','MAWP psi','Result','Next inspection','Missing inputs'])
-                for row in result['rows']:
-                    if not row.get('current_id'):continue
-                    i=row.get('input_trace',{}).get('inputs',{});r=row.get('row7') or {}
-                    writer.writerow([row['location'],row.get('previous_inspection_date'),row.get('inspection_date'),row.get('previous_thickness_mm'),row.get('current_thickness_mm'),i.get('material'),i.get('pd_psi'),i.get('od_in'),i.get('nominal_mm'),i.get('structural_mm')]+[r.get(k) for k in ('s_psi','pressure_mm','required_mm','calculated_cr','cr_used','cr_basis','remaining_life','interval','mawp_thickness_mm','mawp_psi','result','next_inspection')]+['; '.join(row['issues'])])
+                writer.writerows(result_rows(result))
                 self._reply(output.getvalue(),200,'text/csv; charset=utf-8',(('Content-Disposition','attachment; filename="UT-evaluation.csv"'),));return
             if path in {'/','/workspace'}:
-                self._reply((Path(__file__).parent/'static'/'workspace.html').read_text(encoding='utf-8'));return
+                self._reply(page(service));return
             if path.startswith('/assets/'):
                 name=path.removeprefix('/assets/')
-                if name not in {'workspace.css','workspace.js'}:self._reply('Not found',404,'text/plain');return
+                if name not in {'workspace.css','workspace.js','integrity-desk.css','code-sample.js'}:self._reply('Not found',404,'text/plain');return
                 self._reply((Path(__file__).parent/'static'/name).read_bytes(),200,'text/css' if name.endswith('.css') else 'text/javascript');return
             if path=='/api/workspace':
                 from evaluator.workspace import Workspace
@@ -90,11 +215,77 @@ def make_handler(service):
                 origin=self.headers.get('Origin')
                 if origin and origin not in {'http://'+expected_host,f'http://localhost:{self.server.server_port}'}: raise ValueError('Cross-origin project changes are blocked')
                 path=self.path.split('?',1)[0]
+                if path == '/codes':
+                    from evaluator.code_guide import page as code_guide
+
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 8192:
+                        raise ValueError('Invalid sample calculation form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    self._reply(code_guide(form.get('sample', ''), form))
+                    return
+                if path == '/vessels':
+                    from evaluator.vessel_ui import page as vessel_page
+                    from evaluator.engineering.vessel_assessment import save
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 32768:
+                        raise ValueError('Invalid vessel form size')
+                    form = dict(parse_qsl(self.rfile.read(length).decode()))
+                    try:
+                        save(service.workflow, form)
+                    except (ValueError, KeyError) as exc:
+                        self._reply(vessel_page(service, form, str(exc)), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/vessels#saved-vessels'),))
+                    return
+                if path == '/pipeline':
+                    from evaluator.pipeline_ui import page as pipeline_page
+                    from evaluator.engineering.pipeline_corrosion import save
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 8192:
+                        raise ValueError('Invalid pipeline form size')
+                    form = dict(parse_qsl(self.rfile.read(length).decode()))
+                    try:
+                        save(service.workflow, form)
+                    except (ValueError, KeyError) as exc:
+                        self._reply(pipeline_page(service, form, str(exc)), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/pipeline#saved-pipeline'),))
+                    return
+                if path == '/tanks/forecast':
+                    from evaluator.tank_forecast_ui import page as forecast_page
+                    from evaluator.tanks import save
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 32768:
+                        raise ValueError('Invalid tank form size')
+                    form = dict(parse_qsl(self.rfile.read(length).decode()))
+                    form.update(method='api653_forecast', component='Shell courses')
+                    try:
+                        save(service.workflow, form)
+                    except (ValueError, KeyError) as exc:
+                        self._reply(forecast_page(service, form, str(exc)), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/tanks/forecast#saved-tank-forecasts'),))
+                    return
+                if path == '/tanks':
+                    from evaluator.tanks import save
+                    from evaluator.tank_ui import page as tank_page
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < length <= 32_768:
+                        raise ValueError('Invalid tank form size')
+                    form = {key: vals[0] for key, vals in parse_qs(self.rfile.read(length).decode()).items()}
+                    try:
+                        save(service.workflow, form)
+                    except ValueError as exc:
+                        self._reply(tank_page(service, str(exc), active_method=form.get('method')), 400)
+                        return
+                    self._reply('', 303, 'text/plain', (('Location', '/tanks#saved-tank-calculations'),))
+                    return
                 if path!='/workspace/upload' and not path.startswith('/api/workspace/'):
                     self._reply('Not found',404,'text/plain');return
                 if path.startswith('/api/workspace/'):
-                    if path.rsplit('/',1)[-1] not in {'import','apply','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
-                        self._reply('Not found',404,'text/plain');return
+                    if path.rsplit('/',1)[-1] not in {'prior_code_bases','location_preview','reference_preview','import','apply','apply_code_basis','prefill_sheet_materials','review_workbook_pipes','review_fittings','record_sleeve_assessment','evaluate','correct','dates','pair','identity','undo','delete_source','reset_project','restore_cleanup'}:
+                        self._reply(json.dumps({'error':'Workspace action not found.'}),404,'application/json');return
                     from evaluator.workspace_api import action
                     length=int(self.headers.get('Content-Length','0'))
                     if length<=0 or length>2_000_000:raise ValueError('Invalid workspace request size')
@@ -113,12 +304,16 @@ def make_handler(service):
                     with tempfile.NamedTemporaryFile(prefix='upload-',suffix=Path(filename).suffix.lower(),dir=temp,delete=False) as stream:
                         stream.write(part.get_payload(decode=True));staged=Path(stream.name)
                     try:
-                        record=service.add_source(staged,filename);service.inspect(record.sha256)
+                        from evaluator.importing.package_inventory import inventory
+                        validated = inventory(staged, sheet_names_only=True)
+                        if not validated.sheets:
+                            raise ValueError('This workbook contains no readable worksheets.')
+                        record = service.add_source(staged, filename)
+                        if service.inventory_for(record.sha256) is None:
+                            service.inspect(record.sha256, validated_inventory=validated)
                     finally:staged.unlink(missing_ok=True)
-                    from evaluator.workspace import Workspace
-                    workspace=Workspace(service)
-                    result=workspace.auto_open(record.sha256,service.workflow.revision())
-                    if result.get('comparison_id'):workspace.policy(result['comparison_id'],service.workflow.revision(),'row7')
+                    result = {'source_id': record.sha256,
+                              'message': 'Workbook imported. Choose the UT sheet with your readings.'}
                     self._reply(json.dumps(result),200,'application/json');return
             except (ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
                 self._reply(json.dumps({'error':str(exc)}),400,'application/json')

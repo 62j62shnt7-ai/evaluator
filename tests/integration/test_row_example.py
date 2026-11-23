@@ -48,12 +48,26 @@ def test_batch_row_uses_shared_logic():
         cell='K7', sheet_name='UT', source_id='source', location_candidates='["Joint 2", "Band 2"]')
     item = dict(current=reading('current','11.3','2026-11-06'), previous=reading('previous','11.6','2023-08-25'),
                 pair=dict(id='pair',kind='matched',accepted=True), profile=None,candidates=[],nominal_size=None,assignment_basis='test')
-    config = dict(basis='row7', row_overrides={'current':dict(P_psi='800',D_outside_in='8.625',material='A106 B',nominal_thickness_mm='12.7',structural_minimum_mm='2.8',adopted_rate_mm_year='.2')})
+    config = dict(basis='row7', row_overrides={'current':dict(P_psi='800',D_outside_in='8.625',material='A106 B',S_allow_psi='20000',nominal_thickness_mm='12.7',structural_minimum_mm='2.8',adopted_rate_mm_year='.2',geometry='straight_pipe',code_family='ASME B31.3',code_edition='2024',code_asset_type='process_piping',code_evidence='Reviewed test line list LL-1',code_owner_confirmed='yes',reviewed='yes')})
     service = object.__new__(BatchService)
     row = service._calculate_row(item, config)
     assert float(row['remaining_life_years']) == pytest.approx(74.5971461187)
     assert row['row7']['result'] == 'Safe'
     assert row['due_date'] == '2036-11-03'
+
+
+def test_row7_withholds_without_explicit_code_basis():
+    from evaluator.batch import BatchService
+    reading = lambda oid, value, dt: dict(observation_id=oid, raw_value=value, raw_unit='mm', inspection_date=dt,
+        cell='K7', sheet_name='UT', source_id='source', location_candidates='["Joint 2", "Band 2"]')
+    item = dict(current=reading('current','11.3','2026-11-06'), previous=reading('previous','11.6','2023-08-25'),
+                pair=dict(id='pair',kind='matched',accepted=True), profile=None,candidates=[],nominal_size=None,assignment_basis='test')
+    config = dict(basis='row7', row_overrides={'current':dict(P_psi='800',D_outside_in='8.625',material='A106 B',S_allow_psi='20000',nominal_thickness_mm='12.7',structural_minimum_mm='2.8',adopted_rate_mm_year='.2',geometry='straight_pipe',code_asset_type='process_piping',reviewed='yes')})
+    service = object.__new__(BatchService)
+    row = service._calculate_row(item, config)
+    assert row['row7'] is None
+    assert row['mawp_MPa'] is None
+    assert row['routing']['status']=='NEEDS_CODE_CONFIRMATION'
 
 
 def test_sample_style_ut_headers_import_previous_and_current(tmp_path):

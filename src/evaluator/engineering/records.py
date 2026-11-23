@@ -12,6 +12,8 @@ import re
 from openpyxl import load_workbook
 from openpyxl.formula.translate import Translator
 from evaluator.importing.cells import merged_value
+from evaluator.importing.reading_identity import component as band_component
+from evaluator.importing.tlb import _dated_columns
 
 
 def _token(value):
@@ -43,6 +45,19 @@ def _field(ws, cache, col, row, unit):
     kind = 'missing' if raw in (None, '') else 'formula' if isinstance(raw, str) and raw.startswith('=') else 'literal'
     return dict(cell=cell, raw=raw, cached=cached, kind=kind, unit=unit,
                 value=cached if kind == 'formula' else raw)
+
+
+def _oil_pressure_factors(field, row, wall_column):
+    """Recognize the oil report's pressure inverse, including the implicit E×W."""
+    # Match the original grouped expression before using its coefficient.
+    grouped = re.sub(r'[\s$]', '', str(field.get('raw') or '').upper())
+    match = re.fullmatch(
+        rf'=\(2\*F{row}\*\({wall_column}{row}\)\)/\(\(E{row}\*25\.4\)-\(2\*(0?\.\d+)\*{wall_column}{row}\)\)',
+        grouped,
+    )
+    if not match:
+        return {}
+    return {'E_quality': '1', 'W_reduction': '1', 'Y_coefficient': match[1]}
 
 
 def _policy(raw, life_col, row):
@@ -101,7 +116,7 @@ def _record(ws, cache, digest, family, section, row, columns, datecell, caption,
         geometry = 'nozzle' if section == 'NOZZLES' else 'head_unspecified' if key[1].startswith('HEAD') else 'shell' if key[1].startswith('PLATE') else 'unknown'
         code = 'ASME VIII-1'
     else:
-        geometry = {'S': 'straight_pipe', 'E': 'elbow', 'T': 'tee', 'R': 'reducer'}.get(key[2], 'straight_pipe' if key[2].isdigit() else 'unknown')
+        geometry, _ = band_component(point)
         code = 'ASME B31.3' if 'B31.3' in caption else 'ASME B31.8'
     edition = re.search(r'B31\.[38]\s*-\s*(\d{4})', caption)
     fields = {name: _field(ws, cache, col, row, unit) for name, (col, unit) in columns.items()}
@@ -147,8 +162,78 @@ def import_records(path: Path) -> list[dict]:
     records = []
     try:
         cached = load_workbook(path, data_only=True, keep_links=False)
+        report_dates = {}
+        for sheet in wb:
+            dated = [(cell.value.date().isoformat(), cell.coordinate)
+                     for cell in sheet[1] if isinstance(cell.value, datetime)]
+            if len(dated) == 1:
+                report_dates[sheet.title] = dict(zip(('date', 'cell'), dated[0]))
         for ws in wb:
             caption = '\n'.join(str(c.value) for row in ws.iter_rows(min_row=1, max_row=1) for c in row if c.value is not None)
+            headers = tuple(_token(ws.cell(2, c).value) for c in range(1, 11))
+            oil_layouts = {
+                'Eval-8-2023': ('G', 'H', 'I', 'K', 'M', 'P', 'O', 'T', None),
+                'Evaluation 11-2024': ('H', 'I', 'J', 'M', 'O', 'Q', 'P', 'V', 'G'),
+            }
+            layout = oil_layouts.get(ws.title)
+            codes = set(re.findall(r'\bB31\.[35]\b', caption))
+            if layout and headers[:6] == ('JOINT','BAND','MATERIAL','PDPSI','ODIN','SPSI') and len(codes) == 1:
+                code, = codes
+                structural, pressure, required, current, rate, interval, life, due, nominal = layout
+                forecast_wall, forecast_pressure = ('Q', 'R') if current == 'K' else ('R', 'S')
+                columns = dict(material=('C',None), P_psi=('D','psi'), D_outside_in=('E','in'),
+                               S_allow_psi=('F','psi'), structural_minimum_mm=(structural,'mm'),
+                               pressure_thickness_mm=(pressure,'mm'), required_thickness_mm=(required,'mm'),
+                               current_mm=(current,'mm'), adopted_rate_mm_year=(rate,'mm/year'),
+                               selected_interval_years=(interval,'year'), scheduled_date=(due,'date'),
+                               nominal_thickness_mm=(nominal,'mm'), forecast_pressure_psi=(forecast_pressure,'psi'))
+                for row in range(5, ws.max_row + 1):
+                    if not isinstance(merged_value(ws, row, 1), int) or not ws[f'C{row}'].value:
+                        continue
+                    record = _record(ws, cached[ws.title], digest, 'pipeline', '', row, columns,
+                                     current+'4', caption, interval, life)
+                    record.update(code_family='ASME '+code, inspection_date_cell=current+'4',
+                                  report_dates=report_dates,
+                                  code_basis_cell=next(c.coordinate for c in ws[1] if code in str(c.value)))
+                    historical = 'L' if current == 'M' else current
+                    record['historical_ut'] = _field(ws, cached[ws.title], historical, row, 'mm')
+                    record['historical_ut_date'] = _scalar(ws[historical+'4'].value)
+                    if record['geometry'] == 'straight_pipe':
+                        if (not record['interval_policy']
+                                and record['fields']['selected_interval_years']['kind'] == 'literal'):
+                            policy = _neighbor_interval_policy(ws, interval, life, row)
+                            if policy:
+                                record.update(interval_policy=policy, interval_policy_basis='neighbor_formula')
+                        field = record['fields']['forecast_pressure_psi']
+                        factors = _oil_pressure_factors(field, row, forecast_wall)
+                        if factors:
+                            record['workbook_pressure_factors'] = dict(values=factors, cell=field['cell'])
+                    records.append(record)
+                continue
+            if headers == ('JOINT','BAND','MATERIAL','PDPSI','ODIN','SPSI','TSTRCMMAPI574','TPDMM','TREQMM','MINUTREADINGMM') and 'B31.3' in caption:
+                readings = _dated_columns(ws, digest, ws.title)
+                current_date = max((reading.inspection_date for reading in readings), default=None)
+                columns = dict(material=('C',None), P_psi=('D','psi'), D_outside_in=('E','in'),
+                               S_allow_psi=('F','psi'), structural_minimum_mm=('G','mm'),
+                               pressure_thickness_mm=('H','mm'), required_thickness_mm=('I','mm'))
+                optional = {
+                    'adopted_rate_mm_year': ('O', 'mm/year', 'O3', 'SELECTED'),
+                    'selected_interval_years': ('Q', 'year', 'Q2', 'INTERVYR'),
+                    'forecast_thickness_mm': ('R', 'mm', 'R2', 'TINMAWPMM'),
+                    'forecast_pressure_psi': ('S', 'psi', 'S2', 'MAWPPSI'),
+                }
+                for field, (column, unit, header, expected) in optional.items():
+                    if _token(ws[header].value) == expected:
+                        columns[field] = (column, unit)
+                for reading in readings:
+                    if reading.inspection_date != current_date:
+                        continue
+                    col, row_text = re.fullmatch(r'([A-Z]+)(\d+)', reading.source.cell).groups()
+                    record = _record(ws, cached[ws.title], digest, 'pipeline', reading.location_candidates[0],
+                                     int(row_text), dict(columns, current_mm=(col,'mm')), col+'4',
+                                     caption, 'Q', 'P')
+                    records.append(record)
+                continue
             if ws.title == 'Evaluation 2026' and 'ASME-VIII' in caption:
                 for section, start, end, required, rate, interval, life, dt in [('CMLS',5,23,'N','R','U','T','M4'),('NOZZLES',27,45,'S','V','Y','X','M26')]:
                     due = 'X' if section == 'CMLS' else 'AB'

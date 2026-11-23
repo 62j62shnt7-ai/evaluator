@@ -3,12 +3,34 @@ from pathlib import Path
 from decimal import Decimal
 from evaluator.engineering.records import import_records, identity
 from evaluator.engineering.batch_rules import convert, outputs
-from tests.source_config import SOURCE_ROOT
+from tests.source_config import original_workbook
 
-SOURCES = SOURCE_ROOT / 'workbooks'
+def test_corrected_oil_evaluation_retains_historical_inputs(tmp_path):
+    from datetime import date
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    sheet.title = 'Evaluation 11-2024'
+    sheet['F1'] = 'According to API-570 & ASME B31.3'
+    sheet.append(['JOINT', 'BAND', 'MATERIAL', 'Pd (Psi)', 'OD (in)', 'S (Psi)'])
+    sheet['L4'], sheet['M4'] = date(2023, 8, 25), date(2024, 11, 6)
+    sheet.append([36, 2, 'A106 B', 800, 8.625, 20000, 12.7, 2.8, None, None, None, 12.1, None, None, .21])
+    sheet['S5'] = '=(2*F5*(R5))/((E5*25.4)-(2*0.4*R5))'
+    path = tmp_path / 'oil.xlsx'
+    book.save(path)
+
+    row, = import_records(path)
+    assert row['code_family'] == 'ASME B31.3'
+    assert row['fields']['adopted_rate_mm_year']['cell'] == 'O5'
+    assert row['historical_ut']['value'] == 12.1
+    assert row['workbook_pressure_factors'] == {
+        'values': {'E_quality': '1', 'W_reduction': '1', 'Y_coefficient': '0.4'}, 'cell': 'S5',
+    }
+
 
 def test_separator_records_preserve_provenance():
-    path = SOURCES / 'Separator-204 Inspection Report.xlsx'
+    path = original_workbook('Separator-204 Inspection Report.xlsx')
     digest = sha256(path.read_bytes()).hexdigest()
     rows = import_records(path)
     assert len(rows) == 38
@@ -31,7 +53,7 @@ def test_separator_records_preserve_provenance():
     assert sha256(path.read_bytes()).hexdigest() == digest
 
 def test_pipeline_scenarios_preserve_projections_and_pressure_only():
-    path = SOURCES / 'TL-B from SAG Gas MFD to GP.xlsx'
+    path = original_workbook('TL-B from SAG Gas MFD to GP.xlsx')
     digest = sha256(path.read_bytes()).hexdigest()
     rows = import_records(path)
     june = [r for r in rows if r['sheet'] == 'Evaluation 6-2025']

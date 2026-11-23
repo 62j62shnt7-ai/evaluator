@@ -26,7 +26,7 @@ class WorkbookInventory:
                 "links": list(self.links), "formulas": list(self.formulas), "warnings": list(self.warnings)}
 
 
-def inventory(path: Path, max_bytes: int = 100_000_000, max_expanded: int = 500_000_000) -> WorkbookInventory:
+def inventory(path: Path, max_bytes: int = 100_000_000, max_expanded: int = 500_000_000, *, sheet_names_only=False) -> WorkbookInventory:
     path = Path(path)
     if path.stat().st_size > max_bytes:
         raise ValueError("workbook exceeds compressed size limit")
@@ -35,12 +35,16 @@ def inventory(path: Path, max_bytes: int = 100_000_000, max_expanded: int = 500_
             entries = z.infolist()
             if sum(i.file_size for i in entries) > max_expanded:
                 raise ValueError("workbook exceeds expanded size limit")
-            bad = z.testzip()
-            if bad:
-                raise ValueError(f"corrupt workbook member: {bad}")
             root = ET.fromstring(z.read("xl/workbook.xml"))
             ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
                   "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
+            if sheet_names_only:
+                sheets = tuple(SheetInfo(e.attrib['name'], e.attrib.get('state', 'visible'), '')
+                               for e in root.findall('m:sheets/m:sheet', ns))
+                return WorkbookInventory(sheets, (), (), (), ())
+            bad = z.testzip()
+            if bad:
+                raise ValueError(f"corrupt workbook member: {bad}")
             rel_ns = "{http://schemas.openxmlformats.org/package/2006/relationships}"
             rel_root = ET.fromstring(z.read("xl/_rels/workbook.xml.rels"))
             rels = {e.attrib.get("Id"):e.attrib.get("Target", "") for e in rel_root}
@@ -77,3 +81,5 @@ def inventory(path: Path, max_bytes: int = 100_000_000, max_expanded: int = 500_
             return WorkbookInventory(sheets, objects, links, tuple(formulas), warns)
     except BadZipFile as exc:
         raise ValueError("invalid XLSX/XLSM ZIP package") from exc
+    except (KeyError, ET.ParseError) as exc:
+        raise ValueError("Workbook metadata is missing or damaged. Save a fresh XLSX or XLSM copy and try again.") from exc

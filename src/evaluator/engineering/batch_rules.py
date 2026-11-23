@@ -50,7 +50,13 @@ def convert(value, from_unit, to_unit):
     return amount * 9 / 5 + 32
 
 
-def _pressure(net, rule, inputs):
+def pressure_psi(value):
+    return None if value is None else str(convert(value, 'MPa', 'psi'))
+
+
+def pressure_at_thickness(net, rule, inputs):
+    """Invert a supported pressure equation at explicitly supplied net wall."""
+    net = _number(net, "net thickness", positive=True)
     if rule not in PRESSURE_RULES:
         raise ValueError('Explicit supported pressure rule is required; unsupported geometry needs separate analysis')
     if not isinstance(inputs, Mapping):
@@ -81,7 +87,7 @@ def _pressure(net, rule, inputs):
     if abs(Decimal(checked['value'])-net) > max(abs(net), d(1))*d('1e-24'):
         raise ValueError('Pressure roundtrip outside numerical tolerance')
     return pressure, {'rule':rule, 'source_reference':REFERENCES[rule], 'basis':'inverse of '+checked['formula'],
-                      'net_thickness_mm':str(net), 'inputs':checked['inputs'],
+                      'net_thickness_mm':str(net), 'pressure_MPa':str(pressure), 'inputs':checked['inputs'],
                       'limitations':'Candidate arithmetic only; applicability, geometry and other loads require verification'}
 
 
@@ -90,7 +96,7 @@ def outputs(current_mm, required_mm=None, adopted_rate=None, inspection_date=Non
             rule=None, design_inputs=None, allowance_mm=None, forecast_years=None,
             forecast_factor=None, selected_interval_years=None, scheduled_due_date=None,
             next_inspection_years=None, manual_interval_override=False,
-            manual_selected_interval=False):
+            manual_selected_interval=False, inspection_pressure=False, structural_minimum_mm=None):
     """Return each independently ready value (str/null) with keyed issues/trace.
 
     required_mm must be an explicitly established governing minimum; a pressure
@@ -138,6 +144,14 @@ def outputs(current_mm, required_mm=None, adopted_rate=None, inspection_date=Non
             inspected = inspection_date
         else:
             if not inspection_date: raise ValueError('inspection_date is required')
+            if inspection_pressure and len(str(inspection_date)) == 7:
+                inspected = date.fromisoformat(str(inspection_date) + '-01')
+                months = int((years * 12).to_integral_value(rounding=ROUND_FLOOR))
+                target = inspected.year * 12 + inspected.month - 1 + months
+                return f'{target // 12:04d}-{target % 12 + 1:02d}', {
+                    'interval_years': str(years), 'rounding': 'floor whole months',
+                    'inspection_date': str(inspection_date),
+                }
             inspected = date.fromisoformat(str(inspection_date))
         days = int((years*basis).to_integral_value(rounding=ROUND_FLOOR))
         return (inspected+timedelta(days=days)).isoformat(), {'year_days':str(basis), 'interval_years':str(years), 'rounding':'floor whole days', 'days':str(days), 'inspection_date':inspected.isoformat()}
@@ -146,20 +160,38 @@ def outputs(current_mm, required_mm=None, adopted_rate=None, inspection_date=Non
         net = current()-allowance
         years = _number(years, 'forecast_years', nonnegative=True)
         factor = _number(factor, 'forecast_factor', positive=True)
-        rate = _number(adopted_rate, 'adopted_rate', positive=True)
-        net -= rate*years*factor
+        rate = _number(adopted_rate, 'adopted_rate', positive=True) if years else Decimal(0)
+        loss = rate * years
+        physical_wall = current() - loss
+        credited_wall = current() - loss * factor
+        net -= loss * factor
         trace = {'allowance_mm':str(allowance), 'current_mm':str(current()),
                  'forecast_years':str(years), 'forecast_factor':str(factor),
-                 'adopted_rate':str(rate), 'horizon_basis':horizon_basis}
+                 'adopted_rate':str(rate), 'horizon_basis':horizon_basis,
+                 'projected_physical_wall_mm':str(physical_wall),
+                 'credited_wall_mm':str(credited_wall)}
+        if inspection_pressure and years:
+            trace['inspection_reference'] = 'API 570 fifth edition + Addendum 1, §7.5'
+            if structural_minimum_mm is not None and credited_wall < _number(
+                    structural_minimum_mm, 'structural minimum wall', nonnegative=True):
+                raise ValueError('Credited wall is below the structural minimum. Review the interval or structural assessment.')
         if net <= 0: raise ValueError('Available net thickness must be positive')
-        value, details = _pressure(net, rule, design_inputs)
+        value, details = pressure_at_thickness(net, rule, design_inputs)
         return value, dict(trace, **details)
 
     def remaining_life_mawp():
+        if inspection_pressure:
+            return pressure('0', '1', 'current_measurement')
         years = life()
         return pressure(years, '1', 'remaining_life_endpoint')
 
     def next_inspection_mawp():
+        if inspection_pressure:
+            due()
+            years = selected_interval()
+            if years > interval():
+                raise ValueError('SELECTED_INTERVAL_EXCEEDS_CALCULATED_MAXIMUM')
+            return pressure(years, '2', 'next_inspection_interval')
         years = forecast_years if forecast_years not in ('', None) else next_inspection_years
         if years == 'remaining_life':
             years = life()
@@ -171,7 +203,17 @@ def outputs(current_mm, required_mm=None, adopted_rate=None, inspection_date=Non
                         else 'remaining_life_endpoint')
 
     run('thickness_margin_mm', lambda:(margin(), {'formula':'current_mm - required_mm', 'current_mm':str(current_mm), 'required_mm':str(required_mm)}))
-    run('remaining_life_years', lambda:(life(), {'formula':'(current_mm - required_mm) / adopted_rate', 'current_mm':str(current_mm), 'required_mm':str(required_mm), 'adopted_rate':str(adopted_rate)}))
+    def remaining_life_result():
+        difference = margin()
+        value = Decimal(0) if inspection_pressure and difference <= 0 else life()
+        trace = {'formula':'(current_mm - required_mm) / adopted_rate', 'current_mm':str(current_mm),
+                 'required_mm':str(required_mm), 'adopted_rate':str(adopted_rate)}
+        if difference <= 0:
+            trace['basis'] = 'At or below required wall'
+        if inspection_pressure:
+            trace['source_reference'] = 'API 570 fifth edition + Addendum 1, §7.2'
+        return value, trace
+    run('remaining_life_years', remaining_life_result)
     run('maximum_inspection_interval_years', lambda:(interval(), {'formula':'min(remaining_life_years * interval_fraction, interval_cap_years)', 'interval_fraction':str(interval_fraction), 'interval_cap_years':str(interval_cap_years)}))
     run('inspection_interval_years', lambda:(selected_interval(), {'selected_interval_years':str(selected_interval_years) if selected_interval_years not in ('', None) else None,
           'maximum_interval_years':str(interval()) if selected_interval_years not in ('', None) else None,
